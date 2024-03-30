@@ -5,3 +5,6 @@ a.out
 lockws.cpp
 README.md
 Makefile
+github.rsa
+github.rsa.pub
+settings.json

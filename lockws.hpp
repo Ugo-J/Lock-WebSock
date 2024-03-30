@@ -447,10 +447,10 @@ lock_client::lock_client(std::string_view url, std::string_view path = "/"){
     if(!error){ // only continue if no error
         
     // fill the random bytes array with 16 random bytes between 0 and 255
-    int lower_bound = 0, upper_bound = 255;
+    int upper_bound = 255;
     for(int i = 0; i < rand_byte_array_len; i++){
         
-        rand_bytes[i] = (unsigned char)(rand() % (upper_bound - lower_bound) ); // we get a random byte between 0 and 255 and cast it into a one byte value
+        rand_bytes[i] = (unsigned char)(rand() % upper_bound ); // we get a random byte between 0 and 255 and cast it into a one byte value
 
     }
     
@@ -843,11 +843,11 @@ bool lock_client::ping(){ // sends a ping on an established websocket connection
             i++;
             
             // generate the mask
-            int upper_bound = 255, lower_bound = 0;
+            int upper_bound = 255;
                 
             for(int j = 0; j<mask_array_len; j++){
                     
-                mask[j] = (unsigned char)(rand() % (upper_bound - lower_bound));
+                mask[j] = (unsigned char)(rand() % upper_bound);
                     
                 send_data[i] = mask[j]; // store the mask in the send data array
                     
@@ -908,11 +908,11 @@ bool lock_client::pong(int ping_data_len){ // sends out a pong frame unsolicited
             i++;
             
             // generate the mask
-            int upper_bound = 255, lower_bound = 0;
+            int upper_bound = 255;
                 
             for(int j = 0; j<mask_array_len; j++){
                     
-                mask[j] = (unsigned char)(rand() % (upper_bound - lower_bound));
+                mask[j] = (unsigned char)(rand() % upper_bound);
                     
                 send_data[i] = mask[j]; // store the mask in the send data array
                     
@@ -1085,11 +1085,11 @@ bool lock_client::send(std::string_view payload_data){ // sends data passed as p
             
                     // generate the mask
                         
-                    int upper_bound = 255, lower_bound = 0;
+                    int upper_bound = 255;
                     
                     for(int j = 0; j<mask_array_len; j++){
                         
-                        mask[j] = (unsigned char)(rand() % (upper_bound - lower_bound));
+                        mask[j] = (unsigned char)(rand() % upper_bound);
                         
                         send_data[i] = mask[j]; // store the mask in the send data array
                         
@@ -1201,11 +1201,11 @@ bool lock_client::send(std::string_view payload_data){ // sends data passed as p
     
                 // generate the mask
                     
-                int upper_bound = 255, lower_bound = 0;
+                int upper_bound = 255;
                 
                 for(int j = 0; j<mask_array_len; j++){
                     
-                    mask[j] = (unsigned char)(rand() % (upper_bound - lower_bound));
+                    mask[j] = (unsigned char)(rand() % upper_bound);
                     
                     send_data[i] = mask[j]; // store the mask in the send data array
                     
@@ -2636,11 +2636,11 @@ bool lock_client::basic_read(){
                     i++;
             
                     // generate the mask
-                    int upper_bound = 255, lower_bound = 0;
+                    int upper_bound = 255;
                 
                     for(int j = 0; j<mask_array_len; j++){
                     
-                        mask[j] = (unsigned char)(rand() % (upper_bound - lower_bound));
+                        mask[j] = (unsigned char)(rand() % upper_bound);
                     
                         send_data[i] = mask[j]; // store the mask in the send data array
                     
@@ -3186,10 +3186,10 @@ bool lock_client::connect(std::string_view url, std::string_view path = "/"){ //
                         if(!error){ // only continue if no error
                             
                             // fill the random bytes array with 16 random bytes between 0 and 255
-                            int lower_bound = 0, upper_bound = 255;
+                            int upper_bound = 255;
                             for(int i = 0; i < rand_byte_array_len; i++){
                                 
-                                rand_bytes[i] = (unsigned char)(rand() % (upper_bound - lower_bound) ); // we get a random byte between 0 and 255 and cast it into a one byte value
+                                rand_bytes[i] = (unsigned char)(rand() % upper_bound ); // we get a random byte between 0 and 255 and cast it into a one byte value
 
                             }
                             
@@ -3483,11 +3483,11 @@ void lock_client::fail_ws_connection(unsigned short status_code){
     i++;
         
     // generate the mask
-    int upper_bound = 255, lower_bound = 0;
+    int upper_bound = 255;
             
     for(int j = 0; j<mask_array_len; j++){
                 
-        mask[j] = (unsigned char)(rand() % (upper_bound - lower_bound));
+        mask[j] = (unsigned char)(rand() % upper_bound);
                 
         send_data[i] = mask[j]; // store the mask in the send data array
                 
@@ -3548,11 +3548,11 @@ bool lock_client::close(unsigned short status_code){ // this closes an establish
             i++;
             
             // generate the mask
-            int upper_bound = 255, lower_bound = 0;
+            int upper_bound = 255;
                 
             for(int j = 0; j<mask_array_len; j++){
                     
-                mask[j] = (unsigned char)(rand() % (upper_bound - lower_bound));
+                mask[j] = (unsigned char)(rand() % upper_bound);
                     
                 send_data[i] = mask[j]; // store the mask in the send data array
                     
