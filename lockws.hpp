@@ -1036,7 +1036,7 @@ bool lock_client::send(std::string_view payload_data){ // sends data passed as p
                     send_data[i] = (0xFF00 & payload_data_len) >> 8;
                     i++;
                     
-                    send_data[i] = (0x00FF & payload_data_len);
+                    send_data[i] = 0x00FF & payload_data_len;
                     i++;
                     
                 }
@@ -3522,11 +3522,14 @@ void lock_client::fail_ws_connection(unsigned short status_code){
     BIO_reset(c_bio);
             
     client_state = CLOSED; // sets the client state back to closed
-    
+
+    // we set the lock client error variable
+    strncpy(error_buffer, "Websocket Connection Lost", error_buffer_array_length);
+                
+    error = true;
     
 }
-   
-   
+     
 bool lock_client::close(unsigned short status_code){ // this closes an established websocket connection although the object itself still exists till it goes out of scope, the object can be connected to a different or the same websocket server using the connect function
     
     if(!error){ // only continue if no error
@@ -3557,8 +3560,7 @@ bool lock_client::close(unsigned short status_code){ // this closes an establish
                 send_data[i] = mask[j]; // store the mask in the send data array
                     
                 i++;
-                    
-                    
+                  
             }
             // mask generation end 
                 
@@ -3583,101 +3585,10 @@ bool lock_client::close(unsigned short status_code){ // this closes an establish
             
             // unblock SIGPIPE signal
             unblock_sigpipe_signal();
+
+            // after sending the close frame we do not attempt to read any more data from the server we just disconnect the underlying network connection
                 
-            // receive close message from websocket server
-            BIO_read(c_bio, rand_bytes, 2); // read the first 2 bytes to get the length of the frame
-            uint64_t recv_frame_len = 0;
-            uint64_t max_len = 0; // this variable is used to store the maximum length of data received in order to know the length of the array to zero out 
-            
-            // keep reading in data and ignoring till we receive the close frame
-            while( rand_bytes[0] != (FIN_BIT_SET | RSV_BIT_UNSET_ALL | CONNECTION_CLOSE) ){
-                    
-                // test the frame length. this is needed in order to know the length of data to receive
-                if(rand_bytes[1] < 126){ // this is the length
-                    
-                    recv_frame_len = rand_bytes[1];
-                    
-                }
-                else if( rand_bytes[1] == 126 ){ // next two bytes store the data length
-                    
-                    BIO_read(c_bio, rand_bytes, 2); // read the next 2 bytes from c_bio to get the length
-                    
-                    recv_frame_len = (rand_bytes[0] << 8) | rand_bytes[1];
-                    
-                }
-                else if( rand_bytes[1] == 127 ){ // this would mean that the next 8 bytes is our length
-                    
-                    BIO_read(c_bio, rand_bytes, 8); // read the next 8 bytes fro c_bio to get our length 
-                    
-                    recv_frame_len = ( (rand_bytes[0] & 127) << 56) | (rand_bytes[1] << 48) | rand_bytes[2] << 40 | rand_bytes[3] << 32 | rand_bytes[4] << 24 | rand_bytes[5] << 16 | rand_bytes[6] << 8 | rand_bytes[7];
-                    // the logical AND of rand_bytes[0] and 127 is first taken to zero out the most significant bit of the 64 bit integer based on the websocket protocol rules 
-                    
-                }
-                else{ // unrecognised data length received. This is possible because a malicious of wrongly configured WebSocket server could set the mask bit to 1 hence the library should be able to handle that
-                    
-                    error = true; // sets the error flag but writes no message to the error buffer
-                    
-                    BIO_reset(c_bio); // close the underlying connection
-                        
-                    break; // break out of the while loop
-                    
-                }
-                    
-                // we reeive any other data coming from the server that isn't a close frame but we ignore them
-                    
-                if( recv_frame_len < static_data_array_length ){ // the whole data can fit into the static array once
-                        
-                    uint64_t len = BIO_read(c_bio, data_array_static, recv_frame_len);
-                    
-                    if(len > max_len)
-                        max_len = len; // len becomes the max len if it is greater than what was stored in max_len variable
-                            
-                    while( len < recv_frame_len ){ // make sure all the frame has been read in
-                            
-                        uint64_t extra_len =  BIO_read(c_bio, data_array_static, (recv_frame_len - len));
-                        len += extra_len;
-                        
-                        if(extra_len > max_len)
-                            max_len = extra_len; // extra len becomes the max len if it is greater than what was stored in max_len variable
-                            
-                    }
-                        
-                }
-                else{ // received length too large to store in static array at once so we break it in bits
-                        
-                    uint64_t bytes_left = recv_frame_len; // used to keep track of how may bytes are left to read
-                    max_len = static_data_array_length;   // the static array length becomes the max len 
-                        
-                    while(bytes_left > 0){
-                            
-                        if(bytes_left > static_data_array_length){
-                            
-                            uint64_t len = BIO_read(c_bio, data_array_static, static_data_array_length);
-                            bytes_left -= len; // decrement the bytes left variable
-                                
-                        }
-                        else{
-                                
-                            uint64_t len = BIO_read(c_bio, data_array_static, bytes_left);
-                            bytes_left -= len; // decrement the bytes left variable
-                                
-                        }
-                            
-                    }
-                        
-                }
-                    
-                BIO_read(c_bio, rand_bytes, 2);
-                    
-            }
-                
-            // close frame received
-            if(!error){ // only continue if no error
-                
-                BIO_reset(c_bio); // close the underlying ssl connection and(or) TCP connection after the close frame has been received
-                memset(data_array_static, '\0', max_len); // zero out the array
-                
-            }
+            BIO_reset(c_bio); // close the underlying ssl connection and(or) TCP connection after the close frame has been received
                 
             client_state = CLOSED;
      
