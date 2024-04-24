@@ -9,8 +9,17 @@ lock_client::lock_client(std::string_view url, std::string_view path = "/"){
         
         ssl_ctx = SSL_CTX_new(TLS_client_method()); // initialises the SSL_CTX pointer with method TLS, this SSL_CTX structure is shared among all lock_client instance
         
-    // seed the random number generator
-    srand(std::chrono::duration_cast< std::chrono::milliseconds >(std::chrono::system_clock::now().time_since_epoch()).count());
+        // seed the random number generator
+        srand(std::chrono::duration_cast< std::chrono::milliseconds >(std::chrono::system_clock::now().time_since_epoch()).count());
+
+        // we generate the static mask the library uses
+        int upper_bound = 255;
+            
+        for(int j = 0; j<mask_array_len; j++){
+                
+            mask[j] = (unsigned char)(rand() % upper_bound);
+
+        }
         
         openssl_init = true;
         
@@ -36,107 +45,108 @@ lock_client::lock_client(std::string_view url, std::string_view path = "/"){
     
     if( (url.compare(0, 6, "wss://") == 0) || (url.compare(0, 6, "Wss://") == 0) || (url.compare(0, 6, "WSs://") == 0) || (url.compare(0, 6, "WSS://") == 0) || (url.compare(0, 6, "WsS://") == 0) || (url.compare(0, 6, "wSS://") == 0) || (url.compare(0, 6, "wsS://") == 0) || (url.compare(0, 6, "wSs://") == 0) ){ // endpoint is a wss:// endpoint, the second parameter to the std::string_view compare function is 6 which is the length of the string "wss://" which we are testing for the presence of, we list out and compare the 8 possible combinations of uppercase and lowercase lettering that are valid
     
-    int protocal_prefix_len = strlen("wss://");    
-    int base_url_length = url.size() - protocal_prefix_len; // saves the length of the url without the wss:// prefix 
-        
-    // SSL members initialisations
-    c_bio = BIO_new_ssl_connect(ssl_ctx); // creates a new bio ssl object
-    BIO_get_ssl(c_bio, &c_ssl); // get the SSL structure component of the ssl bio for per instance SSL settings
-    if(c_ssl == NULL){
-        
-        strncpy(error_buffer, "Error fetching SSL structure pointer ", error_buffer_array_length);
-                
-        error = true;
-        
-    }
- 
-    if(!error){ // the constructor continues only if there was no error fetching the ssl pointer
-    
-    // URL copy 
-    if(base_url_length < url_static_array_length){ // static memory large enough
-    
-        url.copy(c_url_static, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
-    
-        c_url_static[base_url_length] = '\0'; // null-terminate the string
-    
-        c_url = c_url_static;
-    
-    }
-    else if(base_url_length < size_of_allocated_url_memory){ // store in already allocated dynamic memory
-        
-        url.copy(c_url_new, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
-    
-        c_url_new[base_url_length] = '\0'; // null-terminate the string
-    
-        c_url = c_url_new;
-        
-    
-    }
-    else{ // neither static or dynamic memory is large enough, we test whether memory has already been allocated or not 
-        
-        if(c_url_new == NULL){ // memory has not yet been allocated
+        int protocal_prefix_len = strlen("wss://");    
+        int base_url_length = url.size() - protocal_prefix_len; // saves the length of the url without the wss:// prefix 
             
-            // heap memory allocation for urls larger than the static array length
-            c_url_new = new(std::nothrow) char[base_url_length + 1]; // the nothrow parameter prevents an exception from being thrown by the C++ runtime should the heap allocation fail
-        
-           
-            if(c_url_new == NULL){
-                
-                strncpy(error_buffer, "Error allocating heap memory for lock_client url parameter ", error_buffer_array_length);
-                
-                error = true;
-                
-            }
-            else{
-                
-                size_of_allocated_url_memory = base_url_length + 1;    
+        // SSL members initialisations
+        c_bio = BIO_new_ssl_connect(ssl_ctx); // creates a new bio ssl object
+        BIO_get_ssl(c_bio, &c_ssl); // get the SSL structure component of the ssl bio for per instance SSL settings
+        if(c_ssl == NULL){
+            
+            strncpy(error_buffer, "Error fetching SSL structure pointer ", error_buffer_array_length);
                     
-                url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
-       
-                c_url_new[base_url_length] = '\0';
-    
-                c_url = c_url_new;
+            error = true;
             
-                }
-        
-            }
-        else{ // memory has been allocated but still isn't large enough
-            
-            delete [] c_url_new; // delete the already allocated memory
-            
-            // heap memory allocation for urls larger than the static array length
-            c_url_new = new(std::nothrow) char[base_url_length + 1]; // the nothrow parameter prevents an exception from being thrown by the C++ runtime should the heap allocation fail
-        
-           
-            if(c_url_new == NULL){
-                
-                strncpy(error_buffer, "Error allocating heap memory for lock_client url parameter ", error_buffer_array_length);
-                
-                error = true;
-                
-            }
-            else{
-                
-                size_of_allocated_url_memory = base_url_length + 1;    
-                    
-                url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
-       
-                c_url_new[base_url_length] = '\0';
-    
-                c_url = c_url_new;
-            
-                }
-            
-            }
-    
         }
-    if(!error){ // checks if there was any error allocating memory, that is if that part of the code was executed. The constructor only continues if there was no error 
-        
-    // set the websocket url(port included)
-    BIO_set_conn_hostname(c_bio, c_url);
     
-    // set SSL mode to retry automatically should SSL connection fail
-    SSL_set_mode(c_ssl, SSL_MODE_AUTO_RETRY);
+        if(!error){ // the constructor continues only if there was no error fetching the ssl pointer
+        
+            // URL copy 
+            if(base_url_length < url_static_array_length){ // static memory large enough
+            
+                url.copy(c_url_static, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
+            
+                c_url_static[base_url_length] = '\0'; // null-terminate the string
+            
+                c_url = c_url_static;
+            
+            }
+            else if(base_url_length < size_of_allocated_url_memory){ // store in already allocated dynamic memory
+                
+                url.copy(c_url_new, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
+            
+                c_url_new[base_url_length] = '\0'; // null-terminate the string
+            
+                c_url = c_url_new;
+                
+            
+            }
+            else{ // neither static or dynamic memory is large enough, we test whether memory has already been allocated or not 
+                
+                if(c_url_new == NULL){ // memory has not yet been allocated
+                    
+                    // heap memory allocation for urls larger than the static array length
+                    c_url_new = new(std::nothrow) char[base_url_length + 1]; // the nothrow parameter prevents an exception from being thrown by the C++ runtime should the heap allocation fail
+                
+                
+                    if(c_url_new == NULL){
+                        
+                        strncpy(error_buffer, "Error allocating heap memory for lock_client url parameter ", error_buffer_array_length);
+                        
+                        error = true;
+                        
+                    }
+                    else{
+                        
+                        size_of_allocated_url_memory = base_url_length + 1;    
+                            
+                        url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+            
+                        c_url_new[base_url_length] = '\0';
+            
+                        c_url = c_url_new;
+                    
+                    }
+            
+                }
+                else{ // memory has been allocated but still isn't large enough
+                    
+                    delete [] c_url_new; // delete the already allocated memory
+                    
+                    // heap memory allocation for urls larger than the static array length
+                    c_url_new = new(std::nothrow) char[base_url_length + 1]; // the nothrow parameter prevents an exception from being thrown by the C++ runtime should the heap allocation fail
+                
+                    
+                    if(c_url_new == NULL){
+                        
+                        strncpy(error_buffer, "Error allocating heap memory for lock_client url parameter ", error_buffer_array_length);
+                        
+                        error = true;
+                        
+                    }
+                    else{
+                        
+                        size_of_allocated_url_memory = base_url_length + 1;    
+                            
+                        url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                
+                        c_url_new[base_url_length] = '\0';
+
+                        c_url = c_url_new;
+                    
+                    }
+                
+                }
+
+            }
+            
+            if(!error){ // checks if there was any error allocating memory, that is if that part of the code was executed. The constructor only continues if there was no error 
+                
+                // set the websocket url(port included)
+                BIO_set_conn_hostname(c_bio, c_url);
+                
+                // set SSL mode to retry automatically should SSL connection fail
+                SSL_set_mode(c_ssl, SSL_MODE_AUTO_RETRY);
         
             }
         
@@ -194,9 +204,9 @@ lock_client::lock_client(std::string_view url, std::string_view path = "/"){
     
                     c_url = c_url_new;
             
-                    }
-        
                 }
+    
+            }
             else{ // memory has been allocated but still isn't large enough
             
                 delete [] c_url_new; // delete the already allocated memory
@@ -228,10 +238,10 @@ lock_client::lock_client(std::string_view url, std::string_view path = "/"){
     
         }
     
-    if(!error){ // this only runs if the preceding code executed without the error flag being set, meaning all is good
-        
-        //Non-ssl BIO structure creation
-        c_bio = BIO_new_connect(c_url); // creates the non-ssl bio object with the url supplied
+        if(!error){ // this only runs if the preceding code executed without the error flag being set, meaning all is good
+            
+            //Non-ssl BIO structure creation
+            c_bio = BIO_new_connect(c_url); // creates the non-ssl bio object with the url supplied
      
         }
     
@@ -245,441 +255,441 @@ lock_client::lock_client(std::string_view url, std::string_view path = "/"){
     }
     // initialisation of BIO and SSL structures end
     
-    
     if(!error){ // only continue if no error
         
-    // get the host name out of the stored url
-    int last_colon = url.rfind(":"); // get location of last colon
-    int last_f_slash = url.rfind("/"); // get location of last forward slash
-    
-    if(last_colon < last_f_slash){ // This condition checks that the last colon being considered is the colon before the port number and not the colon immediately after the protocol name (wss:// for instance), we do not need to check that a colon and forward slash were found because that part is already checked by the code that checks the endpoint protocol and all protocol names contained in urls have a colon and a forward slash character in them, so so long as execution got here the supplied url has both a colon and a forward slash 
+        // get the host name out of the stored url
+        int last_colon = url.rfind(":"); // get location of last colon
+        int last_f_slash = url.rfind("/"); // get location of last forward slash
         
-        strncpy(error_buffer, "Supplied URL parameter does not conform to the LockWebSocket endpoint convention", error_buffer_array_length);
-                
-        error = true;
-    
-    }
-    
-    if(!error){ // only continue if no error
-        
-        int host_name_len = last_colon - last_f_slash - 1;
-    
-        if( host_name_len < host_static_array_length ){ // static array is large enough
-        
-            url.copy(c_host_static, host_name_len, last_f_slash + 1);
-        
-            c_host_static[host_name_len] = '\0';
-        
-            c_host = c_host_static;
-        
-        }
-        else if( host_name_len < size_of_allocated_host_memory){ // dynamic memory is large enough
+        if(last_colon < last_f_slash){ // This condition checks that the last colon being considered is the colon before the port number and not the colon immediately after the protocol name (wss:// for instance), we do not need to check that a colon and forward slash were found because that part is already checked by the code that checks the endpoint protocol and all protocol names contained in urls have a colon and a forward slash character in them, so so long as execution got here the supplied url has both a colon and a forward slash 
             
-            url.copy(c_host_new, host_name_len, last_f_slash + 1);
-        
-            c_host_new[host_name_len] = '\0';
-        
-            c_host = c_host_new;
-            
-        }
-        else{ // neither static oralready allocated memory is large enough, we test the two possible cases
-            
-            if(c_host_new == NULL){ // memory has not been allocated yet 
-            
-                c_host_new = new(std::nothrow) char[host_name_len + 1]; // the nothrow parameter prevents an exception from being thrown by the C++ runtime should the heap allocation fail
-        
-           
-                if(c_host_new == NULL){
-            
-                    strncpy(error_buffer, "Error allocating heap memory for server host name ", error_buffer_array_length);
-                
-                    error = true;    
-               
-                }
-                else{
+            strncpy(error_buffer, "Supplied URL parameter does not conform to the LockWebSocket endpoint convention", error_buffer_array_length);
                     
-                    size_of_allocated_host_memory = host_name_len + 1;
-                    
-                    url.copy(c_host_new, host_name_len, last_f_slash + 1);
-        
-                    c_host_new[host_name_len] = '\0';
-        
-                    c_host = c_host_new;
-        
-                    }
-            
-                }
-            else{ // memory has been allocated but it still isn't sufficient
-                
-                delete [] c_host_new; // delete the previously allocated memory
-                
-                c_host_new = new(std::nothrow) char[host_name_len + 1]; // the nothrow parameter prevents an exception from being thrown by the C++ runtime should the heap allocation fail
-        
-           
-                if(c_host_new == NULL){
-            
-                    strncpy(error_buffer, "Error allocating heap memory for server host name ", error_buffer_array_length);
-                
-                    error = true;    
-               
-                }
-                else{
-                    
-                    size_of_allocated_host_memory = host_name_len + 1;
-                    
-                    url.copy(c_host_new, host_name_len, last_f_slash + 1);
-        
-                    c_host_new[host_name_len] = '\0';
-        
-                    c_host = c_host_new;
-        
-                    }
-                
-                }
-                
-            }
-        
-    if(!error){ // only continue if no error
-    
-    // we set the host name we wish to connect to for server name identification(SNI) if the websocket address passed is a wss:// address. We test this by checking that the c_ssl pointer is non-null
-    if(!(c_ssl == NULL)){
-        
-        if(!SSL_set_tlsext_host_name(c_ssl, c_host)){
-        // we test the return value. SSL_set_tlsext_host_name returns 0 on error and 1 on success
-            
-            strncpy(error_buffer, "Error setting up Lock client for SNI TLS extension", error_buffer_array_length);
-                
             error = true;
         
-        }    
-        
-    }
-    
-    if(!error){
-    // only continue if no error
-    
-    // copy the channel path parameter into the channel path array
-    int path_string_len = path.size();
-    
-    if(path_string_len < path_static_array_length){ // we can store the path in the static array if this condition is true
-        
-        path.copy(c_path_static, path_string_len); // copy the path into the static array
-        c_path_static[path_string_len] = '\0'; // null-terminate the array
-        
-        c_path = c_path_static;
-        
-    }
-    else if(path_string_len < size_of_allocated_path_memory){ // allocated memory is large enough
-        
-        path.copy(c_path_new, path_string_len); // copy the path into the allocated array
-        c_path_new[path_string_len] = '\0'; // null-terminate the array
-        
-        c_path = c_path_new;
-        
-    }
-    else{ // neither static or already allocated memory is large enough, we test the two possible cases 
-        
-        if(c_path_new == NULL){ //memory has not been allocated yet
-        
-            c_path_new = new(std::nothrow) char[path_string_len + 1]; // allocate memory for the path string with the std::nothrow parameter so C++ throws no exceptons even if memory allocation fails. We check for this below
-           
-            if(c_path_new == NULL){
-            
-                strncpy(error_buffer, "Error allocating heap memory for lock_client channel path ", error_buffer_array_length);
-                
-                error = true;
-                
-            }
-            else{ 
-                
-                size_of_allocated_path_memory = path_string_len + 1;
-                
-                path.copy(c_path_new, path_string_len); // copy the path into the dynamically allocated array
-        
-                c_path_new[path_string_len] = '\0'; // null-terminate the array
-        
-                c_path = c_path_new;
-        
-            }
-            
-        }
-        else{ // memory has been allocated but is still not sufficient
-            
-            delete [] c_path_new; // delete already allocated memory
-            
-            c_path_new = new(std::nothrow) char[path_string_len + 1]; // allocate memory for the path string with the std::nothrow parameter so C++ throws no exceptons even if memory allocation fails. We check for this below
-           
-            if(c_path_new == NULL){
-            
-                strncpy(error_buffer, "Error allocating heap memory for lock_client channel path ", error_buffer_array_length);
-                
-                error = true;
-                
-            }
-            else{ 
-                
-                size_of_allocated_path_memory = path_string_len + 1;
-                
-                path.copy(c_path_new, path_string_len); // copy the path into the dynamically allocated array
-        
-                c_path_new[path_string_len] = '\0'; // null-terminate the array
-        
-                c_path = c_path_new;
-        
-            }
-            
         }
         
-    }
-    
-    if(!error){ // only continue if no error
-    
-    // make the connection
-    if(BIO_do_connect(c_bio) <= 0){
-        
-        strncpy(error_buffer, "Error connecting to WebSocket host ", error_buffer_array_length);
-        
-        error = true;
-    
-    }
-    
-    // upgrade the connection to websocket
-    if(!error){ // only continue if no error
-        
-    // fill the random bytes array with 16 random bytes between 0 and 255
-    int upper_bound = 255;
-    for(int i = 0; i < rand_byte_array_len; i++){
-        
-        rand_bytes[i] = (unsigned char)(rand() % upper_bound ); // we get a random byte between 0 and 255 and cast it into a one byte value
-
-    }
-    
-    // get the Base-64 encoding of the random number to give the value of the nonce
-    BIO_write(c_base64, rand_bytes, rand_byte_array_len);
-    BIO_flush(c_base64); 
-    BIO_read(c_mem_base64, base64_encoded_nonce, nonce_array_len);
-   
-    // request connection upgrade
-    int length_of_supplied_data = strlen(c_path) + strlen( (const char*)base64_encoded_nonce) + strlen(c_host);
-    char char_remaining[] = "GET  HTTP/1.1\nHost: \nConnection: Upgrade\nPragma: no-cache\nUpgrade: websocket\nSec-WebSocket-Version: 13\nSec-WebSocket-Key: \n\n";
-    int upgrade_request_len = strlen(char_remaining) + length_of_supplied_data;
-    
-    if( upgrade_request_len < upgrade_request_array_length ){ // static array is large enough
-        
-        // build the upgrade request
-        strcpy(upgrade_request_static, "GET ");
-        strcat(upgrade_request_static, c_path);
-        strcat(upgrade_request_static, " HTTP/1.1\n");
-        strcat(upgrade_request_static, "Host: ");
-        strcat(upgrade_request_static, c_host);
-        strcat(upgrade_request_static, "\n");
-        strcat(upgrade_request_static, "Connection: Upgrade\n");
-        strcat(upgrade_request_static, "Pragma: no-cache\n");
-        strcat(upgrade_request_static, "Upgrade: websocket\n");
-        strcat(upgrade_request_static, "Sec-WebSocket-Version: 13\n");
-        strcat(upgrade_request_static, "Sec-WebSocket-Key: ");
-        strcat(upgrade_request_static, (const char*)base64_encoded_nonce);
-        strcat(upgrade_request_static, "\n\n");
-        // upgrade request build end 
-        
-        upgrade_request = upgrade_request_static;
-        
-    }
-    else if(upgrade_request_len < size_of_allocated_upgrade_request_memory){ // allocated memory large enough
-        
-        // build the upgrade request
-        strcpy(upgrade_request_new, "GET ");
-        strcat(upgrade_request_new, c_path);
-        strcat(upgrade_request_new, " HTTP/1.1\n");
-        strcat(upgrade_request_new, "Host: ");
-        strcat(upgrade_request_new, c_host);
-        strcat(upgrade_request_new, "\n");
-        strcat(upgrade_request_new, "Connection: Upgrade\n");
-        strcat(upgrade_request_new, "Pragma: no-cache\n");
-        strcat(upgrade_request_new, "Upgrade: websocket\n");
-        strcat(upgrade_request_new, "Sec-WebSocket-Version: 13\n");
-        strcat(upgrade_request_new, "Sec-WebSocket-Key: ");
-        strcat(upgrade_request_new, (const char*)base64_encoded_nonce);
-        strcat(upgrade_request_new, "\n\n");
-        // upgrade request build end 
-        
-        upgrade_request = upgrade_request_new;
-        
-    }
-    else{ // neither static nor allocated memory is large enough, we test both cases
-     
-        if(upgrade_request_new == NULL){ // memory has not been allocated yet
-        
-            upgrade_request_new = new(std::nothrow) char[upgrade_request_len + 1]; // allocate memory for the upgrade request with the std::nothrow parameter stops the C++ runtime from throwing an error should the allocation request fail
-           
-            if(upgrade_request_new == NULL){
+        if(!error){ // only continue if no error
             
-                strncpy(error_buffer, "Error allocating heap memory for upgrade request string, supplied URL or channel path too long  ", error_buffer_array_length);
+            int host_name_len = last_colon - last_f_slash - 1;
+        
+            if( host_name_len < host_static_array_length ){ // static array is large enough
+            
+                url.copy(c_host_static, host_name_len, last_f_slash + 1);
+            
+                c_host_static[host_name_len] = '\0';
+            
+                c_host = c_host_static;
+            
+            }
+            else if( host_name_len < size_of_allocated_host_memory){ // dynamic memory is large enough
                 
-                error = true;
-                
-                BIO_reset(c_bio); // disconnect the underlying bio
+                url.copy(c_host_new, host_name_len, last_f_slash + 1);
+            
+                c_host_new[host_name_len] = '\0';
+            
+                c_host = c_host_new;
                 
             }
-            else{ 
+            else{ // neither static oralready allocated memory is large enough, we test the two possible cases
                 
-                size_of_allocated_upgrade_request_memory = upgrade_request_len + 1;
+                if(c_host_new == NULL){ // memory has not been allocated yet 
                 
-                // build the upgrade request
-                strcpy(upgrade_request_new, "GET ");
-                strcat(upgrade_request_new, c_path);
-                strcat(upgrade_request_new, " HTTP/1.1\n");
-                strcat(upgrade_request_new, "Host: ");
-                strcat(upgrade_request_new, c_host);
-                strcat(upgrade_request_new, "\n");
-                strcat(upgrade_request_new, "Connection: Upgrade\n");
-                strcat(upgrade_request_new, "Pragma: no-cache\n");
-                strcat(upgrade_request_new, "Upgrade: websocket\n");
-                strcat(upgrade_request_new, "Sec-WebSocket-Version: 13\n");
-                strcat(upgrade_request_new, "Sec-WebSocket-Key: ");
-                strcat(upgrade_request_new, (const char*)base64_encoded_nonce);
-                strcat(upgrade_request_new, "\n\n");
-                // upgrade request build end 
-        
-                upgrade_request = upgrade_request_new;
+                    c_host_new = new(std::nothrow) char[host_name_len + 1]; // the nothrow parameter prevents an exception from being thrown by the C++ runtime should the heap allocation fail
             
-                }
-        
-            }
-            else{ // memory has previously been allocated for an upgrade request but it still isn't sufficient
-                
-                delete [] upgrade_request_new; // delete the previously allocated memory
-                
-                upgrade_request_new = new(std::nothrow) char[upgrade_request_len + 1]; // allocate memory for the upgrade request with the std::nothrow parameter stops the C++ runtime from throwing an error should the allocation request fail
-           
-                if(upgrade_request_new == NULL){
             
-                    strncpy(error_buffer, "Error allocating heap memory for upgrade request string, supplied URL or channel path too long  ", error_buffer_array_length);
+                    if(c_host_new == NULL){
                 
-                    error = true;
+                        strncpy(error_buffer, "Error allocating heap memory for server host name ", error_buffer_array_length);
                     
-                    BIO_reset(c_bio); // disconnect the underlying bio
+                        error = true;    
                 
-                }
-                else{ 
-                
-                    size_of_allocated_upgrade_request_memory = upgrade_request_len + 1;
-                
-                    // build the upgrade request
-                    strcpy(upgrade_request_new, "GET ");
-                    strcat(upgrade_request_new, c_path);
-                    strcat(upgrade_request_new, " HTTP/1.1\n");
-                    strcat(upgrade_request_new, "Host: ");
-                    strcat(upgrade_request_new, c_host);
-                    strcat(upgrade_request_new, "\n");
-                    strcat(upgrade_request_new, "Connection: Upgrade\n");
-                    strcat(upgrade_request_new, "Pragma: no-cache\n");
-                    strcat(upgrade_request_new, "Upgrade: websocket\n");
-                    strcat(upgrade_request_new, "Sec-WebSocket-Version: 13\n");
-                    strcat(upgrade_request_new, "Sec-WebSocket-Key: ");
-                    strcat(upgrade_request_new, (const char*)base64_encoded_nonce);
-                    strcat(upgrade_request_new, "\n\n");
-                    // upgrade request build end 
-        
-                    upgrade_request = upgrade_request_new;
-            
-                }
-                
-            }
-        
-        }
-    
-    if(!error){ // only continue if no error
-        
-        data_array = data_array_static;
-        BIO_puts(c_bio, upgrade_request);
-        
-        int len = BIO_read(c_bio, data_array, static_data_array_length); // this function call would block till there is data to read
-        data_array[len] = '\0'; // null terminate the received bytes
-
-        // test for the switching protocol header to confirm that the connection upgrade was successful
-        char success_response[] = "HTTP/1.1 101 Switching Protocols";
-        
-        if(strncmp(success_response, strtok(data_array, "\n"), strlen(success_response)) == 0){ // upgrade successful
-            
-            // Authorise connection - confirm that the Sec-WebSocket-Accept is what it should be by calculating the key and comparing it with the server's
-            
-            // build the SHA1 parameter
-            strncpy(SHA1_parameter, (const char*)base64_encoded_nonce, SHA1_parameter_array_len);
-            strncat(SHA1_parameter, string_to_append, SHA1_parameter_array_len - strlen(SHA1_parameter));
-            // SHA1 parameter build end 
-            
-            SHA1((const unsigned char*)SHA1_parameter, strlen(SHA1_parameter), SHA1_digest); // get the sha1 hash digest
-            
-            // base64 encode the SHA1_digest 
-            BIO_write(c_base64, SHA1_digest, size_of_SHA1_digest);
-            BIO_flush(c_base64); 
-            BIO_read(c_mem_base64, local_sec_ws_accept_key, local_sec_ws_accept_key_array_len);
-            // base64 encoding of SHA1 digest end 
-            
-            // loop through the rest of the response string to find the Sec-WebSocket-Accept header
-            char key[] = "Sec";
-            char* cursor = strtok(NULL, "\n");
-            
-            while(!(cursor == NULL)){
-            // we keep looping through the HTTP upgrade request response till either cursor == NULL or we find our Sec-WebSocket-Key header
-                
-                // we use sizeof so we can get the length of key as a compile time constan, we subtract 1 from the result of sizeof() to account for the null byte that terminates the string
-                if((strncmp(key, cursor, sizeof(key) - 1) == 0) || (strncmp("sec", cursor, sizeof(key) - 1) == 0) || (strncmp("SEC", cursor, sizeof(key) - 1) == 0) || (strncmp("sEc", cursor, sizeof(key) - 1) == 0) || (strncmp("seC", cursor, sizeof(key) - 1) == 0) || (strncmp("sEC", cursor, sizeof(key) - 1) == 0) || (strncmp("SEc", cursor, sizeof(key) - 1) == 0) || (strncmp("SeC", cursor, sizeof(key) - 1) == 0)){ // only the Sec-WebSocket-key response header would have "Sec" in it so we test all possible upper and lower case combinations of the key word "sec"
-                        
-                    cursor += strlen("Sec-WebSocket-Accept: "); //move cursor foward to point to accept key value
-                    
-                    // compare server's response with our calculation
-                    if(strncmp(local_sec_ws_accept_key, cursor, strlen(local_sec_ws_accept_key)) == 0){
-                        
-                        client_state = OPEN;
-                        
-                        break; // break if the server sec websocket key matches what we calculated. Connection authorised
-                            
                     }
                     else{
                         
-                        strncpy(error_buffer, "Connection authorisation Failed", error_buffer_array_length);
-                            
-                        BIO_reset(c_bio); // reset bio and disconnect the underlying connection
+                        size_of_allocated_host_memory = host_name_len + 1;
+                        
+                        url.copy(c_host_new, host_name_len, last_f_slash + 1);
+            
+                        c_host_new[host_name_len] = '\0';
+            
+                        c_host = c_host_new;
+            
+                    }
+                
+                }
+                else{ // memory has been allocated but it still isn't sufficient
+                    
+                    delete [] c_host_new; // delete the previously allocated memory
+                    
+                    c_host_new = new(std::nothrow) char[host_name_len + 1]; // the nothrow parameter prevents an exception from being thrown by the C++ runtime should the heap allocation fail
+            
+            
+                    if(c_host_new == NULL){
+                
+                        strncpy(error_buffer, "Error allocating heap memory for server host name ", error_buffer_array_length);
+                    
+                        error = true;    
+                
+                    }
+                    else{
+                        
+                        size_of_allocated_host_memory = host_name_len + 1;
+                        
+                        url.copy(c_host_new, host_name_len, last_f_slash + 1);
+            
+                        c_host_new[host_name_len] = '\0';
+            
+                        c_host = c_host_new;
+
+            
+                    }
+                
+                }
+                
+            }
+            
+            if(!error){ // only continue if no error
+            
+                // we set the host name we wish to connect to for server name identification(SNI) if the websocket address passed is a wss:// address. We test this by checking that the c_ssl pointer is non-null
+                if(!(c_ssl == NULL)){
+                    
+                    if(!SSL_set_tlsext_host_name(c_ssl, c_host)){
+                    // we test the return value. SSL_set_tlsext_host_name returns 0 on error and 1 on success
+                        
+                        strncpy(error_buffer, "Error setting up Lock client for SNI TLS extension", error_buffer_array_length);
                             
                         error = true;
-                            
-                        break;
-                            
-                    }
+                    
+                    }    
                     
                 }
                 
-                cursor = strtok(NULL, "\n");
+                if(!error){
+                // only continue if no error
                 
-            }
-            
-            if(cursor == NULL){
-                
-                // getting here means no Sec-Websocket-Key header was found before strtok returned a null value
-                strncpy(error_buffer, "Invalid Upgrade request response received", error_buffer_array_length);
-                
-                BIO_reset(c_bio); // reset bio and disconnect the underlying connection
-                
-                error = true;
-            
-            }
-            
-        }
-        else{ // upgrade unsuccessful
-            
-            strncpy(error_buffer, "Connection upgrade failed. Invalid path supplied", error_buffer_array_length);
-            
-            BIO_reset(c_bio); // reset bio and disconnect the underlying connection
-            
-            error = true;
-            
-            }
-                            
-        memset(data_array, '\0', len); // zero out the data array
+                    // copy the channel path parameter into the channel path array
+                    int path_string_len = path.size();
+                    
+                    if(path_string_len < path_static_array_length){ // we can store the path in the static array if this condition is true
                         
-        memset(upgrade_request, '\0', upgrade_request_len); // zero out the upgrade request array
+                        path.copy(c_path_static, path_string_len); // copy the path into the static array
+                        c_path_static[path_string_len] = '\0'; // null-terminate the array
+                        
+                        c_path = c_path_static;
+                        
+                    }
+                    else if(path_string_len < size_of_allocated_path_memory){ // allocated memory is large enough
+                        
+                        path.copy(c_path_new, path_string_len); // copy the path into the allocated array
+                        c_path_new[path_string_len] = '\0'; // null-terminate the array
+                        
+                        c_path = c_path_new;
+                        
+                    }
+                    else{ // neither static or already allocated memory is large enough, we test the two possible cases 
+                        
+                        if(c_path_new == NULL){ //memory has not been allocated yet
+                        
+                            c_path_new = new(std::nothrow) char[path_string_len + 1]; // allocate memory for the path string with the std::nothrow parameter so C++ throws no exceptons even if memory allocation fails. We check for this below
+                        
+                            if(c_path_new == NULL){
+                            
+                                strncpy(error_buffer, "Error allocating heap memory for lock_client channel path ", error_buffer_array_length);
+                                
+                                error = true;
+                                
+                            }
+                            else{ 
+                                
+                                size_of_allocated_path_memory = path_string_len + 1;
+                                
+                                path.copy(c_path_new, path_string_len); // copy the path into the dynamically allocated array
+                        
+                                c_path_new[path_string_len] = '\0'; // null-terminate the array
+                        
+                                c_path = c_path_new;
+                        
+                            }
+                            
+                        }
+                        else{ // memory has been allocated but is still not sufficient
+                            
+                            delete [] c_path_new; // delete already allocated memory
+                            
+                            c_path_new = new(std::nothrow) char[path_string_len + 1]; // allocate memory for the path string with the std::nothrow parameter so C++ throws no exceptons even if memory allocation fails. We check for this below
+                        
+                            if(c_path_new == NULL){
+                            
+                                strncpy(error_buffer, "Error allocating heap memory for lock_client channel path ", error_buffer_array_length);
+                                
+                                error = true;
+                                
+                            }
+                            else{ 
+                                
+                                size_of_allocated_path_memory = path_string_len + 1;
+                                
+                                path.copy(c_path_new, path_string_len); // copy the path into the dynamically allocated array
+                        
+                                c_path_new[path_string_len] = '\0'; // null-terminate the array
+                        
+                                c_path = c_path_new;
+                        
+                            }
+                            
+                        }
+                        
+                    }
+                    
+                    if(!error){ // only continue if no error
+                    
+                        // make the connection
+                        if(BIO_do_connect(c_bio) <= 0){
+                            
+                            strncpy(error_buffer, "Error connecting to WebSocket host ", error_buffer_array_length);
+                            
+                            error = true;
+                        
+                        }
+                        
+                        // upgrade the connection to websocket
+                        if(!error){ // only continue if no error
+                            
+                            // fill the random bytes array with 16 random bytes between 0 and 255
+                            int upper_bound = 255;
+                            for(int i = 0; i < rand_byte_array_len; i++){
+                                
+                                rand_bytes[i] = (unsigned char)(rand() % upper_bound ); // we get a random byte between 0 and 255 and cast it into a one byte value
+
+                            }
+                            
+                            // get the Base-64 encoding of the random number to give the value of the nonce
+                            BIO_write(c_base64, rand_bytes, rand_byte_array_len);
+                            BIO_flush(c_base64); 
+                            BIO_read(c_mem_base64, base64_encoded_nonce, nonce_array_len);
+                        
+                            // request connection upgrade
+                            int length_of_supplied_data = strlen(c_path) + strlen( (const char*)base64_encoded_nonce) + strlen(c_host);
+                            char char_remaining[] = "GET  HTTP/1.1\nHost: \nConnection: Upgrade\nPragma: no-cache\nUpgrade: websocket\nSec-WebSocket-Version: 13\nSec-WebSocket-Key: \n\n";
+                            int upgrade_request_len = strlen(char_remaining) + length_of_supplied_data;
+                            
+                            if( upgrade_request_len < upgrade_request_array_length ){ // static array is large enough
+                                
+                                // build the upgrade request
+                                strcpy(upgrade_request_static, "GET ");
+                                strcat(upgrade_request_static, c_path);
+                                strcat(upgrade_request_static, " HTTP/1.1\n");
+                                strcat(upgrade_request_static, "Host: ");
+                                strcat(upgrade_request_static, c_host);
+                                strcat(upgrade_request_static, "\n");
+                                strcat(upgrade_request_static, "Connection: Upgrade\n");
+                                strcat(upgrade_request_static, "Pragma: no-cache\n");
+                                strcat(upgrade_request_static, "Upgrade: websocket\n");
+                                strcat(upgrade_request_static, "Sec-WebSocket-Version: 13\n");
+                                strcat(upgrade_request_static, "Sec-WebSocket-Key: ");
+                                strcat(upgrade_request_static, (const char*)base64_encoded_nonce);
+                                strcat(upgrade_request_static, "\n\n");
+                                // upgrade request build end 
+                                
+                                upgrade_request = upgrade_request_static;
+                                
+                            }
+                            else if(upgrade_request_len < size_of_allocated_upgrade_request_memory){ // allocated memory large enough
+                                
+                                // build the upgrade request
+                                strcpy(upgrade_request_new, "GET ");
+                                strcat(upgrade_request_new, c_path);
+                                strcat(upgrade_request_new, " HTTP/1.1\n");
+                                strcat(upgrade_request_new, "Host: ");
+                                strcat(upgrade_request_new, c_host);
+                                strcat(upgrade_request_new, "\n");
+                                strcat(upgrade_request_new, "Connection: Upgrade\n");
+                                strcat(upgrade_request_new, "Pragma: no-cache\n");
+                                strcat(upgrade_request_new, "Upgrade: websocket\n");
+                                strcat(upgrade_request_new, "Sec-WebSocket-Version: 13\n");
+                                strcat(upgrade_request_new, "Sec-WebSocket-Key: ");
+                                strcat(upgrade_request_new, (const char*)base64_encoded_nonce);
+                                strcat(upgrade_request_new, "\n\n");
+                                // upgrade request build end 
+                                
+                                upgrade_request = upgrade_request_new;
+                                
+                            }
+                            else{ // neither static nor allocated memory is large enough, we test both cases
+                            
+                                if(upgrade_request_new == NULL){ // memory has not been allocated yet
+                                
+                                    upgrade_request_new = new(std::nothrow) char[upgrade_request_len + 1]; // allocate memory for the upgrade request with the std::nothrow parameter stops the C++ runtime from throwing an error should the allocation request fail
+                                
+                                    if(upgrade_request_new == NULL){
+                                    
+                                        strncpy(error_buffer, "Error allocating heap memory for upgrade request string, supplied URL or channel path too long  ", error_buffer_array_length);
+                                        
+                                        error = true;
+                                        
+                                        BIO_reset(c_bio); // disconnect the underlying bio
+                                        
+                                    }
+                                    else{ 
+                                        
+                                        size_of_allocated_upgrade_request_memory = upgrade_request_len + 1;
+                                        
+                                        // build the upgrade request
+                                        strcpy(upgrade_request_new, "GET ");
+                                        strcat(upgrade_request_new, c_path);
+                                        strcat(upgrade_request_new, " HTTP/1.1\n");
+                                        strcat(upgrade_request_new, "Host: ");
+                                        strcat(upgrade_request_new, c_host);
+                                        strcat(upgrade_request_new, "\n");
+                                        strcat(upgrade_request_new, "Connection: Upgrade\n");
+                                        strcat(upgrade_request_new, "Pragma: no-cache\n");
+                                        strcat(upgrade_request_new, "Upgrade: websocket\n");
+                                        strcat(upgrade_request_new, "Sec-WebSocket-Version: 13\n");
+                                        strcat(upgrade_request_new, "Sec-WebSocket-Key: ");
+                                        strcat(upgrade_request_new, (const char*)base64_encoded_nonce);
+                                        strcat(upgrade_request_new, "\n\n");
+                                        // upgrade request build end 
+                                
+                                        upgrade_request = upgrade_request_new;
+                                    
+                                    }
+                            
+                                }
+                                else{ // memory has previously been allocated for an upgrade request but it still isn't sufficient
+                                    
+                                    delete [] upgrade_request_new; // delete the previously allocated memory
+                                    
+                                    upgrade_request_new = new(std::nothrow) char[upgrade_request_len + 1]; // allocate memory for the upgrade request with the std::nothrow parameter stops the C++ runtime from throwing an error should the allocation request fail
+                            
+                                    if(upgrade_request_new == NULL){
+                                
+                                        strncpy(error_buffer, "Error allocating heap memory for upgrade request string, supplied URL or channel path too long  ", error_buffer_array_length);
+                                    
+                                        error = true;
+                                        
+                                        BIO_reset(c_bio); // disconnect the underlying bio
+                                    
+                                    }
+                                    else{ 
+                                    
+                                        size_of_allocated_upgrade_request_memory = upgrade_request_len + 1;
+                                    
+                                        // build the upgrade request
+                                        strcpy(upgrade_request_new, "GET ");
+                                        strcat(upgrade_request_new, c_path);
+                                        strcat(upgrade_request_new, " HTTP/1.1\n");
+                                        strcat(upgrade_request_new, "Host: ");
+                                        strcat(upgrade_request_new, c_host);
+                                        strcat(upgrade_request_new, "\n");
+                                        strcat(upgrade_request_new, "Connection: Upgrade\n");
+                                        strcat(upgrade_request_new, "Pragma: no-cache\n");
+                                        strcat(upgrade_request_new, "Upgrade: websocket\n");
+                                        strcat(upgrade_request_new, "Sec-WebSocket-Version: 13\n");
+                                        strcat(upgrade_request_new, "Sec-WebSocket-Key: ");
+                                        strcat(upgrade_request_new, (const char*)base64_encoded_nonce);
+                                        strcat(upgrade_request_new, "\n\n");
+                                        // upgrade request build end 
+                            
+                                        upgrade_request = upgrade_request_new;
+                                
+                                    }
+                                    
+                                }
+                            
+                            }
+                        
+                            if(!error){ // only continue if no error
+                                
+                                data_array = data_array_static;
+                                BIO_puts(c_bio, upgrade_request);
+                                
+                                int len = BIO_read(c_bio, data_array, static_data_array_length); // this function call would block till there is data to read
+                                data_array[len] = '\0'; // null terminate the received bytes
+
+                                // test for the switching protocol header to confirm that the connection upgrade was successful
+                                char success_response[] = "HTTP/1.1 101 Switching Protocols";
+                                
+                                if(strncmp(success_response, strtok(data_array, "\n"), strlen(success_response)) == 0){ // upgrade successful
+                                    
+                                    // Authorise connection - confirm that the Sec-WebSocket-Accept is what it should be by calculating the key and comparing it with the server's
+                                    
+                                    // build the SHA1 parameter
+                                    strncpy(SHA1_parameter, (const char*)base64_encoded_nonce, SHA1_parameter_array_len);
+                                    strncat(SHA1_parameter, string_to_append, SHA1_parameter_array_len - strlen(SHA1_parameter));
+                                    // SHA1 parameter build end 
+                                    
+                                    SHA1((const unsigned char*)SHA1_parameter, strlen(SHA1_parameter), SHA1_digest); // get the sha1 hash digest
+                                    
+                                    // base64 encode the SHA1_digest 
+                                    BIO_write(c_base64, SHA1_digest, size_of_SHA1_digest);
+                                    BIO_flush(c_base64); 
+                                    BIO_read(c_mem_base64, local_sec_ws_accept_key, local_sec_ws_accept_key_array_len);
+                                    // base64 encoding of SHA1 digest end 
+                                    
+                                    // loop through the rest of the response string to find the Sec-WebSocket-Accept header
+                                    char key[] = "Sec";
+                                    char* cursor = strtok(NULL, "\n");
+                                    
+                                    while(!(cursor == NULL)){
+                                    // we keep looping through the HTTP upgrade request response till either cursor == NULL or we find our Sec-WebSocket-Key header
+                                        
+                                        // we use sizeof so we can get the length of key as a compile time constan, we subtract 1 from the result of sizeof() to account for the null byte that terminates the string
+                                        if((strncmp(key, cursor, sizeof(key) - 1) == 0) || (strncmp("sec", cursor, sizeof(key) - 1) == 0) || (strncmp("SEC", cursor, sizeof(key) - 1) == 0) || (strncmp("sEc", cursor, sizeof(key) - 1) == 0) || (strncmp("seC", cursor, sizeof(key) - 1) == 0) || (strncmp("sEC", cursor, sizeof(key) - 1) == 0) || (strncmp("SEc", cursor, sizeof(key) - 1) == 0) || (strncmp("SeC", cursor, sizeof(key) - 1) == 0)){ // only the Sec-WebSocket-key response header would have "Sec" in it so we test all possible upper and lower case combinations of the key word "sec"
+                                                
+                                            cursor += strlen("Sec-WebSocket-Accept: "); //move cursor foward to point to accept key value
+                                            
+                                            // compare server's response with our calculation
+                                            if(strncmp(local_sec_ws_accept_key, cursor, strlen(local_sec_ws_accept_key)) == 0){
+                                                
+                                                client_state = OPEN;
+                                                
+                                                break; // break if the server sec websocket key matches what we calculated. Connection authorised
+                                                    
+                                            }
+                                            else{
+                                                
+                                                strncpy(error_buffer, "Connection authorisation Failed", error_buffer_array_length);
+                                                    
+                                                BIO_reset(c_bio); // reset bio and disconnect the underlying connection
+                                                    
+                                                error = true;
+                                                    
+                                                break;
+                                                    
+                                            }
+                                            
+                                        }
+                                        
+                                        cursor = strtok(NULL, "\n");
+                                        
+                                    }
+                                    
+                                    if(cursor == NULL){
+                                        
+                                        // getting here means no Sec-Websocket-Key header was found before strtok returned a null value
+                                        strncpy(error_buffer, "Invalid Upgrade request response received", error_buffer_array_length);
+                                        
+                                        BIO_reset(c_bio); // reset bio and disconnect the underlying connection
+                                        
+                                        error = true;
+                                    
+                                    }
+                                    
+                                }
+                                else{ // upgrade unsuccessful
+                                    
+                                    strncpy(error_buffer, "Connection upgrade failed. Invalid path supplied", error_buffer_array_length);
+                                    
+                                    BIO_reset(c_bio); // reset bio and disconnect the underlying connection
+                                    
+                                    error = true;
+                                    
+                                }
+                                                    
+                                memset(data_array, '\0', len); // zero out the data array
+
+                                memset(upgrade_request, '\0', upgrade_request_len); // zero out the upgrade request array
                         
                             }
                         
@@ -690,11 +700,11 @@ lock_client::lock_client(std::string_view url, std::string_view path = "/"){
                 }
         
             }
-            
+
         }
     
-    }   
- 
+    }
+
 }
 
 // lock client parameterless constructor
@@ -703,10 +713,19 @@ lock_client::lock_client(){
     // initialisation of class wide variables
     if(!openssl_init){
         
-        ssl_ctx = SSL_CTX_new(TLS_client_method()); // initialises the SSL_CTX pointer with method TLS, this SSL_CTX structure is shared among all lock_client instances
+        ssl_ctx = SSL_CTX_new(TLS_client_method()); // initialises the SSL_CTX pointer with method TLS, this SSL_CTX structure is shared among all lock_client instance
         
-    // seed the random number generator
-    srand(std::chrono::duration_cast< std::chrono::milliseconds >(std::chrono::system_clock::now().time_since_epoch()).count());
+        // seed the random number generator
+        srand(std::chrono::duration_cast< std::chrono::milliseconds >(std::chrono::system_clock::now().time_since_epoch()).count());
+
+        // we generate the static mask the library uses
+        int upper_bound = 255;
+            
+        for(int j = 0; j<mask_array_len; j++){
+                
+            mask[j] = (unsigned char)(rand() % upper_bound);
+
+        }
         
         openssl_init = true;
         
@@ -836,18 +855,13 @@ bool lock_client::ping(){ // sends a ping on an established websocket connection
             
             send_data = (char*)send_data_static; // the send static array is always large enough to hold a ping frame
             
-            send_data[i] = FIN_BIT_SET | RSV_BIT_UNSET_ALL | PING;
+            send_data[i] = (unsigned char)(FIN_BIT_SET | RSV_BIT_UNSET_ALL | PING);
             i++;
             
-            send_data[i] = MASK_BIT_SET | (unsigned char)0x00; // ping frames usually have no data so the frame length is set to 0  
+            send_data[i] = (unsigned char)(MASK_BIT_SET | (unsigned char)0x00); // ping frames usually have no data so the frame length is set to 0  
             i++;
-            
-            // generate the mask
-            int upper_bound = 255;
                 
             for(int j = 0; j<mask_array_len; j++){
-                    
-                mask[j] = (unsigned char)(rand() % upper_bound);
                     
                 send_data[i] = mask[j]; // store the mask in the send data array
                     
@@ -855,7 +869,7 @@ bool lock_client::ping(){ // sends a ping on an established websocket connection
                     
                     
             }
-            // mask generation end 
+            // mask storing end 
             
             // block SIGPIPE signal before attempting to send data, just incase the connection is closed
             block_sigpipe_signal();
@@ -901,18 +915,13 @@ bool lock_client::pong(int ping_data_len){ // sends out a pong frame unsolicited
             
             send_data = (char*)send_data_static; // the send static array is always large enough to hold a ping frame
             
-            send_data[i] = FIN_BIT_SET | RSV_BIT_UNSET_ALL | PONG;
+            send_data[i] = (unsigned char)(FIN_BIT_SET | RSV_BIT_UNSET_ALL | PONG);
             i++;
             
             send_data[i] = MASK_BIT_SET | ((unsigned char)ping_data_len); // pong frames usually have no data but if the ping frame has application data, identical data should be sent along with the pong frame
             i++;
-            
-            // generate the mask
-            int upper_bound = 255;
                 
             for(int j = 0; j<mask_array_len; j++){
-                    
-                mask[j] = (unsigned char)(rand() % upper_bound);
                     
                 send_data[i] = mask[j]; // store the mask in the send data array
                     
@@ -920,7 +929,7 @@ bool lock_client::pong(int ping_data_len){ // sends out a pong frame unsolicited
                     
                     
             }
-            // mask generation end 
+            // mask storing end 
             
             // mask the pong application data if any and send as the pong application data
             int k = 0; // variable used to store the mask index of the exact byte in the mask array to mask with
@@ -1018,7 +1027,7 @@ bool lock_client::send(std::string_view payload_data){ // sends data passed as p
                 send_data = (char*)send_data_static;
                 
                 // set the first byte
-                send_data[i] = FIN_BIT_SET | RSV_BIT_UNSET_ALL | TEXT_FRAME;
+                send_data[i] = (unsigned char)(FIN_BIT_SET | RSV_BIT_UNSET_ALL | TEXT_FRAME);
                 i++;
                 
                 // set the second byte
@@ -1030,7 +1039,7 @@ bool lock_client::send(std::string_view payload_data){ // sends data passed as p
                 }
                 else if( (payload_data_len > 125) && (payload_data_len < MAX_2BYTE_INT) ){ // next byte stores the value 126 and the next two bytes store the payload length
                     
-                    send_data[i] = MASK_BIT_SET | (unsigned char)126;
+                    send_data[i] = (unsigned char)(MASK_BIT_SET | (unsigned char)126);
                     i++;
                     
                     send_data[i] = (0xFF00 & payload_data_len) >> 8;
@@ -1043,7 +1052,7 @@ bool lock_client::send(std::string_view payload_data){ // sends data passed as p
                 else if( (payload_data_len > (MAX_2BYTE_INT - 1)) && (payload_data_len < (MAX_8BYTE_INT - 1)) ){
                     // next byte stores the value 127 and he next 8 bytes store the payload length
                     
-                    send_data[i] = MASK_BIT_SET | (unsigned char)127;
+                    send_data[i] = (unsigned char)(MASK_BIT_SET | (unsigned char)127);
                     i++;
                     
                     send_data[i] = (0xFF00000000000000 & payload_data_len) >> 56 ; // the most significant bit cannot be 1 since we have the MAX_8BYTE_INT range test before executing this part of the code
@@ -1082,14 +1091,8 @@ bool lock_client::send(std::string_view payload_data){ // sends data passed as p
                 }
 
                 if(!error){ // only continue if no error
-            
-                    // generate the mask
-                        
-                    int upper_bound = 255;
                     
                     for(int j = 0; j<mask_array_len; j++){
-                        
-                        mask[j] = (unsigned char)(rand() % upper_bound);
                         
                         send_data[i] = mask[j]; // store the mask in the send data array
                         
@@ -1097,7 +1100,7 @@ bool lock_client::send(std::string_view payload_data){ // sends data passed as p
                         
                         
                     }
-                    // mask generation end 
+                    // mask storing end 
                     
                     // mask the data and store the masked data in the send data array 
                     int k = 0; // variable used to store the mask index of the exact byte in the mask array to mask with
@@ -1156,7 +1159,7 @@ bool lock_client::send(std::string_view payload_data){ // sends data passed as p
                 }
                 else if( (frame_data_len > 125) && (frame_data_len < MAX_2BYTE_INT) ){ // next byte stores the value 126 and the next two bytes store the payload length
                     
-                    send_data[i] = MASK_BIT_SET | (unsigned char)126;
+                    send_data[i] = (unsigned char)(MASK_BIT_SET | (unsigned char)126);
                     i++;
                     
                     send_data[i] = (0xFF00 & frame_data_len) >> 8;
@@ -1169,7 +1172,7 @@ bool lock_client::send(std::string_view payload_data){ // sends data passed as p
                 else if( (frame_data_len > (MAX_2BYTE_INT - 1)) && (frame_data_len < (MAX_8BYTE_INT - 1)) ){
                 // next byte stores the value 127 and he next 8 bytes store the payload length
                     
-                    send_data[i] = MASK_BIT_SET | (unsigned char)127;
+                    send_data[i] = (unsigned char)(MASK_BIT_SET | (unsigned char)127);
                     i++;
                     
                     send_data[i] = (0xFF00000000000000 & frame_data_len) >> 56 ; // the most significant bit cannot be 1 since we have the MAX_8BYTE_INT range test before executing this part of the code
@@ -1198,14 +1201,8 @@ bool lock_client::send(std::string_view payload_data){ // sends data passed as p
                     
                     
                 }
-    
-                // generate the mask
-                    
-                int upper_bound = 255;
                 
                 for(int j = 0; j<mask_array_len; j++){
-                    
-                    mask[j] = (unsigned char)(rand() % upper_bound);
                     
                     send_data[i] = mask[j]; // store the mask in the send data array
                     
@@ -1213,7 +1210,7 @@ bool lock_client::send(std::string_view payload_data){ // sends data passed as p
                     
                     
                 }
-                // mask generation end 
+                // mask storing end 
                 
                 // mask the data and store the masked data in the send data array 
                 int k = 0; // variable used to store the mask index of the exact byte in the mask array to mask with
@@ -1264,7 +1261,7 @@ bool lock_client::send(std::string_view payload_data){ // sends data passed as p
                         frame_data_len = payload_data_len - continuation_index;
                         
                         // set the first byte
-                        send_data[i] = FIN_BIT_SET | RSV_BIT_UNSET_ALL | CONTINUATION_FRAME;
+                        send_data[i] = (unsigned char)(FIN_BIT_SET | RSV_BIT_UNSET_ALL | CONTINUATION_FRAME);
                         i++;
 
                         // set the second byte
@@ -1276,7 +1273,7 @@ bool lock_client::send(std::string_view payload_data){ // sends data passed as p
                         }
                         else if( (frame_data_len > 125) && (frame_data_len < MAX_2BYTE_INT) ){ // next byte stores the value 126 and the next two bytes store the payload length
                             
-                            send_data[i] = MASK_BIT_SET | (unsigned char)126;
+                            send_data[i] = (unsigned char)(MASK_BIT_SET | (unsigned char)126);
                             i++;
                             
                             send_data[i] = (0xFF00 & frame_data_len) >> 8;
@@ -1289,7 +1286,7 @@ bool lock_client::send(std::string_view payload_data){ // sends data passed as p
                         else if( (frame_data_len > (MAX_2BYTE_INT - 1)) && (frame_data_len < (MAX_8BYTE_INT - 1)) ){
                         // next byte stores the value 127 and he next 8 bytes store the payload length
                             
-                            send_data[i] = MASK_BIT_SET | (unsigned char)127;
+                            send_data[i] = (unsigned char)(MASK_BIT_SET | (unsigned char)127);
                             i++;
                             
                             send_data[i] = (0xFF00000000000000 & frame_data_len) >> 56 ; // the most significant bit cannot be 1 since we have the MAX_8BYTE_INT range test before executing this part of the code
@@ -1382,7 +1379,7 @@ bool lock_client::send(std::string_view payload_data){ // sends data passed as p
                         }
                         else if( (frame_data_len > 125) && (frame_data_len < MAX_2BYTE_INT) ){ // next byte stores the value 126 and the next two bytes store the payload length
                             
-                            send_data[i] = MASK_BIT_SET | (unsigned char)126;
+                            send_data[i] = (unsigned char)(MASK_BIT_SET | (unsigned char)126);
                             i++;
                             
                             send_data[i] = (0xFF00 & frame_data_len) >> 8;
@@ -1395,7 +1392,7 @@ bool lock_client::send(std::string_view payload_data){ // sends data passed as p
                         else if( (frame_data_len > (MAX_2BYTE_INT - 1)) && (frame_data_len < (MAX_8BYTE_INT - 1)) ){
                         // next byte stores the value 127 and he next 8 bytes store the payload length
                             
-                            send_data[i] = MASK_BIT_SET | (unsigned char)127;
+                            send_data[i] = (unsigned char)(MASK_BIT_SET | (unsigned char)127);
                             i++;
                             
                             send_data[i] = (0xFF00000000000000 & frame_data_len) >> 56 ; // the most significant bit cannot be 1 since we have the MAX_8BYTE_INT range test before executing this part of the code
@@ -2629,18 +2626,13 @@ bool lock_client::basic_read(){
                 
                     send_data = (char*)send_data_static; // set the send data pointer to the send data static array
             
-                    send_data[i] = FIN_BIT_SET | RSV_BIT_UNSET_ALL | CONNECTION_CLOSE;
+                    send_data[i] = (unsigned char)(FIN_BIT_SET | RSV_BIT_UNSET_ALL | CONNECTION_CLOSE);
                     i++;
             
                     send_data[i] = MASK_BIT_SET | ((unsigned char)frame_data_len);
                     i++;
-            
-                    // generate the mask
-                    int upper_bound = 255;
                 
                     for(int j = 0; j<mask_array_len; j++){
-                    
-                        mask[j] = (unsigned char)(rand() % upper_bound);
                     
                         send_data[i] = mask[j]; // store the mask in the send data array
                     
@@ -2648,7 +2640,7 @@ bool lock_client::basic_read(){
                     
                     
                     }
-                    // mask generation end 
+                    // mask storing end 
                 
                     // mask the data and store the masked data in the send data array 
                     int k = 0; // variable used to store the mask index of the exact byte in the max array to mask with
@@ -2773,108 +2765,108 @@ bool lock_client::connect(std::string_view url, std::string_view path = "/"){ //
     
     if( (url.compare(0, 6, "wss://") == 0) || (url.compare(0, 6, "Wss://") == 0) || (url.compare(0, 6, "WSs://") == 0) || (url.compare(0, 6, "WSS://") == 0) || (url.compare(0, 6, "WsS://") == 0) || (url.compare(0, 6, "wSS://") == 0) || (url.compare(0, 6, "wsS://") == 0) || (url.compare(0, 6, "wSs://") == 0) ){ // endpoint is a wss:// endpoint, the second parameter to the std::string_view compare function is 6 which is the length of the string "wss://" which we are testing for the presence of, we list out and compare the 8 possible combinations of uppercase and lowercase lettering that are valid
     
-    int protocal_prefix_len = strlen("wss://");    
-    int base_url_length = url.size() - protocal_prefix_len; // saves the length of the url without the wss:// prefix 
-        
-    // SSL members initialisations
-    c_bio = BIO_new_ssl_connect(ssl_ctx); // creates a new bio ssl object
-    BIO_get_ssl(c_bio, &c_ssl); // get the SSL structure component of the ssl bio for per instance SSL settings
-    if(c_ssl == NULL){
-        
-        strncpy(error_buffer, "Error fetching SSL structure pointer ", error_buffer_array_length);
-                
-        error = true;
-        
-    }
- 
-    if(!error){ // the constructor continues only if there was no error fetching the ssl pointer
+        int protocal_prefix_len = strlen("wss://");    
+        int base_url_length = url.size() - protocal_prefix_len; // saves the length of the url without the wss:// prefix 
+            
+        // SSL members initialisations
+        c_bio = BIO_new_ssl_connect(ssl_ctx); // creates a new bio ssl object
+        BIO_get_ssl(c_bio, &c_ssl); // get the SSL structure component of the ssl bio for per instance SSL settings
+        if(c_ssl == NULL){
+            
+            strncpy(error_buffer, "Error fetching SSL structure pointer ", error_buffer_array_length);
+                    
+            error = true;
+            
+        }
     
-        // URL copy 
-        if(base_url_length < url_static_array_length){ // static memory large enough
+        if(!error){ // the constructor continues only if there was no error fetching the ssl pointer
         
-            url.copy(c_url_static, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
-        
-            c_url_static[base_url_length] = '\0'; // null-terminate the string
-        
-            c_url = c_url_static;
-        
-        }
-        else if(base_url_length < size_of_allocated_url_memory){ // store in already allocated dynamic memory
+            // URL copy 
+            if(base_url_length < url_static_array_length){ // static memory large enough
             
-            url.copy(c_url_new, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
-        
-            c_url_new[base_url_length] = '\0'; // null-terminate the string
-        
-            c_url = c_url_new;
+                url.copy(c_url_static, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
             
-        
-        }
-        else{ // neither static or dynamic memory is large enough, we test whether memory has already been allocated or not 
+                c_url_static[base_url_length] = '\0'; // null-terminate the string
             
-            if(c_url_new == NULL){ // memory has not yet been allocated
-                
-                // heap memory allocation for urls larger than the static array length
-                c_url_new = new(std::nothrow) char[base_url_length + 1]; // the nothrow parameter prevents an exception from being thrown by the C++ runtime should the heap allocation fail
-            
-            
-                if(c_url_new == NULL){
-                    
-                    strncpy(error_buffer, "Error allocating heap memory for lock_client url parameter ", error_buffer_array_length);
-                    
-                    error = true;
-                    
-                }
-                else{
-                    
-                    size_of_allocated_url_memory = base_url_length + 1;    
-                        
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
-        
-                    c_url_new[base_url_length] = '\0';
-        
-                    c_url = c_url_new;
-                
-                }
+                c_url = c_url_static;
             
             }
-            else{ // memory has been allocated but still isn't large enough
+            else if(base_url_length < size_of_allocated_url_memory){ // store in already allocated dynamic memory
                 
-                delete [] c_url_new; // delete the already allocated memory
-                
-                // heap memory allocation for urls larger than the static array length
-                c_url_new = new(std::nothrow) char[base_url_length + 1]; // the nothrow parameter prevents an exception from being thrown by the C++ runtime should the heap allocation fail
+                url.copy(c_url_new, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
             
+                c_url_new[base_url_length] = '\0'; // null-terminate the string
             
-                if(c_url_new == NULL){
-                    
-                    strncpy(error_buffer, "Error allocating heap memory for lock_client url parameter ", error_buffer_array_length);
-                    
-                    error = true;
-                    
-                }
-                else{
-                    
-                    size_of_allocated_url_memory = base_url_length + 1;    
-                        
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
-        
-                    c_url_new[base_url_length] = '\0';
-        
-                    c_url = c_url_new;
+                c_url = c_url_new;
                 
-                }
-                
+            
             }
-        
-        }
-        
-        if(!error){ // checks if there was any error allocating memory, that is if that part of the code was executed. The constructor only continues if there was no error 
+            else{ // neither static or dynamic memory is large enough, we test whether memory has already been allocated or not 
+                
+                if(c_url_new == NULL){ // memory has not yet been allocated
+                    
+                    // heap memory allocation for urls larger than the static array length
+                    c_url_new = new(std::nothrow) char[base_url_length + 1]; // the nothrow parameter prevents an exception from being thrown by the C++ runtime should the heap allocation fail
+                
+                
+                    if(c_url_new == NULL){
+                        
+                        strncpy(error_buffer, "Error allocating heap memory for lock_client url parameter ", error_buffer_array_length);
+                        
+                        error = true;
+                        
+                    }
+                    else{
+                        
+                        size_of_allocated_url_memory = base_url_length + 1;    
+                            
+                        url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
             
-            // set the websocket url(port included)
-            BIO_set_conn_hostname(c_bio, c_url);
+                        c_url_new[base_url_length] = '\0';
             
-            // set SSL mode to retry automatically should SSL connection fail
-            SSL_set_mode(c_ssl, SSL_MODE_AUTO_RETRY);
+                        c_url = c_url_new;
+                    
+                    }
+            
+                }
+                else{ // memory has been allocated but still isn't large enough
+                    
+                    delete [] c_url_new; // delete the already allocated memory
+                    
+                    // heap memory allocation for urls larger than the static array length
+                    c_url_new = new(std::nothrow) char[base_url_length + 1]; // the nothrow parameter prevents an exception from being thrown by the C++ runtime should the heap allocation fail
+                
+                    
+                    if(c_url_new == NULL){
+                        
+                        strncpy(error_buffer, "Error allocating heap memory for lock_client url parameter ", error_buffer_array_length);
+                        
+                        error = true;
+                        
+                    }
+                    else{
+                        
+                        size_of_allocated_url_memory = base_url_length + 1;    
+                            
+                        url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                
+                        c_url_new[base_url_length] = '\0';
+
+                        c_url = c_url_new;
+                    
+                    }
+                
+                }
+
+            }
+            
+            if(!error){ // checks if there was any error allocating memory, that is if that part of the code was executed. The constructor only continues if there was no error 
+                
+                // set the websocket url(port included)
+                BIO_set_conn_hostname(c_bio, c_url);
+                
+                // set SSL mode to retry automatically should SSL connection fail
+                SSL_set_mode(c_ssl, SSL_MODE_AUTO_RETRY);
         
             }
         
@@ -2933,7 +2925,7 @@ bool lock_client::connect(std::string_view url, std::string_view path = "/"){ //
                     c_url = c_url_new;
             
                 }
-        
+    
             }
             else{ // memory has been allocated but still isn't large enough
             
@@ -2967,7 +2959,7 @@ bool lock_client::connect(std::string_view url, std::string_view path = "/"){ //
         }
     
         if(!error){ // this only runs if the preceding code executed without the error flag being set, meaning all is good
-        
+            
             //Non-ssl BIO structure creation
             c_bio = BIO_new_connect(c_url); // creates the non-ssl bio object with the url supplied
      
@@ -2982,7 +2974,6 @@ bool lock_client::connect(std::string_view url, std::string_view path = "/"){ //
         
     }
     // initialisation of BIO and SSL structures end
-    
     
     if(!error){ // only continue if no error
         
@@ -3020,7 +3011,7 @@ bool lock_client::connect(std::string_view url, std::string_view path = "/"){ //
                 c_host = c_host_new;
                 
             }
-            else{ // neither static or already allocated memory is large enough, we test the two possible cases
+            else{ // neither static oralready allocated memory is large enough, we test the two possible cases
                 
                 if(c_host_new == NULL){ // memory has not been allocated yet 
                 
@@ -3058,7 +3049,7 @@ bool lock_client::connect(std::string_view url, std::string_view path = "/"){ //
                 
                         strncpy(error_buffer, "Error allocating heap memory for server host name ", error_buffer_array_length);
                     
-                        error = true; 
+                        error = true;    
                 
                     }
                     else{
@@ -3070,17 +3061,17 @@ bool lock_client::connect(std::string_view url, std::string_view path = "/"){ //
                         c_host_new[host_name_len] = '\0';
             
                         c_host = c_host_new;
+
             
                     }
-                    
+                
                 }
-                    
+                
             }
             
             if(!error){ // only continue if no error
             
-            // we set the host name we wish to connect to for server name identification(SNI) if the websocket address passed is a wss:// address. We test this by checking that the c_ssl pointer is non-null
-                
+                // we set the host name we wish to connect to for server name identification(SNI) if the websocket address passed is a wss:// address. We test this by checking that the c_ssl pointer is non-null
                 if(!(c_ssl == NULL)){
                     
                     if(!SSL_set_tlsext_host_name(c_ssl, c_host)){
@@ -3090,7 +3081,7 @@ bool lock_client::connect(std::string_view url, std::string_view path = "/"){ //
                             
                         error = true;
                     
-                    }    
+                    } 
                     
                 }
                 
@@ -3282,144 +3273,144 @@ bool lock_client::connect(std::string_view url, std::string_view path = "/"){ //
                                 
                                         upgrade_request = upgrade_request_new;
                                     
-                                        }
+                                    }
+                            
+                                }
+                                else{ // memory has previously been allocated for an upgrade request but it still isn't sufficient
+                                    
+                                    delete [] upgrade_request_new; // delete the previously allocated memory
+                                    
+                                    upgrade_request_new = new(std::nothrow) char[upgrade_request_len + 1]; // allocate memory for the upgrade request with the std::nothrow parameter stops the C++ runtime from throwing an error should the allocation request fail
+                            
+                                    if(upgrade_request_new == NULL){
+                                
+                                        strncpy(error_buffer, "Error allocating heap memory for upgrade request string, supplied URL or channel path too long  ", error_buffer_array_length);
+                                    
+                                        error = true;
+                                        
+                                        BIO_reset(c_bio); // disconnect the underlying bio
+                                    
+                                    }
+                                    else{ 
+                                    
+                                        size_of_allocated_upgrade_request_memory = upgrade_request_len + 1;
+                                    
+                                        // build the upgrade request
+                                        strcpy(upgrade_request_new, "GET ");
+                                        strcat(upgrade_request_new, c_path);
+                                        strcat(upgrade_request_new, " HTTP/1.1\n");
+                                        strcat(upgrade_request_new, "Host: ");
+                                        strcat(upgrade_request_new, c_host);
+                                        strcat(upgrade_request_new, "\n");
+                                        strcat(upgrade_request_new, "Connection: Upgrade\n");
+                                        strcat(upgrade_request_new, "Pragma: no-cache\n");
+                                        strcat(upgrade_request_new, "Upgrade: websocket\n");
+                                        strcat(upgrade_request_new, "Sec-WebSocket-Version: 13\n");
+                                        strcat(upgrade_request_new, "Sec-WebSocket-Key: ");
+                                        strcat(upgrade_request_new, (const char*)base64_encoded_nonce);
+                                        strcat(upgrade_request_new, "\n\n");
+                                        // upgrade request build end 
+                            
+                                        upgrade_request = upgrade_request_new;
                                 
                                     }
-                                    else{ // memory has previously been allocated for an upgrade request but it still isn't sufficient
-                                        
-                                        delete [] upgrade_request_new; // delete the previously allocated memory
-                                        
-                                        upgrade_request_new = new(std::nothrow) char[upgrade_request_len + 1]; // allocate memory for the upgrade request with the std::nothrow parameter stops the C++ runtime from throwing an error should the allocation request fail
-                                
-                                        if(upgrade_request_new == NULL){
                                     
-                                            strncpy(error_buffer, "Error allocating heap memory for upgrade request string, supplied URL or channel path too long  ", error_buffer_array_length);
-                                        
-                                            error = true;
-                                            
-                                            BIO_reset(c_bio); // disconnect the underlying bio
-                                        
-                                        }
-                                        else{ 
-                                        
-                                            size_of_allocated_upgrade_request_memory = upgrade_request_len + 1;
-                                        
-                                            // build the upgrade request
-                                            strcpy(upgrade_request_new, "GET ");
-                                            strcat(upgrade_request_new, c_path);
-                                            strcat(upgrade_request_new, " HTTP/1.1\n");
-                                            strcat(upgrade_request_new, "Host: ");
-                                            strcat(upgrade_request_new, c_host);
-                                            strcat(upgrade_request_new, "\n");
-                                            strcat(upgrade_request_new, "Connection: Upgrade\n");
-                                            strcat(upgrade_request_new, "Pragma: no-cache\n");
-                                            strcat(upgrade_request_new, "Upgrade: websocket\n");
-                                            strcat(upgrade_request_new, "Sec-WebSocket-Version: 13\n");
-                                            strcat(upgrade_request_new, "Sec-WebSocket-Key: ");
-                                            strcat(upgrade_request_new, (const char*)base64_encoded_nonce);
-                                            strcat(upgrade_request_new, "\n\n");
-                                            // upgrade request build end 
-                                
-                                            upgrade_request = upgrade_request_new;
-                                    
-                                        }
-                                        
-                                    }
-                                
                                 }
                             
-                                if(!error){ // only continue if no error
-                                    
-                                    data_array = data_array_static;
-                                    BIO_puts(c_bio, upgrade_request);
-                                    
-                                    int len = BIO_read(c_bio, data_array, static_data_array_length); // this function call would block till there is data to read
-                                    data_array[len] = '\0'; // null terminate the received bytes
-                                    
-                                    // test for the switching protocol header to confirm that the connection upgrade was successful
-                                    char success_response[] = "HTTP/1.1 101 Switching Protocols";
+                            }
+                        
+                            if(!error){ // only continue if no error
+                                
+                                data_array = data_array_static;
+                                BIO_puts(c_bio, upgrade_request);
+                                
+                                int len = BIO_read(c_bio, data_array, static_data_array_length); // this function call would block till there is data to read
+                                data_array[len] = '\0'; // null terminate the received bytes
 
-                                    if(strncmp(success_response, strtok(data_array, "\n"), strlen(success_response)) == 0){ // upgrade successful
+                                // test for the switching protocol header to confirm that the connection upgrade was successful
+                                char success_response[] = "HTTP/1.1 101 Switching Protocols";
+                                
+                                if(strncmp(success_response, strtok(data_array, "\n"), strlen(success_response)) == 0){ // upgrade successful
+                                    
+                                    // Authorise connection - confirm that the Sec-WebSocket-Accept is what it should be by calculating the key and comparing it with the server's
+                                    
+                                    // build the SHA1 parameter
+                                    strncpy(SHA1_parameter, (const char*)base64_encoded_nonce, SHA1_parameter_array_len);
+                                    strncat(SHA1_parameter, string_to_append, SHA1_parameter_array_len - strlen(SHA1_parameter));
+                                    // SHA1 parameter build end 
+                                    
+                                    SHA1((const unsigned char*)SHA1_parameter, strlen(SHA1_parameter), SHA1_digest); // get the sha1 hash digest
+                                    
+                                    // base64 encode the SHA1_digest 
+                                    BIO_write(c_base64, SHA1_digest, size_of_SHA1_digest);
+                                    BIO_flush(c_base64); 
+                                    BIO_read(c_mem_base64, local_sec_ws_accept_key, local_sec_ws_accept_key_array_len);
+                                    // base64 encoding of SHA1 digest end 
+                                    
+                                    // loop through the rest of the response string to find the Sec-WebSocket-Accept header
+                                    char key[] = "Sec";
+                                    char* cursor = strtok(NULL, "\n");
+                                    
+                                    while(!(cursor == NULL)){
+                                    // we keep looping through the HTTP upgrade request response till either cursor == NULL or we find our Sec-WebSocket-Key header
                                         
-                                        // Authorise connection - confirm that the Sec-WebSocket-Accept is what it should be by calculating the key and comparing it with the server's
-                                        
-                                        // build the SHA1 parameter
-                                        strncpy(SHA1_parameter, (const char*)base64_encoded_nonce, SHA1_parameter_array_len);
-                                        strncat(SHA1_parameter, string_to_append, SHA1_parameter_array_len - strlen(SHA1_parameter));
-                                        // SHA1 parameter build end 
-                                        
-                                        SHA1((const unsigned char*)SHA1_parameter, strlen(SHA1_parameter), SHA1_digest); // get the sha1 hash digest
-                                        
-                                        // base64 encode the SHA1_digest 
-                                        BIO_write(c_base64, SHA1_digest, size_of_SHA1_digest);
-                                        BIO_flush(c_base64); 
-                                        BIO_read(c_mem_base64, local_sec_ws_accept_key, local_sec_ws_accept_key_array_len);
-                                        // base64 encoding of SHA1 digest end 
-                                        
-                                        // loop through the rest of the response string to find the Sec-WebSocket-Accept header
-                                        char key[] = "Sec";
-                                        char* cursor = strtok(NULL, "\n");
-                                        
-                                        while(!(cursor == NULL)){
-                                        // we keep looping through the HTTP upgrade request response till either cursor == NULL or we find our Sec-WebSocket-Key header
+                                        // we use sizeof so we can get the length of key as a compile time constan, we subtract 1 from the result of sizeof() to account for the null byte that terminates the string
+                                        if((strncmp(key, cursor, sizeof(key) - 1) == 0) || (strncmp("sec", cursor, sizeof(key) - 1) == 0) || (strncmp("SEC", cursor, sizeof(key) - 1) == 0) || (strncmp("sEc", cursor, sizeof(key) - 1) == 0) || (strncmp("seC", cursor, sizeof(key) - 1) == 0) || (strncmp("sEC", cursor, sizeof(key) - 1) == 0) || (strncmp("SEc", cursor, sizeof(key) - 1) == 0) || (strncmp("SeC", cursor, sizeof(key) - 1) == 0)){ // only the Sec-WebSocket-key response header would have "Sec" in it so we test all possible upper and lower case combinations of the key word "sec"
+                                                
+                                            cursor += strlen("Sec-WebSocket-Accept: "); //move cursor foward to point to accept key value
                                             
-                                            // we use sizeof so we can get the length of key as a compile time constan, we subtract 1 from the result of sizeof() to account for the null byte that terminates the string
-                                            if((strncmp(key, cursor, sizeof(key) - 1) == 0) || (strncmp("sec", cursor, sizeof(key) - 1) == 0) || (strncmp("SEC", cursor, sizeof(key) - 1) == 0) || (strncmp("sEc", cursor, sizeof(key) - 1) == 0) || (strncmp("seC", cursor, sizeof(key) - 1) == 0) || (strncmp("sEC", cursor, sizeof(key) - 1) == 0) || (strncmp("SEc", cursor, sizeof(key) - 1) == 0) || (strncmp("SeC", cursor, sizeof(key) - 1) == 0)){ // only the Sec-WebSocket-key response header would have "Sec" in it so we test all possible upper and lower case combinations of the key word "sec"
-                                                    
-                                                cursor += strlen("Sec-WebSocket-Accept: "); //move cursor forward to point to accept key value
+                                            // compare server's response with our calculation
+                                            if(strncmp(local_sec_ws_accept_key, cursor, strlen(local_sec_ws_accept_key)) == 0){
                                                 
-                                                // compare server's response with our calculation
-                                                if(strncmp(local_sec_ws_accept_key, cursor, strlen(local_sec_ws_accept_key)) == 0){
-                                                    
-                                                    client_state = OPEN;
-                                                    
-                                                    break; // break if the server sec websocket key matches what we calculated. Connection authorised
-                                                        
-                                                }
-                                                else{
-                                                    
-                                                    strncpy(error_buffer, "Connection authorisation Failed", error_buffer_array_length);
-                                                        
-                                                    BIO_reset(c_bio); // reset bio and disconnect the underlying connection
-                                                        
-                                                    error = true;
-                                                        
-                                                    break;
-                                                        
-                                                }
+                                                client_state = OPEN;
                                                 
+                                                break; // break if the server sec websocket key matches what we calculated. Connection authorised
+                                                    
+                                            }
+                                            else{
+                                                
+                                                strncpy(error_buffer, "Connection authorisation Failed", error_buffer_array_length);
+                                                    
+                                                BIO_reset(c_bio); // reset bio and disconnect the underlying connection
+                                                    
+                                                error = true;
+                                                    
+                                                break;
+                                                    
                                             }
                                             
-                                            cursor = strtok(NULL, "\n");
-                                            
                                         }
                                         
-                                        if(cursor == NULL){
-                                            
-                                            // getting here means no Sec-Websocket-Key header was found before strtok returned a null value
-                                            strncpy(error_buffer, "Invalid Upgrade request response received", error_buffer_array_length);
-                                            
-                                            BIO_reset(c_bio); // reset bio and disconnect the underlying connection
-                                            
-                                            error = true;
-                                        
-                                        }
+                                        cursor = strtok(NULL, "\n");
                                         
                                     }
-                                    else{ // upgrade unsuccessful
+                                    
+                                    if(cursor == NULL){
                                         
-                                        strncpy(error_buffer, "Connection upgrade failed. Invalid path supplied", error_buffer_array_length);
+                                        // getting here means no Sec-Websocket-Key header was found before strtok returned a null value
+                                        strncpy(error_buffer, "Invalid Upgrade request response received", error_buffer_array_length);
                                         
                                         BIO_reset(c_bio); // reset bio and disconnect the underlying connection
                                         
                                         error = true;
-                                        
-                                    }
-                                                        
-                                memset(data_array, '\0', len); // zero out the data array
-                                                    
-                                memset(upgrade_request, '\0', upgrade_request_len); // zero out the upgrade request array
                                     
+                                    }
+                                    
+                                }
+                                else{ // upgrade unsuccessful
+                                    
+                                    strncpy(error_buffer, "Connection upgrade failed. Invalid path supplied", error_buffer_array_length);
+                                    
+                                    BIO_reset(c_bio); // reset bio and disconnect the underlying connection
+                                    
+                                    error = true;
+                                    
+                                }
+                                                    
+                                memset(data_array, '\0', len); // zero out the data array
+
+                                memset(upgrade_request, '\0', upgrade_request_len); // zero out the upgrade request array
+                        
                             }
                         
                         }
@@ -3429,11 +3420,11 @@ bool lock_client::connect(std::string_view url, std::string_view path = "/"){ //
                 }
         
             }
-            
+
         }
     
-    }  
-    
+    }
+
     return error;
         
 }
@@ -3474,20 +3465,15 @@ void lock_client::fail_ws_connection(unsigned short status_code){
         
     send_data = (char*)send_data_static; // set the send data pointer to the send data static array
         
-    send_data[i] = FIN_BIT_SET | RSV_BIT_UNSET_ALL | CONNECTION_CLOSE;
+    send_data[i] = (unsigned char)(FIN_BIT_SET | RSV_BIT_UNSET_ALL | CONNECTION_CLOSE);
     close_payload[i] = (unsigned char)(status_code >> 8); // store the high byte of the status code
     i++;
         
     send_data[i] = MASK_BIT_SET | ((unsigned char)frame_len);
     close_payload[i] = (unsigned char)(0x00FF & status_code); // store the low byte of the status code
     i++;
-        
-    // generate the mask
-    int upper_bound = 255;
             
     for(int j = 0; j<mask_array_len; j++){
-                
-        mask[j] = (unsigned char)(rand() % upper_bound);
                 
         send_data[i] = mask[j]; // store the mask in the send data array
                 
@@ -3495,7 +3481,7 @@ void lock_client::fail_ws_connection(unsigned short status_code){
                 
                 
     }
-    // mask generation end 
+    // mask storing end 
             
     // mask the data and store the masked data in the send data array 
     int k = 0; // variable used to store the mask index of the exact byte in the mask array to mask with
@@ -3542,27 +3528,22 @@ bool lock_client::close(unsigned short status_code){ // this closes an establish
             
             send_data = (char*)send_data_static; // set the send data pointer to the send data static array
             
-            send_data[i] = FIN_BIT_SET | RSV_BIT_UNSET_ALL | CONNECTION_CLOSE;
+            send_data[i] = (unsigned char)(FIN_BIT_SET | RSV_BIT_UNSET_ALL | CONNECTION_CLOSE);
             close_payload[i] = (unsigned char)(status_code >> 8); // store the high byte of the status code
             i++;
             
             send_data[i] = MASK_BIT_SET | ((unsigned char)frame_len);
             close_payload[i] = (unsigned char)(0x00FF & status_code); // store the low byte of the status code
             i++;
-            
-            // generate the mask
-            int upper_bound = 255;
-                
+
             for(int j = 0; j<mask_array_len; j++){
-                    
-                mask[j] = (unsigned char)(rand() % upper_bound);
                     
                 send_data[i] = mask[j]; // store the mask in the send data array
                     
                 i++;
                   
             }
-            // mask generation end 
+            // mask storing end 
                 
             // mask the data and store the masked data in the send data array 
             int k = 0; // variable used to store the mask index of the exact byte in the mask array to mask with
@@ -3587,8 +3568,7 @@ bool lock_client::close(unsigned short status_code){ // this closes an establish
             unblock_sigpipe_signal();
 
             // after sending the close frame we do not attempt to read any more data from the server we just disconnect the underlying network connection
-                
-            BIO_reset(c_bio); // close the underlying ssl connection and(or) TCP connection after the close frame has been received
+            BIO_reset(c_bio);
                 
             client_state = CLOSED;
      

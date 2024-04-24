@@ -174,13 +174,15 @@ private:
     inline static const unsigned short UNEXPECTED_CONDITION = (unsigned short)1011; // used by servers
     inline static const unsigned short TLS_HANDSHAKE_FAILURE = (unsigned short)1015; // DON'T USE!!
     
-    
-    
-// instance variables for sending data
+// class variables for sending data
 private:
 
     static const int mask_array_len = 4; // used to create an array for storing the data mask
-    unsigned char mask[mask_array_len] = {'\0'}; // array to store the send data mask
+    inline static unsigned char mask[mask_array_len] = {'\0'}; // array to store the send data mask - it is defined to be inline and static because to increase performance the library generates a mask just once when the class is first instantiated and every subsequent lock_client object reuses that same mask to send out every masked frame
+   
+// instance variables for sending data
+private:
+
     static const int send_data_array_len = 64 * 1024; // 64KB
     unsigned char send_data_static[send_data_array_len] = {'\0'};
     uint64_t size_of_allocated_send_data_memory = 0;
