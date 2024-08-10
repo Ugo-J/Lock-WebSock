@@ -8,3 +8,7 @@ Makefile
 github.rsa
 github.rsa.pub
 settings.json
+printshift.hpp
+speedtest
+speedtest.cpp
+speedtest.rs
