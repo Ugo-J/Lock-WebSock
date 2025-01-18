@@ -46,3 +46,17 @@
 #include <functional>
 
 #endif
+
+#ifndef LOCK_WS_NETINET_IN_H
+#define LOCK_WS_NETINET_IN_H
+
+#include <netinet/in.h>
+
+#endif
+
+#ifndef LOCK_WS_ARPA_INET_H
+#define LOCK_WS_ARPA_INET_H
+
+#include <arpa/inet.h>
+
+#endif

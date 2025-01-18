@@ -2,7 +2,7 @@
 #include "lockws_structure.hpp"
 
 // lock client constructor
-lock_client::lock_client(std::string_view url, std::string_view path = "/"){
+lock_client::lock_client(std::string_view url, std::string_view path = "/", in_addr* interface_address = NULL){
 
     // initialisation of class wide variables
     if(!openssl_init){
@@ -291,7 +291,7 @@ lock_client::lock_client(std::string_view url, std::string_view path = "/"){
                 c_host = c_host_new;
                 
             }
-            else{ // neither static oralready allocated memory is large enough, we test the two possible cases
+            else{ // neither static or already allocated memory is large enough, we test the two possible cases
                 
                 if(c_host_new == NULL){ // memory has not been allocated yet 
                 
@@ -443,7 +443,28 @@ lock_client::lock_client(std::string_view url, std::string_view path = "/"){
                     }
                     
                     if(!error){ // only continue if no error
-                    
+
+                        // we bind this handle to the specified network interface if the interface_address in_addr pointer parameter is non-null
+                        if(interface_address != NULL){
+
+                            // Set up local address structure
+                            struct sockaddr_in localaddr;
+                            memset(&localaddr, 0, sizeof(localaddr));
+                            localaddr.sin_family = AF_INET;
+                            localaddr.sin_addr.s_addr = interface_address->s_addr;
+                            localaddr.sin_port = 0;  // Lets the system choose port
+                            
+                            // Get underlying socket
+                            int sock = BIO_get_fd(c_bio, NULL);
+                            
+                            // Bind socket to specific interface
+                            if (bind(sock, (struct sockaddr*)&localaddr, sizeof(localaddr)) < 0) {
+                                // if the binding fails the library does not set the error flag to true it just prints the error message, ignores the specified interface and attempts to make the connection with whatever network interface is available
+                                std::cout<<"Lockws Error: Binding To Supplied Interface Address Failed...Connection Will Be Attempted With The Default Network Interface..."<<std::endl;
+                            }
+
+                        }
+
                         // make the connection
                         if(BIO_do_connect(c_bio) <= 0){
                             
@@ -1009,8 +1030,7 @@ inline bool lock_client::set_ping_backlog(int backlog_num){
 }
 
 inline bool lock_client::clear(){ // clear the error flag of a lock client in open state
-    
-        
+
     if(client_state == OPEN){
             
         memset(error_buffer, '\0', strlen(error_buffer));
@@ -3957,7 +3977,7 @@ bool lock_client::basic_read(){
         
 }
        
-bool lock_client::connect(std::string_view url, std::string_view path = "/"){ // this is used to connect to connect to the url passed as a parameter, it can be used when a lock client object was created without establishing a websocket connection by using the parameterless constructor, or to connect an already established websocket connection and lock client instance to a different websocket server, it can also be used to retry connecting an instance that encountered an error during connection
+bool lock_client::connect(std::string_view url, std::string_view path = "/", in_addr* interface_address = NULL){ // this is used to connect to connect to the url passed as a parameter, it can be used when a lock client object was created without establishing a websocket connection by using the parameterless constructor, or to connect an already established websocket connection and lock client instance to a different websocket server, it can also be used to retry connecting an instance that encountered an error during connection
     
     if(client_state == CLOSED){
         
@@ -4382,7 +4402,28 @@ bool lock_client::connect(std::string_view url, std::string_view path = "/"){ //
                     }
                     
                     if(!error){ // only continue if no error
-                    
+
+                        // we bind this handle to the specified network interface if the interface_address in_addr pointer parameter is non-null
+                        if(interface_address != NULL){
+
+                            // Set up local address structure
+                            struct sockaddr_in localaddr;
+                            memset(&localaddr, 0, sizeof(localaddr));
+                            localaddr.sin_family = AF_INET;
+                            localaddr.sin_addr.s_addr = interface_address->s_addr;
+                            localaddr.sin_port = 0;  // Lets the system choose port
+                            
+                            // Get underlying socket
+                            int sock = BIO_get_fd(c_bio, NULL);
+                            
+                            // Bind socket to specific interface
+                            if (bind(sock, (struct sockaddr*)&localaddr, sizeof(localaddr)) < 0) {
+                                // if the binding fails the library does not set the error flag to true it just prints the error message, ignores the specified interface and attempts to make the connection with whatever network interface is available
+                                std::cout<<"Lockws Error: Binding To Supplied Interface Address Failed...Connection Will Be Attempted With The Default Network Interface..."<<std::endl;
+                            }
+
+                        }
+
                         // make the connection
                         if(BIO_do_connect(c_bio) <= 0){
                             
@@ -4649,7 +4690,7 @@ bool lock_client::connect(std::string_view url, std::string_view path = "/"){ //
 }
 
 void lock_client::block_sigpipe_signal(){
-            
+
     sigemptyset(&newset);
     sigemptyset(&oldset);
     sigaddset(&newset, SIGPIPE);
@@ -4658,7 +4699,7 @@ void lock_client::block_sigpipe_signal(){
 }
 
 void lock_client::unblock_sigpipe_signal(){
-    
+
     // clear out any SIGPIPE signal that came in while we blocked it
     while(sigtimedwait(&newset, &si, &ts) >= 0 || errno != EAGAIN);
     
@@ -4669,7 +4710,7 @@ void lock_client::unblock_sigpipe_signal(){
 }
 
 void lock_client::fail_ws_connection(unsigned short status_code){
-    
+
     if(cursor != NULL && data_array != NULL){
         
         memset(data_array, '\0', (cursor - data_array) ); // zero out the data possibly already written to the data array if the fail_ws_connection is called when a fragmented message was being transmitted.
@@ -4736,7 +4777,7 @@ void lock_client::fail_ws_connection(unsigned short status_code){
 }
      
 bool lock_client::close(unsigned short status_code){ // this closes an established websocket connection although the object itself still exists till it goes out of scope, the object can be connected to a different or the same websocket server using the connect function
-    
+
     if(!error){ // only continue if no error
         
         if(client_state == OPEN){ // only continue if client is in open state
