@@ -446,6 +446,9 @@ lock_client::lock_client(std::string_view url, std::string_view path = "/", in_a
 
                         // we bind this handle to the specified network interface if the interface_address in_addr pointer parameter is non-null
                         if(interface_address != NULL){
+                            
+                            // we create the socket fd
+                            int sock = socket(AF_INET, SOCK_STREAM, 0);
 
                             // Set up local address structure
                             struct sockaddr_in localaddr;
@@ -453,14 +456,17 @@ lock_client::lock_client(std::string_view url, std::string_view path = "/", in_a
                             localaddr.sin_family = AF_INET;
                             localaddr.sin_addr.s_addr = interface_address->s_addr;
                             localaddr.sin_port = 0;  // Lets the system choose port
-                            
-                            // Get underlying socket
-                            int sock = BIO_get_fd(c_bio, NULL);
-                            
+
                             // Bind socket to specific interface
                             if (bind(sock, (struct sockaddr*)&localaddr, sizeof(localaddr)) < 0) {
                                 // if the binding fails the library does not set the error flag to true it just prints the error message, ignores the specified interface and attempts to make the connection with whatever network interface is available
                                 std::cout<<"Lockws Error: Binding To Supplied Interface Address Failed...Connection Will Be Attempted With The Default Network Interface..."<<std::endl;
+                            }
+                            else{
+
+                                // we associate the bound socket to the c_bio structure
+                                BIO_set_fd(c_bio, sock, BIO_NOCLOSE);
+                                
                             }
 
                         }
@@ -4405,6 +4411,9 @@ bool lock_client::connect(std::string_view url, std::string_view path = "/", in_
 
                         // we bind this handle to the specified network interface if the interface_address in_addr pointer parameter is non-null
                         if(interface_address != NULL){
+                            
+                            // we create the socket fd
+                            int sock = socket(AF_INET, SOCK_STREAM, 0);
 
                             // Set up local address structure
                             struct sockaddr_in localaddr;
@@ -4412,14 +4421,17 @@ bool lock_client::connect(std::string_view url, std::string_view path = "/", in_
                             localaddr.sin_family = AF_INET;
                             localaddr.sin_addr.s_addr = interface_address->s_addr;
                             localaddr.sin_port = 0;  // Lets the system choose port
-                            
-                            // Get underlying socket
-                            int sock = BIO_get_fd(c_bio, NULL);
-                            
+
                             // Bind socket to specific interface
                             if (bind(sock, (struct sockaddr*)&localaddr, sizeof(localaddr)) < 0) {
                                 // if the binding fails the library does not set the error flag to true it just prints the error message, ignores the specified interface and attempts to make the connection with whatever network interface is available
                                 std::cout<<"Lockws Error: Binding To Supplied Interface Address Failed...Connection Will Be Attempted With The Default Network Interface..."<<std::endl;
+                            }
+                            else{
+
+                                // we associate the bound socket to the c_bio structure
+                                BIO_set_fd(c_bio, sock, BIO_NOCLOSE);
+
                             }
 
                         }
