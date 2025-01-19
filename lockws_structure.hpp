@@ -5,7 +5,8 @@ class lock_client {
 public:
     
     //constructors
-    lock_client(std::string_view url, std::string_view path, in_addr* interface_address);
+    lock_client(std::string_view url, std::string_view path);
+    lock_client(std::string_view url, std::string_view path, in_addr* interface_address, char* interface_name); // constructor that binds to a particular interface before connection
     lock_client(); // parameterless constructor
     
     // destructor
@@ -17,7 +18,8 @@ public:
     bool ping(); // ping function
     bool pong(int ping_data_len = 0); // pong function
     bool send(std::string_view); //send function
-    bool connect(std::string_view, std::string_view path, in_addr* interface_address); // function to connect to a url
+    bool connect(std::string_view, std::string_view path); // function to connect to a url
+    bool connect(std::string_view url, std::string_view path, in_addr* interface_address, char* interface_name); // connect function that binds to a particular interface before connection
     bool close(unsigned short status_code = NORMAL_CLOSE); // closes an open connection of a lock_client instance
     bool status(); // checks the error status of a lock_client instance
     bool is_open();
@@ -47,6 +49,7 @@ private:
     inline void fail_ws_connection(unsigned short status_code); // function used internally to fail a websocket connection
     inline void block_sigpipe_signal(); // function to block sigpipe signals before any write or read
     void unblock_sigpipe_signal(); // function to unblock sigpipe signals after any write or read
+    int connect_to_server(const char *hostname, const char *port, in_addr* interface_address, const char *interface_name); // function to connect to server when we manually configure the socket
 
 // private signal handling variables
 private: 

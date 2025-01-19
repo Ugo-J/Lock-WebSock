@@ -60,3 +60,5 @@
 #include <arpa/inet.h>
 
 #endif
+
+#include <netdb.h>
