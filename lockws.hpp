@@ -708,7 +708,6 @@ lock_client::lock_client(std::string_view url, std::string_view path = "/"){
 }
 
 lock_client::lock_client(std::string_view url, std::string_view path = "/", in_addr* interface_address = NULL, char* interface_name = NULL){
-
 }
 
 // lock client parameterless constructor
@@ -4651,7 +4650,7 @@ bool lock_client::connect(std::string_view url, std::string_view path = "/"){ //
         
 }
 
-bool lock_client::connect(std::string_view url, std::string_view path = "/", in_addr* interface_address = NULL, char* interface_name = NULL){
+bool lock_client::interface_connect(std::string_view url, std::string_view path = "/", in_addr* interface_address = NULL, char* interface_name = NULL){
     
     if(client_state == CLOSED){
         
@@ -4859,8 +4858,6 @@ bool lock_client::connect(std::string_view url, std::string_view path = "/", in_
 
         // we null terminate the c_port array
         c_port[num_of_chars_copied] = '\0';
-
-        std::cout<<"Host: "<<c_host<<"\nPort: "<<c_port<<std::endl;
 
         // now we can call the connect to server function that would return the configured socket file descriptor
         int sock = connect_to_server(c_host, c_port, interface_address, interface_name);
@@ -5360,7 +5357,7 @@ int lock_client::connect_to_server(const char *hostname, const char *port, in_ad
         return -1;
     }
     else{
-        std::cout<<"Successfully bound socket to device"<<std::endl;
+        std::cout<<"Successfully bound socket to device "<<interface_name<<std::endl;
     }
 
     // Set up local address structure

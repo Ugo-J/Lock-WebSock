@@ -19,7 +19,7 @@ public:
     bool pong(int ping_data_len = 0); // pong function
     bool send(std::string_view); //send function
     bool connect(std::string_view, std::string_view path); // function to connect to a url
-    bool connect(std::string_view url, std::string_view path, in_addr* interface_address, char* interface_name); // connect function that binds to a particular interface before connection
+    bool interface_connect(std::string_view url, std::string_view path, in_addr* interface_address, char* interface_name); // connect function that binds to a particular interface before connection
     bool close(unsigned short status_code = NORMAL_CLOSE); // closes an open connection of a lock_client instance
     bool status(); // checks the error status of a lock_client instance
     bool is_open();
