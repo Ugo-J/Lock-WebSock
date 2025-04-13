@@ -4620,7 +4620,7 @@ bool lock_client::connect(std::string_view url, std::string_view path = "/"){ //
                                 }
                                 else{ // upgrade unsuccessful
                                     
-                                    strncpy(error_buffer, "Connection upgrade failed. Invalid path supplied", error_buffer_array_length);
+                                    strncpy(error_buffer, "Connection upgrade failed. Invalid path or url supplied", error_buffer_array_length);
                                     
                                     BIO_reset(c_bio); // reset bio and disconnect the underlying connection
                                     
