@@ -25,6 +25,7 @@ public:
     bool is_open();
     char* get_error_message();
     bool basic_read();
+    bool nb_basic_read(); // this basic read function returns without blocking if there is no data to be read
     bool set_ping_backlog(int backlog_num);
     bool clear(); // this function is used to clear the error flags of lock clients in open state, error flags of lock clients in closed state can only be cleared by calling the connect function
     inline static int default_pong_receive(char*, int, int); // default function for receiving pong frames
@@ -50,6 +51,8 @@ private:
     inline void block_sigpipe_signal(); // function to block sigpipe signals before any write or read
     void unblock_sigpipe_signal(); // function to unblock sigpipe signals after any write or read
     int connect_to_server(const char *hostname, const char *port, in_addr* interface_address, const char *interface_name); // function to connect to server when we manually configure the socket
+    void set_nonblocking_mode(); // this function is used to set the BIO object to non blocking mode
+    void set_blocking_mode(); // this function is used to set the BIO object back to blocking mode
 
 // private signal handling variables
 private: 
