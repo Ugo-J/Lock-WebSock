@@ -7292,28 +7292,32 @@ bool lock_client_nb::basic_read(){
                     
                     // SIGPIPE signal is still blocked
 
-                    int64_t len = BIO_read(c_bio, cursor, frame_data_len);
+                    int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
 
-                    if(len > 0){
-                    // bio_read fetched some extra bytes
+                    // we keep polling till we have read the entire frame
+                    while(len < frame_data_len){
                     
-                        cursor += len;
-                        
-                        // test that all data was read in
-                        while(len < frame_data_len){
+                        int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
                             
-                            int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
-                            
-                            if(extra_bytes_read > 0){
-                            // bio_read fetched extra data
+                        if(extra_bytes_read > 0){
+                        // bio_read fetched extra data
 
-                                len += extra_bytes_read;
-                                
-                                cursor += extra_bytes_read;
+                            len += extra_bytes_read;
+                            
+                            cursor += extra_bytes_read;
+
+                        }
+                        else{
+                        // bio_read couldn't fetch data
+
+                            if(BIO_should_retry(c_bio)){
+                            // no data available yet
+
+                                continue;
 
                             }
                             else{
-                            // bio_read couldn't fetch extra data
+                            // an actual errror occurred
 
                                 // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                 unblock_sigpipe_signal();
@@ -7326,42 +7330,15 @@ bool lock_client_nb::basic_read(){
                                 fail_ws_connection(GOING_AWAY);
 
                                 return error;
-
+                                
                             }
-                          
-                        }
-
-                        // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                        unblock_sigpipe_signal();
-
-                    }
-                    else{
-                    // bio_read didn't fetch any more data so we poll till we get all the data for this frame
-
-                        if(BIO_should_retry(c_bio)){
-                        // getting here the read request would block so we continue polling
-
-                            continue;
-
-                        }
-                        else{
-                            
-                            // here bio_read couldn't fetch any data
-                            strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                            error = true;
-
-                            // we unblock the sigpipe signal because fail_ws_connection internally blocks it
-                            unblock_sigpipe_signal();
-                            
-                            fail_ws_connection(GOING_AWAY);
-                            // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
-                            
-                            return error;
 
                         }
 
                     }
+
+                    // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
+                    unblock_sigpipe_signal();
                     
                     (void)recv_data(data_array, length_of_array_data, length_of_array); // call the receive function to handle the received data
                     
@@ -7379,28 +7356,32 @@ bool lock_client_nb::basic_read(){
                     
                     // SIGPIPE signal is still blocked
 
-                    int64_t len = BIO_read(c_bio, cursor, frame_data_len);
+                    int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
 
-                    if(len > 0){
-                    // bio_read fetched some extra bytes
-                    
-                        cursor += len;
+                    // we keep polling till we have read the entire frame
+                    while(len < frame_data_len){
                         
-                        // test that all data was read in
-                        while(len < frame_data_len){
+                        int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
                             
-                            int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
-                            
-                            if(extra_bytes_read > 0){
-                            // bio_read fetched extra data
+                        if(extra_bytes_read > 0){
+                        // bio_read fetched extra data
 
-                                len += extra_bytes_read;
-                                
-                                cursor += extra_bytes_read;
+                            len += extra_bytes_read;
+                            
+                            cursor += extra_bytes_read;
+
+                        }
+                        else{
+                        // bio_read couldn't fetch data
+
+                            if(BIO_should_retry(c_bio)){
+                            // no data available yet
+
+                                continue;
 
                             }
                             else{
-                            // bio_read couldn't fetch extra data
+                            // an actual errror occurred
 
                                 // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                 unblock_sigpipe_signal();
@@ -7413,31 +7394,15 @@ bool lock_client_nb::basic_read(){
                                 fail_ws_connection(GOING_AWAY);
 
                                 return error;
-
+                                
                             }
-                          
+
                         }
 
-                        // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                        unblock_sigpipe_signal();
-
                     }
-                    else{
-                    // bio_read didn't fetch any more data so we fail the connection
-                        
-                        // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                        unblock_sigpipe_signal();
 
-                        // here bio_read couldn't fetch any extra data
-                        strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                        error = true;
-
-                        fail_ws_connection(GOING_AWAY);
-
-                        return error;
-
-                    }
+                    // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
+                    unblock_sigpipe_signal();
                     
                     (void)recv_data(data_array, length_of_array_data, length_of_array); // call the receive function to handle the received data
                     
@@ -7475,28 +7440,32 @@ bool lock_client_nb::basic_read(){
                         
                             // SIGPIPE signal is still blocked
 
-                            int64_t len = BIO_read(c_bio, cursor, frame_data_len);
+                            int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
 
-                            if(len > 0){
-                            // bio_read fetched some extra bytes
-                            
-                                cursor += len;
+                            // we keep polling till we have read the entire frame
+                            while(len < frame_data_len){
                                 
-                                // test that all data was read in
-                                while(len < frame_data_len){
+                                int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
                                     
-                                    int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
-                                    
-                                    if(extra_bytes_read > 0){
-                                    // bio_read fetched extra data
+                                if(extra_bytes_read > 0){
+                                // bio_read fetched extra data
 
-                                        len += extra_bytes_read;
-                                        
-                                        cursor += extra_bytes_read;
+                                    len += extra_bytes_read;
+                                    
+                                    cursor += extra_bytes_read;
+
+                                }
+                                else{
+                                // bio_read couldn't fetch data
+
+                                    if(BIO_should_retry(c_bio)){
+                                    // no data available yet
+
+                                        continue;
 
                                     }
                                     else{
-                                    // bio_read couldn't fetch extra data
+                                    // an actual errror occurred
 
                                         // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                         unblock_sigpipe_signal();
@@ -7509,31 +7478,15 @@ bool lock_client_nb::basic_read(){
                                         fail_ws_connection(GOING_AWAY);
 
                                         return error;
-
+                                        
                                     }
-                                
+
                                 }
 
-                                // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                                unblock_sigpipe_signal();
-
                             }
-                            else{
-                            // bio_read didn't fetch any more data so we fail the connection
-                                
-                                // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                                unblock_sigpipe_signal();
 
-                                // here bio_read couldn't fetch any extra data
-                                strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                error = true;
-
-                                fail_ws_connection(GOING_AWAY);
-
-                                return error;
-
-                            }
+                            // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
+                            unblock_sigpipe_signal();
                         
                             (void)recv_data(data_array, length_of_array_data, length_of_array); // call the receive function to handle the received data
                             
@@ -7573,28 +7526,32 @@ bool lock_client_nb::basic_read(){
                         
                             // SIGPIPE signal is still blocked
 
-                            int64_t len = BIO_read(c_bio, cursor, frame_data_len);
+                            int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
 
-                            if(len > 0){
-                            // bio_read fetched some extra bytes
-                            
-                                cursor += len;
+                            // we keep polling till we have read the entire frame
+                            while(len < frame_data_len){
                                 
-                                // test that all data was read in
-                                while(len < frame_data_len){
+                                int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
                                     
-                                    int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
-                                    
-                                    if(extra_bytes_read > 0){
-                                    // bio_read fetched extra data
+                                if(extra_bytes_read > 0){
+                                // bio_read fetched extra data
 
-                                        len += extra_bytes_read;
-                                        
-                                        cursor += extra_bytes_read;
+                                    len += extra_bytes_read;
+                                    
+                                    cursor += extra_bytes_read;
+
+                                }
+                                else{
+                                // bio_read couldn't fetch data
+
+                                    if(BIO_should_retry(c_bio)){
+                                    // no data available yet
+
+                                        continue;
 
                                     }
                                     else{
-                                    // bio_read couldn't fetch extra data
+                                    // an actual errror occurred
 
                                         // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                         unblock_sigpipe_signal();
@@ -7607,31 +7564,15 @@ bool lock_client_nb::basic_read(){
                                         fail_ws_connection(GOING_AWAY);
 
                                         return error;
-
+                                        
                                     }
-                                
+
                                 }
 
-                                // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                                unblock_sigpipe_signal();
-
                             }
-                            else{
-                            // bio_read didn't fetch any more data so we fail the connection
-                                
-                                // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                                unblock_sigpipe_signal();
 
-                                // here bio_read couldn't fetch any extra data
-                                strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                error = true;
-
-                                fail_ws_connection(GOING_AWAY);
-
-                                return error;
-
-                            }
+                            // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
+                            unblock_sigpipe_signal();
                         
                             (void)recv_data(data_array, length_of_array_data, length_of_array); // call the receive function to handle the received data
                             
@@ -7659,28 +7600,36 @@ bool lock_client_nb::basic_read(){
                     // getting here the SIGPIPE signal is still blocked
 
                     // read the next 2 bytes from c_bio to get the length
-                    if(BIO_read(c_bio, rand_bytes, 2) <= 0){
+                    while(BIO_read(c_bio, rand_bytes, 2) <= 0){
 
-                        // here bio_read couldn't fetch any extra data
-                        strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
+                        if(BIO_should_retry(c_bio)){
+                        // getting here the read request would block so we continue polling
 
-                        error = true;
+                            continue;
 
-                        // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                        unblock_sigpipe_signal();
-                        
-                        fail_ws_connection(GOING_AWAY); // fail the websocket connection
+                        }
+                        else{
+                            
+                            // here bio_read couldn't fetch any data
+                            strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
-                        return error;
+                            error = true;
+
+                            // we unblock the sigpipe signal because fail_ws_connection internally blocks it
+                            unblock_sigpipe_signal();
+                            
+                            fail_ws_connection(GOING_AWAY);
+                            // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
+                            
+                            return error;
+
+                        }
 
                     }
-                    else{
+                
+                    // SIGPIPE signal still remains blocked
                     
-                        // SIGPIPE signal still remains blocked
-                        
-                        frame_data_len = (rand_bytes[0] << 8) | rand_bytes[1];
-
-                    }
+                    frame_data_len = (rand_bytes[0] << 8) | rand_bytes[1];
                     
                 }
                 else if( rand_bytes[1] == 127 ){ // this would mean that the next 8 bytes is our length
@@ -7689,42 +7638,51 @@ bool lock_client_nb::basic_read(){
 
                     // read the next 8 bytes from c_bio to get our length
 
-                    if(!(BIO_read(c_bio, rand_bytes, 8) <= 0)){
-                    
-                        if((rand_bytes[0] & 128) != 0){ // most significant bit of most significant byte is set which is against protocol rules
+                    while(BIO_read(c_bio, rand_bytes, 8) <= 0){
+
+                        if(BIO_should_retry(c_bio)){
+                        // getting here the read request would block so we continue polling
+
+                            continue;
+
+                        }
+                        else{
                             
-                            strncpy(error_buffer, "Protocol error: Most significant bit of 64-bit frame length set", error_buffer_array_length);
-                            
+                            // here bio_read couldn't fetch any data
+                            strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
+
                             error = true;
 
-                            // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
+                            // we unblock the sigpipe signal because fail_ws_connection internally blocks it
                             unblock_sigpipe_signal();
                             
-                            fail_ws_connection(PROTOCOL_ERROR); // fail the websocket connection
-
-                            return error;
+                            fail_ws_connection(GOING_AWAY);
+                            // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
                             
+                            return error;
+
                         }
-                        
-                        // getting here the frame length was successfully read but the SIGPIPE signal still remains blocked
 
                     }
-                    else{
-                    // here bio_read couldn't fetch any extra data
 
-                        strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
+                    // getting here the frame length was successfully read but the SIGPIPE signal still remains blocked
+                
+                    if((rand_bytes[0] & 128) != 0){ // most significant bit of most significant byte is set which is against protocol rules
+                        
+                        strncpy(error_buffer, "Protocol error: Most significant bit of 64-bit frame length set", error_buffer_array_length);
+                        
                         error = true;
 
                         // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                         unblock_sigpipe_signal();
                         
-                        fail_ws_connection(GOING_AWAY); // fail the websocket connection
+                        fail_ws_connection(PROTOCOL_ERROR); // fail the websocket connection
 
                         return error;
-
+                        
                     }
-                    
+
+                    // geting here everything is fine
                     
                     // getting here there was no error fetching the frame length so we store it
                     frame_data_len =  (rand_bytes[0] << 56) | (rand_bytes[1] << 48) | rand_bytes[2] << 40 | rand_bytes[3] << 32 | rand_bytes[4] << 24 | rand_bytes[5] << 16 | rand_bytes[6] << 8 | rand_bytes[7];
@@ -7757,28 +7715,32 @@ bool lock_client_nb::basic_read(){
                     
                     // SIGPIPE signal is still blocked
 
-                    int64_t len = BIO_read(c_bio, cursor, frame_data_len);
+                    int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
 
-                    if(len > 0){
-                    // bio_read fetched some extra bytes
+                    // we keep polling till we have read the entire frame
+                    while(len < frame_data_len){
                     
-                        cursor += len;
-                        
-                        // test that all data was read in
-                        while(len < frame_data_len){
+                        int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
                             
-                            int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
-                            
-                            if(extra_bytes_read > 0){
-                            // bio_read fetched extra data
+                        if(extra_bytes_read > 0){
+                        // bio_read fetched extra data
 
-                                len += extra_bytes_read;
-                                
-                                cursor += extra_bytes_read;
+                            len += extra_bytes_read;
+                            
+                            cursor += extra_bytes_read;
+
+                        }
+                        else{
+                        // bio_read couldn't fetch data
+
+                            if(BIO_should_retry(c_bio)){
+                            // no data available yet
+
+                                continue;
 
                             }
                             else{
-                            // bio_read couldn't fetch extra data
+                            // an actual errror occurred
 
                                 // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                 unblock_sigpipe_signal();
@@ -7791,31 +7753,15 @@ bool lock_client_nb::basic_read(){
                                 fail_ws_connection(GOING_AWAY);
 
                                 return error;
-
+                                
                             }
-                          
+
                         }
 
-                        // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                        unblock_sigpipe_signal();
-
                     }
-                    else{
-                    // bio_read didn't fetch any more data so we fail the connection
-                        
-                        // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                        unblock_sigpipe_signal();
 
-                        // here bio_read couldn't fetch any extra data
-                        strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                        error = true;
-
-                        fail_ws_connection(GOING_AWAY);
-
-                        return error;
-
-                    }
+                    // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
+                    unblock_sigpipe_signal();
                     
                     // we don't call user's receive function here because the data is still incomplete
                     
@@ -7828,28 +7774,34 @@ bool lock_client_nb::basic_read(){
                     cursor = data_array;
                     length_of_array = size_of_allocated_data_memory;
                     
-                    int64_t len = BIO_read(c_bio, cursor, frame_data_len);
+                    // SIGPIPE signal is still blocked
 
-                    if(len > 0){
-                    // bio_read fetched some extra bytes
-                    
-                        cursor += len;
+                    int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
+
+                    // we keep polling till we have read the entire frame
+                    while(len < frame_data_len){
                         
-                        // test that all data was read in
-                        while(len < frame_data_len){
+                        int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
                             
-                            int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
-                            
-                            if(extra_bytes_read > 0){
-                            // bio_read fetched extra data
+                        if(extra_bytes_read > 0){
+                        // bio_read fetched extra data
 
-                                len += extra_bytes_read;
-                                
-                                cursor += extra_bytes_read;
+                            len += extra_bytes_read;
+                            
+                            cursor += extra_bytes_read;
+
+                        }
+                        else{
+                        // bio_read couldn't fetch data
+
+                            if(BIO_should_retry(c_bio)){
+                            // no data available yet
+
+                                continue;
 
                             }
                             else{
-                            // bio_read couldn't fetch extra data
+                            // an actual errror occurred
 
                                 // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                 unblock_sigpipe_signal();
@@ -7862,31 +7814,15 @@ bool lock_client_nb::basic_read(){
                                 fail_ws_connection(GOING_AWAY);
 
                                 return error;
-
+                                
                             }
-                          
+
                         }
 
-                        // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                        unblock_sigpipe_signal();
-
                     }
-                    else{
-                    // bio_read didn't fetch any more data so we fail the connection
-                        
-                        // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                        unblock_sigpipe_signal();
 
-                        // here bio_read couldn't fetch any extra data
-                        strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                        error = true;
-
-                        fail_ws_connection(GOING_AWAY);
-
-                        return error;
-
-                    }
+                    // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
+                    unblock_sigpipe_signal();
                     
                     // we don't call user's receive function here because the data is still incomplete
                     
@@ -7895,17 +7831,17 @@ bool lock_client_nb::basic_read(){
                 }
                 else{ // neither static nor already allocated memory is sufficient, so we check if memory has been allocated or not 
                     
-                    if( data_array_new == NULL ){ // memory has not been allocated
+                    if(data_array_new == NULL){ // memory has not been allocated
                         
-                        data_array_new = new(std::nothrow) char[frame_data_len + 1024]; // we allocate 1KB more than the frame length 
+                        data_array_new = new(std::nothrow) char[frame_data_len + 1024]; // we allocate 1KB more memory than is needed to store the frame so we could avoid some future memory allocations
             
                         if(data_array_new == NULL){
-                        
-                            close(FRAME_TOO_LARGE);
                             
-                            // no need to memset as no data has been copied at this point
+                            close(FRAME_TOO_LARGE); // close the WebSocket connection with a frame too large error
                             
-                            strncpy(error_buffer, "Error allocating heap memory for receiving first frame of continuous frame data...frame too large ", error_buffer_array_length);
+                            // no need to memset as no data has been written to the array at this point
+                            
+                            strncpy(error_buffer, "Error allocating heap memory for receiving single frame data...frame too large ", error_buffer_array_length);
                     
                             error = true;
 
@@ -7918,29 +7854,35 @@ bool lock_client_nb::basic_read(){
                             cursor = data_array;
                             size_of_allocated_data_memory = frame_data_len + 1024;
                             length_of_array = size_of_allocated_data_memory;
-                    
-                            int64_t len = BIO_read(c_bio, cursor, frame_data_len);
+                        
+                            // SIGPIPE signal is still blocked
 
-                            if(len > 0){
-                            // bio_read fetched some extra bytes
-                            
-                                cursor += len;
+                            int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
+
+                            // we keep polling till we have read the entire frame
+                            while(len < frame_data_len){
                                 
-                                // test that all data was read in
-                                while(len < frame_data_len){
+                                int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
                                     
-                                    int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
-                                    
-                                    if(extra_bytes_read > 0){
-                                    // bio_read fetched extra data
+                                if(extra_bytes_read > 0){
+                                // bio_read fetched extra data
 
-                                        len += extra_bytes_read;
-                                        
-                                        cursor += extra_bytes_read;
+                                    len += extra_bytes_read;
+                                    
+                                    cursor += extra_bytes_read;
+
+                                }
+                                else{
+                                // bio_read couldn't fetch data
+
+                                    if(BIO_should_retry(c_bio)){
+                                    // no data available yet
+
+                                        continue;
 
                                     }
                                     else{
-                                    // bio_read couldn't fetch extra data
+                                    // an actual errror occurred
 
                                         // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                         unblock_sigpipe_signal();
@@ -7953,87 +7895,77 @@ bool lock_client_nb::basic_read(){
                                         fail_ws_connection(GOING_AWAY);
 
                                         return error;
-
+                                        
                                     }
-                                
+
                                 }
 
-                                // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                                unblock_sigpipe_signal();
-
                             }
-                            else{
-                            // bio_read didn't fetch any more data so we fail the connection
-                                
-                                // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                                unblock_sigpipe_signal();
 
-                                // here bio_read couldn't fetch any extra data
-                                strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                error = true;
-
-                                fail_ws_connection(GOING_AWAY);
-
-                                return error;
-
-                            } 
+                            // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
+                            unblock_sigpipe_signal();
                         
-                            // we do not call user's receive function because data is still incomplete
-                            
+                            // we don't call user's receive function here because the data is still incomplete
+                    
                             // we do not zero out the data array because the data isn't yet complete
                     
                         }
                         
                     }
                     else{ // there is already allocated memory but it is not sufficient
-                    
+                        
                         delete [] data_array_new; //delete already allocated memory
-                    
-                        data_array_new = new(std::nothrow) char[frame_data_len + 1024]; // we allocate extra memory for future use
-            
-                        if(data_array_new == NULL){
+                        
+                        data_array_new = new(std::nothrow) char[frame_data_len + 1024]; // we allocate 1KB more memory than the data frame length just to get some extra spacing and avoid some memory allocation for future data frames
                 
-                            close(FRAME_TOO_LARGE);
+                        if(data_array_new == NULL){
                             
-                            // no need to memset as no data has been copied at this point
+                            close(FRAME_TOO_LARGE); // close the WebSocket connection with a frame too large error
+                                
+                            // no need to memset as no data has been written to the array at this point
                             
-                            strncpy(error_buffer, "Error allocating heap memory for receiving first frame of continuous frame data ", error_buffer_array_length);
-                    
+                            strncpy(error_buffer, "Error allocating heap memory for receiving single frame data after deleting previously allocated memory...frame too large", error_buffer_array_length);
+                        
                             error = true;
 
                             return error;
-                    
+                        
                         }
                         else{
-                        
+                            
                             data_array = data_array_new;
                             cursor = data_array;
                             size_of_allocated_data_memory = frame_data_len + 1024;
                             length_of_array = size_of_allocated_data_memory;
-                    
-                            int64_t len = BIO_read(c_bio, cursor, frame_data_len);
+                        
+                            // SIGPIPE signal is still blocked
 
-                            if(len > 0){
-                            // bio_read fetched some extra bytes
-                            
-                                cursor += len;
+                            int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
+
+                            // we keep polling till we have read the entire frame
+                            while(len < frame_data_len){
                                 
-                                // test that all data was read in
-                                while(len < frame_data_len){
+                                int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
                                     
-                                    int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
-                                    
-                                    if(extra_bytes_read > 0){
-                                    // bio_read fetched extra data
+                                if(extra_bytes_read > 0){
+                                // bio_read fetched extra data
 
-                                        len += extra_bytes_read;
-                                        
-                                        cursor += extra_bytes_read;
+                                    len += extra_bytes_read;
+                                    
+                                    cursor += extra_bytes_read;
+
+                                }
+                                else{
+                                // bio_read couldn't fetch data
+
+                                    if(BIO_should_retry(c_bio)){
+                                    // no data available yet
+
+                                        continue;
 
                                     }
                                     else{
-                                    // bio_read couldn't fetch extra data
+                                    // an actual errror occurred
 
                                         // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                         unblock_sigpipe_signal();
@@ -8046,34 +7978,18 @@ bool lock_client_nb::basic_read(){
                                         fail_ws_connection(GOING_AWAY);
 
                                         return error;
-
+                                        
                                     }
-                                
+
                                 }
 
-                                // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                                unblock_sigpipe_signal();
-
                             }
-                            else{
-                            // bio_read didn't fetch any more data so we fail the connection
-                                
-                                // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                                unblock_sigpipe_signal();
 
-                                // here bio_read couldn't fetch any extra data
-                                strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                error = true;
-
-                                fail_ws_connection(GOING_AWAY);
-
-                                return error;
-
-                            }
-                    
-                            // we don't call user's receive function here because the data is still incomplete
+                            // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
+                            unblock_sigpipe_signal();
                         
+                            // we don't call user's receive function here because the data is still incomplete
+                    
                             // we do not zero out the data array because the data isn't yet complete
                     
                         }
@@ -8096,28 +8012,36 @@ bool lock_client_nb::basic_read(){
                     // getting here the SIGPIPE signal is still blocked
 
                     // read the next 2 bytes from c_bio to get the length
-                    if(BIO_read(c_bio, rand_bytes, 2) <= 0){
+                    while(BIO_read(c_bio, rand_bytes, 2) <= 0){
 
-                        // here bio_read couldn't fetch any extra data
-                        strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
+                        if(BIO_should_retry(c_bio)){
+                        // getting here the read request would block so we continue polling
 
-                        error = true;
+                            continue;
 
-                        // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                        unblock_sigpipe_signal();
-                        
-                        fail_ws_connection(GOING_AWAY); // fail the websocket connection
+                        }
+                        else{
+                            
+                            // here bio_read couldn't fetch any data
+                            strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
-                        return error;
+                            error = true;
+
+                            // we unblock the sigpipe signal because fail_ws_connection internally blocks it
+                            unblock_sigpipe_signal();
+                            
+                            fail_ws_connection(GOING_AWAY);
+                            // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
+                            
+                            return error;
+
+                        }
 
                     }
-                    else{
+                
+                    // SIGPIPE signal still remains blocked
                     
-                        // SIGPIPE signal still remains blocked
-                        
-                        frame_data_len = (rand_bytes[0] << 8) | rand_bytes[1];
-
-                    }
+                    frame_data_len = (rand_bytes[0] << 8) | rand_bytes[1];
                     
                 }
                 else if( rand_bytes[1] == 127 ){ // this would mean that the next 8 bytes is our length
@@ -8126,42 +8050,51 @@ bool lock_client_nb::basic_read(){
 
                     // read the next 8 bytes from c_bio to get our length
 
-                    if(!(BIO_read(c_bio, rand_bytes, 8) <= 0)){
-                    
-                        if((rand_bytes[0] & 128) != 0){ // most significant bit of most significant byte is set which is against protocol rules
+                    while(BIO_read(c_bio, rand_bytes, 8) <= 0){
+
+                        if(BIO_should_retry(c_bio)){
+                        // getting here the read request would block so we continue polling
+
+                            continue;
+
+                        }
+                        else{
                             
-                            strncpy(error_buffer, "Protocol error: Most significant bit of 64-bit frame length set", error_buffer_array_length);
-                            
+                            // here bio_read couldn't fetch any data
+                            strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
+
                             error = true;
 
-                            // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
+                            // we unblock the sigpipe signal because fail_ws_connection internally blocks it
                             unblock_sigpipe_signal();
                             
-                            fail_ws_connection(PROTOCOL_ERROR); // fail the websocket connection
-
-                            return error;
+                            fail_ws_connection(GOING_AWAY);
+                            // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
                             
+                            return error;
+
                         }
-                        
-                        // getting here the frame length was successfully read but the SIGPIPE signal still remains blocked
 
                     }
-                    else{
-                    // here bio_read couldn't fetch any extra data
 
-                        strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
+                    // getting here the frame length was successfully read but the SIGPIPE signal still remains blocked
+                
+                    if((rand_bytes[0] & 128) != 0){ // most significant bit of most significant byte is set which is against protocol rules
+                        
+                        strncpy(error_buffer, "Protocol error: Most significant bit of 64-bit frame length set", error_buffer_array_length);
+                        
                         error = true;
 
                         // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                         unblock_sigpipe_signal();
                         
-                        fail_ws_connection(GOING_AWAY); // fail the websocket connection
+                        fail_ws_connection(PROTOCOL_ERROR); // fail the websocket connection
 
                         return error;
-
+                        
                     }
-                    
+
+                    // geting here everything is fine
                     
                     // getting here there was no error fetching the frame length so we store it
                     frame_data_len =  (rand_bytes[0] << 56) | (rand_bytes[1] << 48) | rand_bytes[2] << 40 | rand_bytes[3] << 32 | rand_bytes[4] << 24 | rand_bytes[5] << 16 | rand_bytes[6] << 8 | rand_bytes[7];
@@ -8191,28 +8124,32 @@ bool lock_client_nb::basic_read(){
                     
                     // SIGPIPE signal is still blocked
 
-                    int64_t len = BIO_read(c_bio, cursor, frame_data_len);
+                    int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
 
-                    if(len > 0){
-                    // bio_read fetched some extra bytes
+                    // we keep polling till we have read the entire frame
+                    while(len < frame_data_len){
                     
-                        cursor += len;
-                        
-                        // test that all data was read in
-                        while(len < frame_data_len){
+                        int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
                             
-                            int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
-                            
-                            if(extra_bytes_read > 0){
-                            // bio_read fetched extra data
+                        if(extra_bytes_read > 0){
+                        // bio_read fetched extra data
 
-                                len += extra_bytes_read;
-                                
-                                cursor += extra_bytes_read;
+                            len += extra_bytes_read;
+                            
+                            cursor += extra_bytes_read;
+
+                        }
+                        else{
+                        // bio_read couldn't fetch data
+
+                            if(BIO_should_retry(c_bio)){
+                            // no data available yet
+
+                                continue;
 
                             }
                             else{
-                            // bio_read couldn't fetch extra data
+                            // an actual errror occurred
 
                                 // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                 unblock_sigpipe_signal();
@@ -8225,33 +8162,19 @@ bool lock_client_nb::basic_read(){
                                 fail_ws_connection(GOING_AWAY);
 
                                 return error;
-
+                                
                             }
-                          
+
                         }
 
-                        // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                        unblock_sigpipe_signal();
-
                     }
-                    else{
-                    // bio_read didn't fetch any more data so we fail the connection
-                        
-                        // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                        unblock_sigpipe_signal();
 
-                        // here bio_read couldn't fetch any extra data
-                        strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                        error = true;
-
-                        fail_ws_connection(GOING_AWAY);
-
-                        return error;
-
-                    }
+                    // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
+                    unblock_sigpipe_signal();
                     
-                    // Don't call user's receive function 
+                    // we don't call user's receive function here because the data is still incomplete
+                    
+                    // we do not zero out the data array because the data isn't yet complete
                         
                     
                 }
@@ -8269,28 +8192,32 @@ bool lock_client_nb::basic_read(){
                     
                     // SIGPIPE signal is still blocked
 
-                    int64_t len = BIO_read(c_bio, cursor, frame_data_len);
+                    int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
 
-                    if(len > 0){
-                    // bio_read fetched some extra bytes
+                    // we keep polling till we have read the entire frame
+                    while(len < frame_data_len){
                     
-                        cursor += len;
-                        
-                        // test that all data was read in
-                        while(len < frame_data_len){
+                        int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
                             
-                            int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
-                            
-                            if(extra_bytes_read > 0){
-                            // bio_read fetched extra data
+                        if(extra_bytes_read > 0){
+                        // bio_read fetched extra data
 
-                                len += extra_bytes_read;
-                                
-                                cursor += extra_bytes_read;
+                            len += extra_bytes_read;
+                            
+                            cursor += extra_bytes_read;
+
+                        }
+                        else{
+                        // bio_read couldn't fetch data
+
+                            if(BIO_should_retry(c_bio)){
+                            // no data available yet
+
+                                continue;
 
                             }
                             else{
-                            // bio_read couldn't fetch extra data
+                            // an actual errror occurred
 
                                 // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                 unblock_sigpipe_signal();
@@ -8303,39 +8230,24 @@ bool lock_client_nb::basic_read(){
                                 fail_ws_connection(GOING_AWAY);
 
                                 return error;
-
+                                
                             }
-                          
+
                         }
 
-                        // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                        unblock_sigpipe_signal();
-
                     }
-                    else{
-                    // bio_read didn't fetch any more data so we fail the connection
-                        
-                        // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                        unblock_sigpipe_signal();
 
-                        // here bio_read couldn't fetch any extra data
-                        strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                        error = true;
-
-                        fail_ws_connection(GOING_AWAY);
-
-                        return error;
-
-                    }
+                    // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
+                    unblock_sigpipe_signal();
                     
-                    // we do not call user's receive function here
+                    // we don't call user's receive function here because the data is still incomplete
+                    
+                    // we do not zero out the data array because the data isn't yet complete
                     
                 }
-                else if( (data_array == data_array_static) && ( (length_of_array_data + frame_data_len) > size_of_allocated_data_memory) ){ // there are two parts to this condition, either memory has been allocated of memory has not been allocated 
+                else if( (data_array == data_array_static) && ( (length_of_array_data + frame_data_len) > size_of_allocated_data_memory) ){ // there are two parts to this condition, either memory has been allocated of memory has not been allocated
                     
-                    
-                    if( data_array_new == NULL ){ // memory has not been allocated
+                    if(data_array_new == NULL){ // memory has not been allocated
                         
                         data_array_new = new(std::nothrow) char[length_of_array_data + frame_data_len + 1024]; // allocate memory 1KB bigger than the length of array data + the length of the incoming continuation frame
             
@@ -8369,28 +8281,32 @@ bool lock_client_nb::basic_read(){
                             
                             // SIGPIPE signal is still blocked
 
-                            int64_t len = BIO_read(c_bio, cursor, frame_data_len);
+                            int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
 
-                            if(len > 0){
-                            // bio_read fetched some extra bytes
+                            // we keep polling till we have read the entire frame
+                            while(len < frame_data_len){
                             
-                                cursor += len;
-                                
-                                // test that all data was read in
-                                while(len < frame_data_len){
+                                int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
                                     
-                                    int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
-                                    
-                                    if(extra_bytes_read > 0){
-                                    // bio_read fetched extra data
+                                if(extra_bytes_read > 0){
+                                // bio_read fetched extra data
 
-                                        len += extra_bytes_read;
-                                        
-                                        cursor += extra_bytes_read;
+                                    len += extra_bytes_read;
+                                    
+                                    cursor += extra_bytes_read;
+
+                                }
+                                else{
+                                // bio_read couldn't fetch data
+
+                                    if(BIO_should_retry(c_bio)){
+                                    // no data available yet
+
+                                        continue;
 
                                     }
                                     else{
-                                    // bio_read couldn't fetch extra data
+                                    // an actual errror occurred
 
                                         // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                         unblock_sigpipe_signal();
@@ -8403,34 +8319,18 @@ bool lock_client_nb::basic_read(){
                                         fail_ws_connection(GOING_AWAY);
 
                                         return error;
-
+                                        
                                     }
-                                
+
                                 }
 
-                                // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                                unblock_sigpipe_signal();
-
                             }
-                            else{
-                            // bio_read didn't fetch any more data so we fail the connection
-                                
-                                // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                                unblock_sigpipe_signal();
 
-                                // here bio_read couldn't fetch any extra data
-                                strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                error = true;
-
-                                fail_ws_connection(GOING_AWAY);
-
-                                return error;
-
-                            }
-                        
-                            // we do not call the user's receive function here as the data isn't yet complete
-                        
+                            // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
+                            unblock_sigpipe_signal();
+                            
+                            // we don't call user's receive function here because the data is still incomplete
+                            
                             // we do not zero out the data array because the data isn't yet complete
                     
                         }
@@ -8438,7 +8338,7 @@ bool lock_client_nb::basic_read(){
                     }
                     else{ // there is already allocated memory but it is not sufficient
                         
-                        delete [] data_array_new; //delete already allocated memory
+                        delete [] data_array_new; // delete already allocated memory
                         
                         data_array_new = new(std::nothrow) char[length_of_array_data + frame_data_len + 1024]; // make the new array 1KB bigger than the previous array length + the incoming continuaton frame length
                         
@@ -8472,28 +8372,32 @@ bool lock_client_nb::basic_read(){
                             
                             // SIGPIPE signal is still blocked
 
-                            int64_t len = BIO_read(c_bio, cursor, frame_data_len);
+                            int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
 
-                            if(len > 0){
-                            // bio_read fetched some extra bytes
+                            // we keep polling till we have read the entire frame
+                            while(len < frame_data_len){
                             
-                                cursor += len;
-                                
-                                // test that all data was read in
-                                while(len < frame_data_len){
+                                int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
                                     
-                                    int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
-                                    
-                                    if(extra_bytes_read > 0){
-                                    // bio_read fetched extra data
+                                if(extra_bytes_read > 0){
+                                // bio_read fetched extra data
 
-                                        len += extra_bytes_read;
-                                        
-                                        cursor += extra_bytes_read;
+                                    len += extra_bytes_read;
+                                    
+                                    cursor += extra_bytes_read;
+
+                                }
+                                else{
+                                // bio_read couldn't fetch data
+
+                                    if(BIO_should_retry(c_bio)){
+                                    // no data available yet
+
+                                        continue;
 
                                     }
                                     else{
-                                    // bio_read couldn't fetch extra data
+                                    // an actual errror occurred
 
                                         // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                         unblock_sigpipe_signal();
@@ -8506,33 +8410,17 @@ bool lock_client_nb::basic_read(){
                                         fail_ws_connection(GOING_AWAY);
 
                                         return error;
-
+                                        
                                     }
-                                
+
                                 }
 
-                                // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                                unblock_sigpipe_signal();
-
                             }
-                            else{
-                            // bio_read didn't fetch any more data so we fail the connection
-                                
-                                // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                                unblock_sigpipe_signal();
 
-                                // here bio_read couldn't fetch any extra data
-                                strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                error = true;
-
-                                fail_ws_connection(GOING_AWAY);
-
-                                return error;
-
-                            }
-                        
-                            // we do not call user's receive function here
+                            // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
+                            unblock_sigpipe_signal();
+                            
+                            // we don't call user's receive function here because the data is still incomplete
                             
                             // we do not zero out the data array because the data isn't yet complete
                     
@@ -8576,28 +8464,32 @@ bool lock_client_nb::basic_read(){
                         
                         // SIGPIPE signal is still blocked
 
-                        int64_t len = BIO_read(c_bio, cursor, frame_data_len);
+                        int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
 
-                        if(len > 0){
-                        // bio_read fetched some extra bytes
+                        // we keep polling till we have read the entire frame
+                        while(len < frame_data_len){
                         
-                            cursor += len;
-                            
-                            // test that all data was read in
-                            while(len < frame_data_len){
+                            int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
                                 
-                                int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
-                                
-                                if(extra_bytes_read > 0){
-                                // bio_read fetched extra data
+                            if(extra_bytes_read > 0){
+                            // bio_read fetched extra data
 
-                                    len += extra_bytes_read;
-                                    
-                                    cursor += extra_bytes_read;
+                                len += extra_bytes_read;
+                                
+                                cursor += extra_bytes_read;
+
+                            }
+                            else{
+                            // bio_read couldn't fetch data
+
+                                if(BIO_should_retry(c_bio)){
+                                // no data available yet
+
+                                    continue;
 
                                 }
                                 else{
-                                // bio_read couldn't fetch extra data
+                                // an actual errror occurred
 
                                     // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                     unblock_sigpipe_signal();
@@ -8610,33 +8502,17 @@ bool lock_client_nb::basic_read(){
                                     fail_ws_connection(GOING_AWAY);
 
                                     return error;
-
+                                    
                                 }
-                            
+
                             }
 
-                            // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                            unblock_sigpipe_signal();
-
                         }
-                        else{
-                        // bio_read didn't fetch any more data so we fail the connection
-                            
-                            // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                            unblock_sigpipe_signal();
 
-                            // here bio_read couldn't fetch any extra data
-                            strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                            error = true;
-
-                            fail_ws_connection(GOING_AWAY);
-
-                            return error;
-
-                        }
-                    
-                        // we do not call user's receive function here
+                        // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
+                        unblock_sigpipe_signal();
+                        
+                        // we don't call user's receive function here because the data is still incomplete
                         
                         // we do not zero out the data array because the data isn't yet complete
                     
@@ -8658,28 +8534,36 @@ bool lock_client_nb::basic_read(){
                     // getting here the SIGPIPE signal is still blocked
 
                     // read the next 2 bytes from c_bio to get the length
-                    if(BIO_read(c_bio, rand_bytes, 2) <= 0){
+                    while(BIO_read(c_bio, rand_bytes, 2) <= 0){
 
-                        // here bio_read couldn't fetch any extra data
-                        strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
+                        if(BIO_should_retry(c_bio)){
+                        // getting here the read request would block so we continue polling
 
-                        error = true;
+                            continue;
 
-                        // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                        unblock_sigpipe_signal();
-                        
-                        fail_ws_connection(GOING_AWAY); // fail the websocket connection
+                        }
+                        else{
+                            
+                            // here bio_read couldn't fetch any data
+                            strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
-                        return error;
+                            error = true;
+
+                            // we unblock the sigpipe signal because fail_ws_connection internally blocks it
+                            unblock_sigpipe_signal();
+                            
+                            fail_ws_connection(GOING_AWAY);
+                            // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
+                            
+                            return error;
+
+                        }
 
                     }
-                    else{
+                
+                    // SIGPIPE signal still remains blocked
                     
-                        // SIGPIPE signal still remains blocked
-                        
-                        frame_data_len = (rand_bytes[0] << 8) | rand_bytes[1];
-
-                    }
+                    frame_data_len = (rand_bytes[0] << 8) | rand_bytes[1];
                     
                 }
                 else if( rand_bytes[1] == 127 ){ // this would mean that the next 8 bytes is our length
@@ -8688,42 +8572,51 @@ bool lock_client_nb::basic_read(){
 
                     // read the next 8 bytes from c_bio to get our length
 
-                    if(!(BIO_read(c_bio, rand_bytes, 8) <= 0)){
-                    
-                        if((rand_bytes[0] & 128) != 0){ // most significant bit of most significant byte is set which is against protocol rules
+                    while(BIO_read(c_bio, rand_bytes, 8) <= 0){
+
+                        if(BIO_should_retry(c_bio)){
+                        // getting here the read request would block so we continue polling
+
+                            continue;
+
+                        }
+                        else{
                             
-                            strncpy(error_buffer, "Protocol error: Most significant bit of 64-bit frame length set", error_buffer_array_length);
-                            
+                            // here bio_read couldn't fetch any data
+                            strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
+
                             error = true;
 
-                            // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
+                            // we unblock the sigpipe signal because fail_ws_connection internally blocks it
                             unblock_sigpipe_signal();
                             
-                            fail_ws_connection(PROTOCOL_ERROR); // fail the websocket connection
-
-                            return error;
+                            fail_ws_connection(GOING_AWAY);
+                            // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
                             
+                            return error;
+
                         }
-                        
-                        // getting here the frame length was successfully read but the SIGPIPE signal still remains blocked
 
                     }
-                    else{
-                    // here bio_read couldn't fetch any extra data
 
-                        strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
+                    // getting here the frame length was successfully read but the SIGPIPE signal still remains blocked
+                
+                    if((rand_bytes[0] & 128) != 0){ // most significant bit of most significant byte is set which is against protocol rules
+                        
+                        strncpy(error_buffer, "Protocol error: Most significant bit of 64-bit frame length set", error_buffer_array_length);
+                        
                         error = true;
 
                         // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                         unblock_sigpipe_signal();
                         
-                        fail_ws_connection(GOING_AWAY); // fail the websocket connection
+                        fail_ws_connection(PROTOCOL_ERROR); // fail the websocket connection
 
                         return error;
-
+                        
                     }
-                    
+
+                    // geting here everything is fine
                     
                     // getting here there was no error fetching the frame length so we store it
                     frame_data_len =  (rand_bytes[0] << 56) | (rand_bytes[1] << 48) | rand_bytes[2] << 40 | rand_bytes[3] << 32 | rand_bytes[4] << 24 | rand_bytes[5] << 16 | rand_bytes[6] << 8 | rand_bytes[7];
@@ -8751,28 +8644,32 @@ bool lock_client_nb::basic_read(){
                     
                     // SIGPIPE signal is still blocked
 
-                    int64_t len = BIO_read(c_bio, cursor, frame_data_len);
+                    int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
 
-                    if(len > 0){
-                    // bio_read fetched some extra bytes
+                    // we keep polling till we have read the entire frame
+                    while(len < frame_data_len){
                     
-                        cursor += len;
-                        
-                        // test that all data was read in
-                        while(len < frame_data_len){
+                        int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
                             
-                            int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
-                            
-                            if(extra_bytes_read > 0){
-                            // bio_read fetched extra data
+                        if(extra_bytes_read > 0){
+                        // bio_read fetched extra data
 
-                                len += extra_bytes_read;
-                                
-                                cursor += extra_bytes_read;
+                            len += extra_bytes_read;
+                            
+                            cursor += extra_bytes_read;
+
+                        }
+                        else{
+                        // bio_read couldn't fetch data
+
+                            if(BIO_should_retry(c_bio)){
+                            // no data available yet
+
+                                continue;
 
                             }
                             else{
-                            // bio_read couldn't fetch extra data
+                            // an actual errror occurred
 
                                 // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                 unblock_sigpipe_signal();
@@ -8785,31 +8682,15 @@ bool lock_client_nb::basic_read(){
                                 fail_ws_connection(GOING_AWAY);
 
                                 return error;
-
+                                
                             }
-                          
+
                         }
 
-                        // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                        unblock_sigpipe_signal();
-
                     }
-                    else{
-                    // bio_read didn't fetch any more data so we fail the connection
-                        
-                        // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                        unblock_sigpipe_signal();
 
-                        // here bio_read couldn't fetch any extra data
-                        strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                        error = true;
-
-                        fail_ws_connection(GOING_AWAY);
-
-                        return error;
-
-                    }
+                    // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
+                    unblock_sigpipe_signal();
                     
                     // getting here would mean we did not encounter any error in receiving the frame data because if we did the websocket connection would have been failed
 
@@ -8837,28 +8718,32 @@ bool lock_client_nb::basic_read(){
                     
                     // SIGPIPE signal is still blocked
 
-                    int64_t len = BIO_read(c_bio, cursor, frame_data_len);
+                    int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
 
-                    if(len > 0){
-                    // bio_read fetched some extra bytes
+                    // we keep polling till we have read the entire frame
+                    while(len < frame_data_len){
                     
-                        cursor += len;
-                        
-                        // test that all data was read in
-                        while(len < frame_data_len){
+                        int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
                             
-                            int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
-                            
-                            if(extra_bytes_read > 0){
-                            // bio_read fetched extra data
+                        if(extra_bytes_read > 0){
+                        // bio_read fetched extra data
 
-                                len += extra_bytes_read;
-                                
-                                cursor += extra_bytes_read;
+                            len += extra_bytes_read;
+                            
+                            cursor += extra_bytes_read;
+
+                        }
+                        else{
+                        // bio_read couldn't fetch data
+
+                            if(BIO_should_retry(c_bio)){
+                            // no data available yet
+
+                                continue;
 
                             }
                             else{
-                            // bio_read couldn't fetch extra data
+                            // an actual errror occurred
 
                                 // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                 unblock_sigpipe_signal();
@@ -8871,31 +8756,15 @@ bool lock_client_nb::basic_read(){
                                 fail_ws_connection(GOING_AWAY);
 
                                 return error;
-
+                                
                             }
-                          
+
                         }
 
-                        // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                        unblock_sigpipe_signal();
-
                     }
-                    else{
-                    // bio_read didn't fetch any more data so we fail the connection
-                        
-                        // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                        unblock_sigpipe_signal();
 
-                        // here bio_read couldn't fetch any extra data
-                        strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                        error = true;
-
-                        fail_ws_connection(GOING_AWAY);
-
-                        return error;
-
-                    }
+                    // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
+                    unblock_sigpipe_signal();
                     
                     // getting here would mean we did not encounter any error in receiving the frame data because if we did the websocket connection would have been failed
                     
@@ -8910,7 +8779,6 @@ bool lock_client_nb::basic_read(){
                     
                 }
                 else if( (data_array == data_array_static) && ( (length_of_array_data + frame_data_len) > size_of_allocated_data_memory) ){ // there are two parts to this condition, either memory has been allocated of memory has not been allocated 
-                    
                     
                     if(data_array_new == NULL){ // memory has not been allocated
                         
@@ -8946,28 +8814,32 @@ bool lock_client_nb::basic_read(){
                             
                             // SIGPIPE signal is still blocked
 
-                            int64_t len = BIO_read(c_bio, cursor, frame_data_len);
+                            int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
 
-                            if(len > 0){
-                            // bio_read fetched some extra bytes
+                            // we keep polling till we have read the entire frame
+                            while(len < frame_data_len){
                             
-                                cursor += len;
-                                
-                                // test that all data was read in
-                                while(len < frame_data_len){
+                                int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
                                     
-                                    int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
-                                    
-                                    if(extra_bytes_read > 0){
-                                    // bio_read fetched extra data
+                                if(extra_bytes_read > 0){
+                                // bio_read fetched extra data
 
-                                        len += extra_bytes_read;
-                                        
-                                        cursor += extra_bytes_read;
+                                    len += extra_bytes_read;
+                                    
+                                    cursor += extra_bytes_read;
+
+                                }
+                                else{
+                                // bio_read couldn't fetch data
+
+                                    if(BIO_should_retry(c_bio)){
+                                    // no data available yet
+
+                                        continue;
 
                                     }
                                     else{
-                                    // bio_read couldn't fetch extra data
+                                    // an actual errror occurred
 
                                         // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                         unblock_sigpipe_signal();
@@ -8980,31 +8852,15 @@ bool lock_client_nb::basic_read(){
                                         fail_ws_connection(GOING_AWAY);
 
                                         return error;
-
+                                        
                                     }
-                                
+
                                 }
 
-                                // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                                unblock_sigpipe_signal();
-
                             }
-                            else{
-                            // bio_read didn't fetch any more data so we fail the connection
-                                
-                                // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                                unblock_sigpipe_signal();
 
-                                // here bio_read couldn't fetch any extra data
-                                strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                error = true;
-
-                                fail_ws_connection(GOING_AWAY);
-
-                                return error;
-
-                            }
+                            // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
+                            unblock_sigpipe_signal();
                             
                             // getting here would mean we did not encounter any error in receiving the frame data because if we did the websocket connection would have been failed
                             
@@ -9056,28 +8912,32 @@ bool lock_client_nb::basic_read(){
                             
                             // SIGPIPE signal is still blocked
 
-                            int64_t len = BIO_read(c_bio, cursor, frame_data_len);
+                            int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
 
-                            if(len > 0){
-                            // bio_read fetched some extra bytes
+                            // we keep polling till we have read the entire frame
+                            while(len < frame_data_len){
                             
-                                cursor += len;
-                                
-                                // test that all data was read in
-                                while(len < frame_data_len){
+                                int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
                                     
-                                    int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
-                                    
-                                    if(extra_bytes_read > 0){
-                                    // bio_read fetched extra data
+                                if(extra_bytes_read > 0){
+                                // bio_read fetched extra data
 
-                                        len += extra_bytes_read;
-                                        
-                                        cursor += extra_bytes_read;
+                                    len += extra_bytes_read;
+                                    
+                                    cursor += extra_bytes_read;
+
+                                }
+                                else{
+                                // bio_read couldn't fetch data
+
+                                    if(BIO_should_retry(c_bio)){
+                                    // no data available yet
+
+                                        continue;
 
                                     }
                                     else{
-                                    // bio_read couldn't fetch extra data
+                                    // an actual errror occurred
 
                                         // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                         unblock_sigpipe_signal();
@@ -9090,32 +8950,15 @@ bool lock_client_nb::basic_read(){
                                         fail_ws_connection(GOING_AWAY);
 
                                         return error;
-
+                                        
                                     }
-                                
+
                                 }
 
-                                // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                                unblock_sigpipe_signal();
-
                             }
-                            else{
-                            // bio_read didn't fetch any more data so we fail the connection
-                                
-                                // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                                unblock_sigpipe_signal();
 
-                                // here bio_read couldn't fetch any extra data
-                                strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                error = true;
-
-                                fail_ws_connection(GOING_AWAY);
-
-                                return error;
-
-                            }
-                            
+                            // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
+                            unblock_sigpipe_signal();
                             // getting here would mean we did not encounter any error in receiving the frame data because if we did the websocket connection would have been failed
                             
                             // update the array data length
@@ -9132,7 +8975,6 @@ bool lock_client_nb::basic_read(){
                     }
                     
                 }
-                
                 else{ // dynamic memory already in use but it is not sufficient for incoming continuation frame
                     
                     char* local_data_array_new = new(std::nothrow) char[length_of_array_data + frame_data_len + 1024]; // make the new array 1KB bigger than the previous array size + the incoming continuation frame
@@ -9168,28 +9010,32 @@ bool lock_client_nb::basic_read(){
                         
                         // SIGPIPE signal is still blocked
 
-                        int64_t len = BIO_read(c_bio, cursor, frame_data_len);
+                        int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
 
-                        if(len > 0){
-                        // bio_read fetched some extra bytes
+                        // we keep polling till we have read the entire frame
+                        while(len < frame_data_len){
                         
-                            cursor += len;
-                            
-                            // test that all data was read in
-                            while(len < frame_data_len){
+                            int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
                                 
-                                int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
-                                
-                                if(extra_bytes_read > 0){
-                                // bio_read fetched extra data
+                            if(extra_bytes_read > 0){
+                            // bio_read fetched extra data
 
-                                    len += extra_bytes_read;
-                                    
-                                    cursor += extra_bytes_read;
+                                len += extra_bytes_read;
+                                
+                                cursor += extra_bytes_read;
+
+                            }
+                            else{
+                            // bio_read couldn't fetch data
+
+                                if(BIO_should_retry(c_bio)){
+                                // no data available yet
+
+                                    continue;
 
                                 }
                                 else{
-                                // bio_read couldn't fetch extra data
+                                // an actual errror occurred
 
                                     // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                     unblock_sigpipe_signal();
@@ -9202,31 +9048,15 @@ bool lock_client_nb::basic_read(){
                                     fail_ws_connection(GOING_AWAY);
 
                                     return error;
-
+                                    
                                 }
-                            
+
                             }
 
-                            // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                            unblock_sigpipe_signal();
-
                         }
-                        else{
-                        // bio_read didn't fetch any more data so we fail the connection
-                            
-                            // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                            unblock_sigpipe_signal();
 
-                            // here bio_read couldn't fetch any extra data
-                            strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                            error = true;
-
-                            fail_ws_connection(GOING_AWAY);
-
-                            return error;
-
-                        }
+                        // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
+                        unblock_sigpipe_signal();
                         
                         // getting here would mean we did not encounter any error in receiving the frame data because if we did the websocket connection would have been failed
                         
@@ -9270,36 +9100,64 @@ bool lock_client_nb::basic_read(){
                     // getting here would mean that no error was encountered
                     
                     frame_data_len = rand_bytes[1];
+                    
+                    int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
+
+                    // point the upgrade request pointer to the upgrade request static array
+                    upgrade_request = upgrade_request_static;
 
                     // read in the ping frame data, we use the upgrade request static array because it isn't currently in use by the program
-                    if(BIO_read(c_bio, upgrade_request_static, frame_data_len) <= 0){
-                    // there was an error reading in the ping frame data
 
-                        // here bio_read couldn't fetch any data
-                        strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                        error = true;
-
-                        // we unblock the sigpipe signal because fail_ws_connection internally blocks it
-                        unblock_sigpipe_signal();
-                        
-                        fail_ws_connection(GOING_AWAY);
-                        // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
-                        
-                        return error;
-
-                    }
-                    else{
-                    // no error reading the ping frame data so we send the response pong frame
-
-                        // we unblock the SIGPIPE signal because the pong function internally blocks it
-                        unblock_sigpipe_signal();
+                    // we keep polling till we have read the entire frame
+                    while(len < frame_data_len){
                     
-                        // the num_of_pings_received variable is set back to 0 in the pong function
-                        pong(frame_data_len);
+                        int64_t extra_bytes_read = BIO_read(c_bio, upgrade_request, frame_data_len - len);
+                            
+                        if(extra_bytes_read > 0){
+                        // bio_read fetched extra data
 
-                
+                            len += extra_bytes_read;
+                            
+                            upgrade_request += extra_bytes_read;
+
+                        }
+                        else{
+                        // bio_read couldn't fetch data
+
+                            if(BIO_should_retry(c_bio)){
+                            // no data available yet
+
+                                continue;
+
+                            }
+                            else{
+                            // an actual errror occurred
+
+                                // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
+                                unblock_sigpipe_signal();
+
+                                // here bio_read couldn't fetch any extra data
+                                strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
+
+                                error = true;
+
+                                fail_ws_connection(GOING_AWAY);
+
+                                return error;
+                                
+                            }
+
+                        }
+
                     }
+
+                    // getting here the ping frame payload data has been fetched
+
+                    // we unblock the SIGPIPE signal because the pong function internally blocks it
+                    unblock_sigpipe_signal();
+                
+                    // send a pong frame response - the num_of_pings_received variable is set back to 0 in the pong function
+                    pong(frame_data_len);
 
                 }
                 
@@ -9338,28 +9196,32 @@ bool lock_client_nb::basic_read(){
                 
                 // SIGPIPE signal is still blocked
 
-                int64_t len = BIO_read(c_bio, cursor, frame_data_len);
+                int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
 
-                if(len > 0){
-                // bio_read fetched some extra bytes
+                // we keep polling till we have read the entire frame
+                while(len < frame_data_len){
                 
-                    cursor += len;
-                    
-                    // test that all data was read in
-                    while(len < frame_data_len){
+                    int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
                         
-                        int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
-                        
-                        if(extra_bytes_read > 0){
-                        // bio_read fetched extra data
+                    if(extra_bytes_read > 0){
+                    // bio_read fetched extra data
 
-                            len += extra_bytes_read;
-                            
-                            cursor += extra_bytes_read;
+                        len += extra_bytes_read;
+                        
+                        cursor += extra_bytes_read;
+
+                    }
+                    else{
+                    // bio_read couldn't fetch data
+
+                        if(BIO_should_retry(c_bio)){
+                        // no data available yet
+
+                            continue;
 
                         }
                         else{
-                        // bio_read couldn't fetch extra data
+                        // an actual errror occurred
 
                             // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                             unblock_sigpipe_signal();
@@ -9372,31 +9234,14 @@ bool lock_client_nb::basic_read(){
                             fail_ws_connection(GOING_AWAY);
 
                             return error;
-
+                            
                         }
-                        
+
                     }
 
-                    // getting here all the frame data has been fetched so we leave the SIGPIPE signal blocked because we still have to send our response close frame
-
                 }
-                else{
-                // bio_read didn't fetch any more data so we fail the connection
-                    
-                    // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                    unblock_sigpipe_signal();
 
-                    // here bio_read couldn't fetch any extra data
-                    strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                    error = true;
-
-                    fail_ws_connection(GOING_AWAY);
-
-                    return error;
-
-                }
-                
+                // we leave the sigpipe signal blocked because we still need to send a close frame response
             
                 // build up the close frame response message
             
@@ -9414,7 +9259,6 @@ bool lock_client_nb::basic_read(){
                 
                     i++;
                 
-                
                 }
                 // mask storing end 
             
@@ -9431,7 +9275,7 @@ bool lock_client_nb::basic_read(){
                 
                 }
                 
-                // send the close frame response - we do not test the return code of bio_read in this case
+                // send the close frame response - we do not test the return code of bio_read in this case neither do we poll to ensure it sends
                 (void)BIO_write(c_bio, send_data, i);
                 
                 // unblock SIGPIPE signal
@@ -9473,33 +9317,37 @@ bool lock_client_nb::basic_read(){
                 
                 frame_data_len = rand_bytes[1]; // read in the data length
                 
-                // we declare a local cursor with which we read the received ping data into the upgrade_request_static variable because it isn't used by the program at this point
-                char* loc_cursor = upgrade_request_static;
+                // we point the upgrade request pointer to the upgrade_request_static variable because it isn't used by the program at this point
+                upgrade_request = upgrade_request_static;
 
                 // SIGPIPE signal is still blocked
 
-                int64_t len = BIO_read(c_bio, loc_cursor, frame_data_len);
+                int64_t len = 0;
 
-                if(len > 0){
-                // bio_read fetched some extra bytes
+                // we keep polling till we have read the entire frame
+                while(len < frame_data_len){
                 
-                    loc_cursor += len;
-                    
-                    // test that all data was read in
-                    while(len < frame_data_len){
+                    int64_t extra_bytes_read = BIO_read(c_bio, upgrade_request, frame_data_len - len);
                         
-                        int64_t extra_bytes_read = BIO_read(c_bio, loc_cursor, (frame_data_len - len) );
-                        
-                        if(extra_bytes_read > 0){
-                        // bio_read fetched extra data
+                    if(extra_bytes_read > 0){
+                    // bio_read fetched extra data
 
-                            len += extra_bytes_read;
-                            
-                            loc_cursor += extra_bytes_read;
+                        len += extra_bytes_read;
+                        
+                        upgrade_request += extra_bytes_read;
+
+                    }
+                    else{
+                    // bio_read couldn't fetch data
+
+                        if(BIO_should_retry(c_bio)){
+                        // no data available yet
+
+                            continue;
 
                         }
                         else{
-                        // bio_read couldn't fetch extra data
+                        // an actual errror occurred
 
                             // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                             unblock_sigpipe_signal();
@@ -9512,31 +9360,17 @@ bool lock_client_nb::basic_read(){
                             fail_ws_connection(GOING_AWAY);
 
                             return error;
-
+                            
                         }
-                        
+
                     }
 
-                    // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                    unblock_sigpipe_signal();
-
                 }
-                else{
-                // bio_read didn't fetch any more data so we fail the connection
-                    
-                    // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                    unblock_sigpipe_signal();
 
-                    // here bio_read couldn't fetch any extra data
-                    strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
+                // getting here the pong frame payload data has been fetched
 
-                    error = true;
-
-                    fail_ws_connection(GOING_AWAY);
-
-                    return error;
-
-                }
+                // we unblock the SIGPIPE signal because the pong function internally blocks it
+                unblock_sigpipe_signal();
                 
                 (void)recv_pong(upgrade_request_static, frame_data_len, upgrade_request_array_length); // call te receive pong function
                 
