@@ -12027,8 +12027,7 @@ void lock_client_nb::fail_ws_connection(unsigned short status_code){
         send_data[i] = mask[j]; // store the mask in the send data array
                 
         i++;
-                
-                
+
     }
     // mask storing end 
             
@@ -12111,7 +12110,7 @@ bool lock_client_nb::close(unsigned short status_code){ // this closes an establ
             block_sigpipe_signal();
                 
             // send the close frame
-            BIO_write(c_bio, send_data, i);
+            (void)BIO_write(c_bio, send_data, i); // no need checking whether it was successfully sent through we close the connection nonetheless
             
             // unblock SIGPIPE signal
             unblock_sigpipe_signal();
