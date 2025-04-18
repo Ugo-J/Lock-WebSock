@@ -7267,11 +7267,10 @@ bool lock_client_nb::ping(){ // sends a ping on an established websocket connect
             i++;
                 
             for(int j = 0; j<mask_array_len; j++){
-                    
+                
                 send_data[i] = mask[j]; // store the mask in the send data array
                     
                 i++;
-                    
                     
             }
             // mask storing end 
@@ -7279,26 +7278,48 @@ bool lock_client_nb::ping(){ // sends a ping on an established websocket connect
             // block SIGPIPE signal before attempting to send data, just incase the connection is closed
             block_sigpipe_signal();
             
-            // send out the ping frame
-            if(BIO_write(c_bio, send_data, i) <= 0){
-                
-                // we unblock the sigpipe signal because the fail_ws_connection function blocks it internally
-                unblock_sigpipe_signal();
+            int64_t len = 0;
 
-                // here bio_read couldn't fetch any extra data
-                strncpy(error_buffer, "Websocket Connection Lost", error_buffer_array_length);
+            // keep polling till we have sent the entire frame
+            while(len < i){
 
-                error = true;
-                
-                fail_ws_connection(GOING_AWAY);
-                
-                // the connection getting lost isn't in itself an error it just puts the lock client in a closed state
-                    
+                int64_t local_len = BIO_write(c_bio, send_data, i - len);
+
+                if(local_len > 0){
+
+                    len += local_len;
+                            
+                    send_data += local_len;
+
+                }
+                else{
+                    if(BIO_should_retry(c_bio)){
+                        continue;
+                    }
+                    else{
+
+                        // here bio_read couldn't fetch any extra data
+                        strncpy(error_buffer, "Websocket Connection Lost", error_buffer_array_length);
+
+                        error = true;
+                        
+                        unblock_sigpipe_signal();
+
+                        fail_ws_connection(GOING_AWAY);
+                        
+                        // the connection getting lost isn't in itself an error it just puts the lock client in a closed state
+
+                        // we return from this function
+                        return error;
+                        
+                    }
+                }
+
             }
-            else 
-            //we just unblock the SIGPIPE signal
-                unblock_sigpipe_signal();
-            
+
+            // getting here all ping data has been sent
+
+            unblock_sigpipe_signal();
             
         }
         else{ // set the error flag if lock client is not in open state
@@ -7336,8 +7357,7 @@ bool lock_client_nb::pong(int ping_data_len){ // sends out a pong frame unsolici
                 send_data[i] = mask[j]; // store the mask in the send data array
                     
                 i++;
-                    
-                    
+
             }
             // mask storing end 
             
@@ -7357,31 +7377,55 @@ bool lock_client_nb::pong(int ping_data_len){ // sends out a pong frame unsolici
             // block SIGPIPE signal before attempting to send data, just incase the connection is closed
             block_sigpipe_signal();
             
-            // send out the pong frame
-            if(BIO_write(c_bio, send_data, i) <= 0){
-                
-                // we unblock the sigpipe signal because the fail_ws_connection function blocks it internally
-                unblock_sigpipe_signal();
+            int64_t len = 0;
 
-                // here bio_read couldn't fetch any extra data
-                strncpy(error_buffer, "Websocket Connection Lost", error_buffer_array_length);
+            // keep polling till we have sent the entire frame
+            while(len < i){
 
-                error = true;
-                
-                fail_ws_connection(GOING_AWAY);
-                // the connection getting lost isn't in itself an error it just puts the lock client in a closed state
+                int64_t local_len = BIO_write(c_bio, send_data, i - len);
+
+                if(local_len > 0){
+
+                    len += local_len;
+                            
+                    send_data += local_len;
+
+                }
+                else{
+                    if(BIO_should_retry(c_bio)){
                     
+                        continue;
+
+                    }
+                    else{
+
+                        // here bio_read couldn't fetch any extra data
+                        strncpy(error_buffer, "Websocket Connection Lost", error_buffer_array_length);
+
+                        error = true;
+                        
+                        // we unblock the sigpipe signal because fail_ws_connection internally blocks it
+                        unblock_sigpipe_signal();
+
+                        fail_ws_connection(GOING_AWAY);
+                        
+                        // the connection getting lost isn't in itself an error it just puts the lock client in a closed state
+
+                        return error;
+
+                    }
+                }
+
             }
-            else{
-                
-                //we just unblock the SIGPIPE signal
-                unblock_sigpipe_signal();
-            
-                // we set the num_of_pings_received back to 0
-                num_of_pings_received = 0;
-                
-            }
-                
+
+            // getting here the pong request send succeeds
+
+            // we unblock the sigpipe signal
+            unblock_sigpipe_signal();
+
+            // we set the num_of_pings_received back to 0
+            num_of_pings_received = 0;
+
             // zero out the upgrade request static array
             memset(upgrade_request_static, '\0', ping_data_len);
             
@@ -7501,7 +7545,6 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
                     
                     error = true;
                     
-                    
                 }
 
                 if(!error){ // only continue if no error
@@ -7511,7 +7554,6 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
                         send_data[i] = mask[j]; // store the mask in the send data array
                         
                         i++;
-                        
                         
                     }
                     // mask storing end 
@@ -7533,23 +7575,51 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
                     block_sigpipe_signal();
                     
                     // send the data
-                    if(BIO_write(c_bio, send_data, i) <= 0){
-                    
-                        // we unblock the sigpipe signal because the fail_ws_connection function blocks it internally
-                        unblock_sigpipe_signal();
+                    int64_t len = 0;
 
-                        // here bio_read couldn't fetch any extra data
-                        strncpy(error_buffer, "Websocket Connection Lost", error_buffer_array_length);
+                    // keep polling till we have sent the entire frame
+                    while(len < i){
 
-                        error = true;
-                    
-                        fail_ws_connection(GOING_AWAY);
-                        // the connection getting lost isn't in itself an error it just puts the lock client in a closed state
-                        
+                        int64_t local_len = BIO_write(c_bio, send_data, i - len);
+
+                        if(local_len > 0){
+
+                            len += local_len;
+                                    
+                            send_data += local_len;
+
+                        }
+                        else{
+                            if(BIO_should_retry(c_bio)){
+                            
+                                continue;
+
+                            }
+                            else{
+
+                                // here bio_read couldn't fetch any extra data
+                                strncpy(error_buffer, "Websocket Connection Lost", error_buffer_array_length);
+
+                                error = true;
+                                
+                                // we unblock the sigpipe signal because fail_ws_connection internally blocks it
+                                unblock_sigpipe_signal();
+
+                                fail_ws_connection(GOING_AWAY);
+                                
+                                // the connection getting lost isn't in itself an error it just puts the lock client in a closed state
+
+                                return error;
+
+                            }
+                        }
+
                     }
-                    else 
-                        //we just unblock the SIGPIPE signal
-                        unblock_sigpipe_signal();
+
+                    // getting here the send request succeeds
+
+                    // we unblock the sigpipe signal
+                    unblock_sigpipe_signal();
                 
                 }
                   
@@ -7627,7 +7697,6 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
                     
                     i++;
                     
-                    
                 }
                 // mask storing end 
                 
@@ -7650,24 +7719,51 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
                 // block SIGPIPE signal before attempting to send data, just incase the connection is closed
                 block_sigpipe_signal();
                 
-                // send the data
-                if(BIO_write(c_bio, send_data, i) <= 0){
-                
-                    // we unblock the sigpipe signal because the fail_ws_connection function blocks it internally
-                    unblock_sigpipe_signal();
+                int64_t len = 0;
 
-                    // here bio_read couldn't fetch any extra data
-                    strncpy(error_buffer, "Websocket Connection Lost", error_buffer_array_length);
+                // keep polling till we have sent the entire frame
+                while(len < i){
 
-                    error = true;
-                
-                    fail_ws_connection(GOING_AWAY);
-                    // the connection getting lost isn't in itself an error it just puts the lock client in a closed state
-                    
+                    int64_t local_len = BIO_write(c_bio, send_data, i - len);
+
+                    if(local_len > 0){
+
+                        len += local_len;
+                                
+                        send_data += local_len;
+
+                    }
+                    else{
+                        if(BIO_should_retry(c_bio)){
+                        
+                            continue;
+
+                        }
+                        else{
+
+                            // here bio_read couldn't fetch any extra data
+                            strncpy(error_buffer, "Websocket Connection Lost", error_buffer_array_length);
+
+                            error = true;
+                            
+                            // we unblock the sigpipe signal because fail_ws_connection internally blocks it
+                            unblock_sigpipe_signal();
+
+                            fail_ws_connection(GOING_AWAY);
+                            
+                            // the connection getting lost isn't in itself an error it just puts the lock client in a closed state
+
+                            return error;
+
+                        }
+                    }
+
                 }
-                else
-                    //we just unblock the SIGPIPE signal
-                    unblock_sigpipe_signal();
+
+                // getting here the send request for this frame succeeds
+
+                // we unblock the sigpipe signal
+                unblock_sigpipe_signal();
 
                 // we now build up the continuation frames
 
@@ -7766,24 +7862,51 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
                         // block SIGPIPE signal before attempting to send data, just incase the connection is closed
                         block_sigpipe_signal();
                         
-                        // send the data
-                        if(BIO_write(c_bio, send_data, i) <= 0){
-                        
-                            // we unblock the sigpipe signal because the fail_ws_connection function blocks it internally
-                            unblock_sigpipe_signal();
+                        int64_t len = 0;
 
-                            // here bio_read couldn't fetch any extra data
-                            strncpy(error_buffer, "Websocket Connection Lost", error_buffer_array_length);
+                        // keep polling till we have sent the entire frame
+                        while(len < i){
 
-                            error = true;
-                        
-                            fail_ws_connection(GOING_AWAY);
-                            // the connection getting lost isn't in itself an error it just puts the lock client in a closed state
-                            
+                            int64_t local_len = BIO_write(c_bio, send_data, i - len);
+
+                            if(local_len > 0){
+
+                                len += local_len;
+                                        
+                                send_data += local_len;
+
+                            }
+                            else{
+                                if(BIO_should_retry(c_bio)){
+                                
+                                    continue;
+
+                                }
+                                else{
+
+                                    // here bio_read couldn't fetch any extra data
+                                    strncpy(error_buffer, "Websocket Connection Lost", error_buffer_array_length);
+
+                                    error = true;
+                                    
+                                    // we unblock the sigpipe signal because fail_ws_connection internally blocks it
+                                    unblock_sigpipe_signal();
+
+                                    fail_ws_connection(GOING_AWAY);
+                                    
+                                    // the connection getting lost isn't in itself an error it just puts the lock client in a closed state
+
+                                    return error;
+
+                                }
+                            }
+
                         }
-                        else 
-                            //we just unblock the SIGPIPE signal
-                            unblock_sigpipe_signal();
+
+                        // getting here the pong request send succeeds
+
+                        // we unblock the sigpipe signal
+                        unblock_sigpipe_signal();
 
                     }
                     else{
@@ -7876,24 +7999,51 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
                         // block SIGPIPE signal before attempting to send data, just incase the connection is closed
                         block_sigpipe_signal();
                         
-                        // send the data
-                        if(BIO_write(c_bio, send_data, i) <= 0){
-                        
-                            // we unblock the sigpipe signal because the fail_ws_connection function blocks it internally
-                            unblock_sigpipe_signal();
+                        int64_t len = 0;
 
-                            // here bio_read couldn't fetch any extra data
-                            strncpy(error_buffer, "Websocket Connection Lost", error_buffer_array_length);
+                        // keep polling till we have sent the entire frame
+                        while(len < i){
 
-                            error = true;
-                        
-                            fail_ws_connection(GOING_AWAY);
-                            // the connection getting lost isn't in itself an error it just puts the lock client in a closed state
-                            
+                            int64_t local_len = BIO_write(c_bio, send_data, i - len);
+
+                            if(local_len > 0){
+
+                                len += local_len;
+                                        
+                                send_data += local_len;
+
+                            }
+                            else{
+                                if(BIO_should_retry(c_bio)){
+                                
+                                    continue;
+
+                                }
+                                else{
+
+                                    // here bio_read couldn't fetch any extra data
+                                    strncpy(error_buffer, "Websocket Connection Lost", error_buffer_array_length);
+
+                                    error = true;
+                                    
+                                    // we unblock the sigpipe signal because fail_ws_connection internally blocks it
+                                    unblock_sigpipe_signal();
+
+                                    fail_ws_connection(GOING_AWAY);
+                                    
+                                    // the connection getting lost isn't in itself an error it just puts the lock client in a closed state
+
+                                    return error;
+
+                                }
+                            }
+
                         }
-                        else 
-                            //we just unblock the SIGPIPE signal
-                            unblock_sigpipe_signal();
+
+                        // getting here the send request succeeds
+
+                        // we unblock the sigpipe signal
+                        unblock_sigpipe_signal();
 
                     }
 
