@@ -61,4 +61,16 @@
 
 #endif
 
+#ifndef LOCK_WS_NET_DB_H
+#define LOCK_WS_NET_DB_H
+
 #include <netdb.h>
+
+#endif
+
+#ifndef LOCK_WS_FCNTL_H
+#define LOCK_WS_FCNTL_H
+
+#include <fcntl.h>
+
+#endif
