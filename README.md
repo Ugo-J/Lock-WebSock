@@ -1,4 +1,4 @@
-# LockWebSocket
+# LockWebSock
 
 A lightweight, header-only WebSocket client library for C++ with support for both secure (WSS) and non-secure (WS) connections.
 
@@ -288,7 +288,7 @@ Closes the WebSocket connection gracefully.
 
 **Example:**
 ```cpp
-client.close(1000); // Normal closure
+client.close(NORMAL_CLOSE); // Normal closure
 ```
 
 #### `is_open()`
@@ -521,4 +521,4 @@ Please note that all pull requests will be manually reviewed before merging. Whe
 
 ## Support
 
-For issues, questions, or contributions, please [specify contact method or issue tracker].
+For issues, questions, or contributions, please contact: ujezeorah@gmail.com
