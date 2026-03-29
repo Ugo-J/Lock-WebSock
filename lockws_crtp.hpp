@@ -2240,7 +2240,7 @@ bool lock_client_crtp<T>::send(std::string_view payload_data){ // sends data pas
 }
 
 template <typename T>
-inline int lock_client_crtp<T>::default_receive(char* data_array, int length_of_array_data, int length_of_array){
+inline int lock_client_crtp<T>::recv_data(char* data_array, int length_of_array_data, int length_of_array){
     
     std::cout<<data_array<<std::endl;
     
@@ -2249,26 +2249,12 @@ inline int lock_client_crtp<T>::default_receive(char* data_array, int length_of_
 }
 
 template <typename T>
-inline int lock_client_crtp<T>::default_pong_receive(char* data_array, int length_of_array_data, int length_of_array){
+inline int lock_client_crtp<T>::recv_pong(char* data_array, int length_of_array_data, int length_of_array){
     
     std::cout<<data_array<<std::endl;
     
     return 1;
         
-}
-
-template <typename T>
-void lock_client_crtp<T>::set_receive_function(lock_function fn){
-    
-    recv_data = std::move(fn);
-    
-}
-
-template <typename T>
-void lock_client_crtp<T>::set_pong_function(lock_function fn){
-    
-    recv_pong = std::move(fn);
-    
 }
 
 template <typename T>
@@ -8825,7 +8811,7 @@ bool lock_client_nb_crtp<T>::send(std::string_view payload_data){ // sends data 
 }
 
 template <typename T>
-inline int lock_client_nb_crtp<T>::default_receive(char* data_array, int length_of_array_data, int length_of_array){
+inline int lock_client_nb_crtp<T>::recv_data(char* data_array, int length_of_array_data, int length_of_array){
     
     std::cout<<data_array<<std::endl;
     
@@ -8834,25 +8820,11 @@ inline int lock_client_nb_crtp<T>::default_receive(char* data_array, int length_
 }
 
 template <typename T>
-inline int lock_client_nb_crtp<T>::default_pong_receive(char* data_array, int length_of_array_data, int length_of_array){
+inline int lock_client_nb_crtp<T>::recv_pong(char* data_array, int length_of_array_data, int length_of_array){
     
     std::cout<<data_array<<std::endl;
     
     return 1;
-    
-}
-
-template <typename T>
-void lock_client_nb_crtp<T>::set_receive_function(lock_function fn){
-    
-    recv_data = std::move(fn);
-    
-}
-
-template <typename T>
-void lock_client_nb_crtp<T>::set_pong_function(lock_function fn){
-    
-    recv_pong = std::move(fn);
     
 }
 

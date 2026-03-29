@@ -1,5 +1,3 @@
-using lock_function = std::function<int(char*, int, int)>;
-
 template <typename T>
 class lock_client_crtp {
 
@@ -28,19 +26,15 @@ public:
     bool basic_read();
     bool set_ping_backlog(int backlog_num);
     bool clear(); // this function is used to clear the error flags of lock clients in open state, error flags of lock clients in closed state can only be cleared by calling the connect function
-    inline static int default_pong_receive(char*, int, int); // default function for receiving pong frames
-    inline static int default_receive(char*, int, int); // default receive function called by basic read
-    void set_receive_function(lock_function fn);
-    void set_pong_function(lock_function fn);
 
 protected:
-// pointers to receive functions
+// receive functions
     
-    // receive function pointer
-    lock_function recv_data = lock_client_crtp<T>::default_receive;
+    // receive function
+    int recv_data(char*, int, int);
     
-    // receive pong function pointer
-    lock_function recv_pong = lock_client_crtp<T>::default_pong_receive;
+    // receive pong function
+    int recv_pong(char*, int, int);
     
 // protected class functions
 protected:
@@ -242,19 +236,15 @@ public:
     bool basic_read();
     bool set_ping_backlog(int backlog_num);
     bool clear(); // this function is used to clear the error flags of lock clients in open state, error flags of lock clients in closed state can only be cleared by calling the connect function
-    inline static int default_pong_receive(char*, int, int); // default function for receiving pong frames
-    inline static int default_receive(char*, int, int); // default receive function called by basic read
-    void set_receive_function(lock_function fn);
-    void set_pong_function(lock_function fn);
 
 protected:
-// pointers to receive functions
+// receive functions
     
-    // receive function pointer
-    lock_function recv_data = lock_client_crtp<T>::default_receive;
+    // receive function
+    int recv_data(char*, int, int);
     
-    // receive pong function pointer
-    lock_function recv_pong = lock_client_crtp<T>::default_pong_receive;
+    // receive pong function
+    int recv_pong(char*, int, int);
     
 // protected class functions
 protected:
