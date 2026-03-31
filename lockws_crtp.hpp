@@ -2241,19 +2241,17 @@ bool lock_client_crtp<T>::send(std::string_view payload_data){ // sends data pas
 
 template <typename T>
 inline int lock_client_crtp<T>::recv_data(char* data_array, int length_of_array_data, int length_of_array){
-    
-    std::cout<<data_array<<std::endl;
-    
-    return 1;
+
+    // we call the derived class recv data implementation
+    return static_cast<T*>(this)->recv_data(data_array, length_of_array_data, length_of_array);
         
 }
 
 template <typename T>
 inline int lock_client_crtp<T>::recv_pong(char* data_array, int length_of_array_data, int length_of_array){
     
-    std::cout<<data_array<<std::endl;
-    
-    return 1;
+    // we call the derived class recv pong implementation
+    return static_cast<T*>(this)->recv_pong(data_array, length_of_array_data, length_of_array);
         
 }
 
@@ -8813,18 +8811,16 @@ bool lock_client_nb_crtp<T>::send(std::string_view payload_data){ // sends data 
 template <typename T>
 inline int lock_client_nb_crtp<T>::recv_data(char* data_array, int length_of_array_data, int length_of_array){
     
-    std::cout<<data_array<<std::endl;
-    
-    return 1;
+    // we call the derived class recv data implementation
+    return static_cast<T*>(this)->recv_data(data_array, length_of_array_data, length_of_array);
     
 }
 
 template <typename T>
 inline int lock_client_nb_crtp<T>::recv_pong(char* data_array, int length_of_array_data, int length_of_array){
     
-    std::cout<<data_array<<std::endl;
-    
-    return 1;
+    // we call the derived class recv pong implementation
+    return static_cast<T*>(this)->recv_pong(data_array, length_of_array_data, length_of_array);
     
 }
 
