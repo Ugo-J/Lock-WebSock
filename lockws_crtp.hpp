@@ -50,8 +50,8 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url, std::string_view pat
     
     if( (url.compare(0, 6, "wss://") == 0) || (url.compare(0, 6, "Wss://") == 0) || (url.compare(0, 6, "WSs://") == 0) || (url.compare(0, 6, "WSS://") == 0) || (url.compare(0, 6, "WsS://") == 0) || (url.compare(0, 6, "wSS://") == 0) || (url.compare(0, 6, "wsS://") == 0) || (url.compare(0, 6, "wSs://") == 0) ){ // endpoint is a wss:// endpoint, the second parameter to the std::string_view compare function is 6 which is the length of the string "wss://" which we are testing for the presence of, we list out and compare the 8 possible combinations of uppercase and lowercase lettering that are valid
     
-        int protocal_prefix_len = strlen("wss://");    
-        int base_url_length = url.size() - protocal_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("wss://");    
+        int base_url_length = url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix 
             
         // SSL members initialisations
         c_bio = BIO_new_ssl_connect(ssl_ctx); // creates a new bio ssl object
@@ -69,7 +69,7 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url, std::string_view pat
             // URL copy 
             if(base_url_length < url_static_array_length){ // static memory large enough
             
-                url.copy(c_url_static, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
+                url.copy(c_url_static, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
             
                 c_url_static[base_url_length] = '\0'; // null-terminate the string
             
@@ -78,7 +78,7 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url, std::string_view pat
             }
             else if(base_url_length < size_of_allocated_url_memory){ // store in already allocated dynamic memory
                 
-                url.copy(c_url_new, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
+                url.copy(c_url_new, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
             
                 c_url_new[base_url_length] = '\0'; // null-terminate the string
             
@@ -105,7 +105,7 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url, std::string_view pat
                         
                         size_of_allocated_url_memory = base_url_length + 1;    
                             
-                        url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                        url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
             
                         c_url_new[base_url_length] = '\0';
             
@@ -133,7 +133,7 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url, std::string_view pat
                         
                         size_of_allocated_url_memory = base_url_length + 1;    
                             
-                        url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                        url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
                 
                         c_url_new[base_url_length] = '\0';
 
@@ -161,13 +161,13 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url, std::string_view pat
     
     else if( (url.compare(0, 5, "ws://") == 0) || (url.compare(0, 5, "Ws://") == 0) || (url.compare(0, 5, "wS://") == 0) || (url.compare(0, 5, "WS://") == 0)){ // ws:// endpoint, we test the 4 possible combinations of uppercase and lowercase lettering. The second parameter to the std::string_view compare function is the length of the protocol prefix which we test for the presence of
     
-        int protocal_prefix_len = strlen("ws://");    
-        int base_url_length = url.size() - protocal_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("ws://");    
+        int base_url_length = url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix 
     
         // URL copy 
         if(base_url_length < url_static_array_length){ // static array is sufficient
     
-            url.copy(c_url_static, base_url_length, protocal_prefix_len); // protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
+            url.copy(c_url_static, base_url_length, protocol_prefix_len); // protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
     
             c_url_static[base_url_length] = '\0'; // null-terminate the string
     
@@ -176,7 +176,7 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url, std::string_view pat
         }
         else if(base_url_length < size_of_allocated_url_memory){ // store in already allocated dynamic memory
         
-            url.copy(c_url_new, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
+            url.copy(c_url_new, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
     
             c_url_new[base_url_length] = '\0'; // null-terminate the string
     
@@ -203,7 +203,7 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url, std::string_view pat
                 
                     size_of_allocated_url_memory = base_url_length + 1;    
                     
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
        
                     c_url_new[base_url_length] = '\0';
     
@@ -231,7 +231,7 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url, std::string_view pat
                 
                     size_of_allocated_url_memory = base_url_length + 1;    
                     
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
        
                     c_url_new[base_url_length] = '\0';
     
@@ -756,13 +756,13 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url, std::string_view pat
 
     if( (url.compare(0, 6, "wss://") == 0) || (url.compare(0, 6, "Wss://") == 0) || (url.compare(0, 6, "WSs://") == 0) || (url.compare(0, 6, "WSS://") == 0) || (url.compare(0, 6, "WsS://") == 0) || (url.compare(0, 6, "wSS://") == 0) || (url.compare(0, 6, "wsS://") == 0) || (url.compare(0, 6, "wSs://") == 0) ){ // endpoint is a wss:// endpoint, the second parameter to the std::string_view compare function is 6 which is the length of the string "wss://" which we are testing for the presence of, we list out and compare the 8 possible combinations of uppercase and lowercase lettering that are valid
     
-        int protocal_prefix_len = strlen("wss://");    
-        int base_url_length = url.size() - protocal_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("wss://");    
+        int base_url_length = url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix 
         
         // we copy the URL into the c_url array
         if(base_url_length < url_static_array_length){ // static memory large enough
         
-            url.copy(c_url_static, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
+            url.copy(c_url_static, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
         
             c_url_static[base_url_length] = '\0'; // null-terminate the string
         
@@ -771,7 +771,7 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url, std::string_view pat
         }
         else if(base_url_length < size_of_allocated_url_memory){ // store in already allocated dynamic memory
         
-            url.copy(c_url_new, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
+            url.copy(c_url_new, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
         
             c_url_new[base_url_length] = '\0'; // null-terminate the string
         
@@ -798,7 +798,7 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url, std::string_view pat
                     
                     size_of_allocated_url_memory = base_url_length + 1;    
                         
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
         
                     c_url_new[base_url_length] = '\0';
         
@@ -826,7 +826,7 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url, std::string_view pat
                     
                     size_of_allocated_url_memory = base_url_length + 1;    
                         
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
             
                     c_url_new[base_url_length] = '\0';
 
@@ -1322,13 +1322,13 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url, std::string_view pat
     
     else if( (url.compare(0, 5, "ws://") == 0) || (url.compare(0, 5, "Ws://") == 0) || (url.compare(0, 5, "wS://") == 0) || (url.compare(0, 5, "WS://") == 0)){ // ws:// endpoint, we test the 4 possible combinations of uppercase and lowercase lettering. The second parameter to the std::string_view compare function is the length of the protocol prefix which we test for the presence of
     
-        int protocal_prefix_len = strlen("ws://");    
-        int base_url_length = url.size() - protocal_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("ws://");    
+        int base_url_length = url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix 
     
         // URL copy 
         if(base_url_length < url_static_array_length){ // static array is sufficient
     
-            url.copy(c_url_static, base_url_length, protocal_prefix_len); // protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
+            url.copy(c_url_static, base_url_length, protocol_prefix_len); // protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
     
             c_url_static[base_url_length] = '\0'; // null-terminate the string
     
@@ -1337,7 +1337,7 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url, std::string_view pat
         }
         else if(base_url_length < size_of_allocated_url_memory){ // store in already allocated dynamic memory
         
-            url.copy(c_url_new, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
+            url.copy(c_url_new, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
     
             c_url_new[base_url_length] = '\0'; // null-terminate the string
     
@@ -1364,7 +1364,7 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url, std::string_view pat
                 
                     size_of_allocated_url_memory = base_url_length + 1;    
                     
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
        
                     c_url_new[base_url_length] = '\0';
     
@@ -1392,7 +1392,7 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url, std::string_view pat
                 
                     size_of_allocated_url_memory = base_url_length + 1;    
                     
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
        
                     c_url_new[base_url_length] = '\0';
     
@@ -4698,8 +4698,8 @@ bool lock_client_crtp<T>::connect(std::string_view url, std::string_view path){ 
     
     if( (url.compare(0, 6, "wss://") == 0) || (url.compare(0, 6, "Wss://") == 0) || (url.compare(0, 6, "WSs://") == 0) || (url.compare(0, 6, "WSS://") == 0) || (url.compare(0, 6, "WsS://") == 0) || (url.compare(0, 6, "wSS://") == 0) || (url.compare(0, 6, "wsS://") == 0) || (url.compare(0, 6, "wSs://") == 0) ){ // endpoint is a wss:// endpoint, the second parameter to the std::string_view compare function is 6 which is the length of the string "wss://" which we are testing for the presence of, we list out and compare the 8 possible combinations of uppercase and lowercase lettering that are valid
     
-        int protocal_prefix_len = strlen("wss://");    
-        int base_url_length = url.size() - protocal_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("wss://");    
+        int base_url_length = url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix 
             
         // SSL members initialisations
         c_bio = BIO_new_ssl_connect(ssl_ctx); // creates a new bio ssl object
@@ -4717,7 +4717,7 @@ bool lock_client_crtp<T>::connect(std::string_view url, std::string_view path){ 
             // URL copy 
             if(base_url_length < url_static_array_length){ // static memory large enough
             
-                url.copy(c_url_static, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
+                url.copy(c_url_static, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
             
                 c_url_static[base_url_length] = '\0'; // null-terminate the string
             
@@ -4726,7 +4726,7 @@ bool lock_client_crtp<T>::connect(std::string_view url, std::string_view path){ 
             }
             else if(base_url_length < size_of_allocated_url_memory){ // store in already allocated dynamic memory
                 
-                url.copy(c_url_new, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
+                url.copy(c_url_new, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
             
                 c_url_new[base_url_length] = '\0'; // null-terminate the string
             
@@ -4753,7 +4753,7 @@ bool lock_client_crtp<T>::connect(std::string_view url, std::string_view path){ 
                         
                         size_of_allocated_url_memory = base_url_length + 1;    
                             
-                        url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                        url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
             
                         c_url_new[base_url_length] = '\0';
             
@@ -4781,7 +4781,7 @@ bool lock_client_crtp<T>::connect(std::string_view url, std::string_view path){ 
                         
                         size_of_allocated_url_memory = base_url_length + 1;    
                             
-                        url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                        url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
                 
                         c_url_new[base_url_length] = '\0';
 
@@ -4809,13 +4809,13 @@ bool lock_client_crtp<T>::connect(std::string_view url, std::string_view path){ 
     
     else if( (url.compare(0, 5, "ws://") == 0) || (url.compare(0, 5, "Ws://") == 0) || (url.compare(0, 5, "wS://") == 0) || (url.compare(0, 5, "WS://") == 0)){ // ws:// endpoint, we test the 4 possible combinations of uppercase and lowercase lettering. The second parameter to the std::string_view compare function is the length of the protocol prefix which we test for the presence of
     
-        int protocal_prefix_len = strlen("ws://");    
-        int base_url_length = url.size() - protocal_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("ws://");    
+        int base_url_length = url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix 
     
         // URL copy 
         if(base_url_length < url_static_array_length){ // static array is sufficient
     
-            url.copy(c_url_static, base_url_length, protocal_prefix_len); // protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
+            url.copy(c_url_static, base_url_length, protocol_prefix_len); // protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
     
             c_url_static[base_url_length] = '\0'; // null-terminate the string
     
@@ -4824,7 +4824,7 @@ bool lock_client_crtp<T>::connect(std::string_view url, std::string_view path){ 
         }
         else if(base_url_length < size_of_allocated_url_memory){ // store in already allocated dynamic memory
         
-            url.copy(c_url_new, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
+            url.copy(c_url_new, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
     
             c_url_new[base_url_length] = '\0'; // null-terminate the string
     
@@ -4851,7 +4851,7 @@ bool lock_client_crtp<T>::connect(std::string_view url, std::string_view path){ 
                 
                     size_of_allocated_url_memory = base_url_length + 1;    
                     
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
        
                     c_url_new[base_url_length] = '\0';
     
@@ -4879,7 +4879,7 @@ bool lock_client_crtp<T>::connect(std::string_view url, std::string_view path){ 
                 
                     size_of_allocated_url_memory = base_url_length + 1;    
                     
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
        
                     c_url_new[base_url_length] = '\0';
     
@@ -5390,13 +5390,13 @@ bool lock_client_crtp<T>::interface_connect(std::string_view url, std::string_vi
     
     if( (url.compare(0, 6, "wss://") == 0) || (url.compare(0, 6, "Wss://") == 0) || (url.compare(0, 6, "WSs://") == 0) || (url.compare(0, 6, "WSS://") == 0) || (url.compare(0, 6, "WsS://") == 0) || (url.compare(0, 6, "wSS://") == 0) || (url.compare(0, 6, "wsS://") == 0) || (url.compare(0, 6, "wSs://") == 0) ){ // endpoint is a wss:// endpoint, the second parameter to the std::string_view compare function is 6 which is the length of the string "wss://" which we are testing for the presence of, we list out and compare the 8 possible combinations of uppercase and lowercase lettering that are valid
     
-        int protocal_prefix_len = strlen("wss://");    
-        int base_url_length = url.size() - protocal_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("wss://");    
+        int base_url_length = url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix 
         
         // we copy the URL into the c_url array
         if(base_url_length < url_static_array_length){ // static memory large enough
         
-            url.copy(c_url_static, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
+            url.copy(c_url_static, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
         
             c_url_static[base_url_length] = '\0'; // null-terminate the string
         
@@ -5405,7 +5405,7 @@ bool lock_client_crtp<T>::interface_connect(std::string_view url, std::string_vi
         }
         else if(base_url_length < size_of_allocated_url_memory){ // store in already allocated dynamic memory
         
-            url.copy(c_url_new, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
+            url.copy(c_url_new, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
         
             c_url_new[base_url_length] = '\0'; // null-terminate the string
         
@@ -5432,7 +5432,7 @@ bool lock_client_crtp<T>::interface_connect(std::string_view url, std::string_vi
                     
                     size_of_allocated_url_memory = base_url_length + 1;    
                         
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
         
                     c_url_new[base_url_length] = '\0';
         
@@ -5460,7 +5460,7 @@ bool lock_client_crtp<T>::interface_connect(std::string_view url, std::string_vi
                     
                     size_of_allocated_url_memory = base_url_length + 1;    
                         
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
             
                     c_url_new[base_url_length] = '\0';
 
@@ -5956,13 +5956,13 @@ bool lock_client_crtp<T>::interface_connect(std::string_view url, std::string_vi
     
     else if( (url.compare(0, 5, "ws://") == 0) || (url.compare(0, 5, "Ws://") == 0) || (url.compare(0, 5, "wS://") == 0) || (url.compare(0, 5, "WS://") == 0)){ // ws:// endpoint, we test the 4 possible combinations of uppercase and lowercase lettering. The second parameter to the std::string_view compare function is the length of the protocol prefix which we test for the presence of
     
-        int protocal_prefix_len = strlen("ws://");    
-        int base_url_length = url.size() - protocal_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("ws://");    
+        int base_url_length = url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix 
     
         // URL copy 
         if(base_url_length < url_static_array_length){ // static array is sufficient
     
-            url.copy(c_url_static, base_url_length, protocal_prefix_len); // protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
+            url.copy(c_url_static, base_url_length, protocol_prefix_len); // protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
     
             c_url_static[base_url_length] = '\0'; // null-terminate the string
     
@@ -5971,7 +5971,7 @@ bool lock_client_crtp<T>::interface_connect(std::string_view url, std::string_vi
         }
         else if(base_url_length < size_of_allocated_url_memory){ // store in already allocated dynamic memory
         
-            url.copy(c_url_new, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
+            url.copy(c_url_new, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
     
             c_url_new[base_url_length] = '\0'; // null-terminate the string
     
@@ -5998,7 +5998,7 @@ bool lock_client_crtp<T>::interface_connect(std::string_view url, std::string_vi
                 
                     size_of_allocated_url_memory = base_url_length + 1;    
                     
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
        
                     c_url_new[base_url_length] = '\0';
     
@@ -6026,7 +6026,7 @@ bool lock_client_crtp<T>::interface_connect(std::string_view url, std::string_vi
                 
                     size_of_allocated_url_memory = base_url_length + 1;    
                     
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
        
                     c_url_new[base_url_length] = '\0';
     
@@ -6346,8 +6346,8 @@ lock_client_nb_crtp<T>::lock_client_nb_crtp(std::string_view url, std::string_vi
     
     if( (url.compare(0, 6, "wss://") == 0) || (url.compare(0, 6, "Wss://") == 0) || (url.compare(0, 6, "WSs://") == 0) || (url.compare(0, 6, "WSS://") == 0) || (url.compare(0, 6, "WsS://") == 0) || (url.compare(0, 6, "wSS://") == 0) || (url.compare(0, 6, "wsS://") == 0) || (url.compare(0, 6, "wSs://") == 0) ){ // endpoint is a wss:// endpoint, the second parameter to the std::string_view compare function is 6 which is the length of the string "wss://" which we are testing for the presence of, we list out and compare the 8 possible combinations of uppercase and lowercase lettering that are valid
     
-        int protocal_prefix_len = strlen("wss://");    
-        int base_url_length = url.size() - protocal_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("wss://");    
+        int base_url_length = url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix 
             
         // SSL members initialisations
         c_bio = BIO_new_ssl_connect(ssl_ctx); // creates a new bio ssl object
@@ -6365,7 +6365,7 @@ lock_client_nb_crtp<T>::lock_client_nb_crtp(std::string_view url, std::string_vi
             // URL copy 
             if(base_url_length < url_static_array_length){ // static memory large enough
             
-                url.copy(c_url_static, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
+                url.copy(c_url_static, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
             
                 c_url_static[base_url_length] = '\0'; // null-terminate the string
             
@@ -6374,7 +6374,7 @@ lock_client_nb_crtp<T>::lock_client_nb_crtp(std::string_view url, std::string_vi
             }
             else if(base_url_length < size_of_allocated_url_memory){ // store in already allocated dynamic memory
                 
-                url.copy(c_url_new, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
+                url.copy(c_url_new, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
             
                 c_url_new[base_url_length] = '\0'; // null-terminate the string
             
@@ -6401,7 +6401,7 @@ lock_client_nb_crtp<T>::lock_client_nb_crtp(std::string_view url, std::string_vi
                         
                         size_of_allocated_url_memory = base_url_length + 1;    
                             
-                        url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                        url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
             
                         c_url_new[base_url_length] = '\0';
             
@@ -6429,7 +6429,7 @@ lock_client_nb_crtp<T>::lock_client_nb_crtp(std::string_view url, std::string_vi
                         
                         size_of_allocated_url_memory = base_url_length + 1;    
                             
-                        url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                        url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
                 
                         c_url_new[base_url_length] = '\0';
 
@@ -6457,13 +6457,13 @@ lock_client_nb_crtp<T>::lock_client_nb_crtp(std::string_view url, std::string_vi
     
     else if( (url.compare(0, 5, "ws://") == 0) || (url.compare(0, 5, "Ws://") == 0) || (url.compare(0, 5, "wS://") == 0) || (url.compare(0, 5, "WS://") == 0)){ // ws:// endpoint, we test the 4 possible combinations of uppercase and lowercase lettering. The second parameter to the std::string_view compare function is the length of the protocol prefix which we test for the presence of
     
-        int protocal_prefix_len = strlen("ws://");    
-        int base_url_length = url.size() - protocal_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("ws://");    
+        int base_url_length = url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix 
     
         // URL copy 
         if(base_url_length < url_static_array_length){ // static array is sufficient
     
-            url.copy(c_url_static, base_url_length, protocal_prefix_len); // protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
+            url.copy(c_url_static, base_url_length, protocol_prefix_len); // protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
     
             c_url_static[base_url_length] = '\0'; // null-terminate the string
     
@@ -6472,7 +6472,7 @@ lock_client_nb_crtp<T>::lock_client_nb_crtp(std::string_view url, std::string_vi
         }
         else if(base_url_length < size_of_allocated_url_memory){ // store in already allocated dynamic memory
         
-            url.copy(c_url_new, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
+            url.copy(c_url_new, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
     
             c_url_new[base_url_length] = '\0'; // null-terminate the string
     
@@ -6499,7 +6499,7 @@ lock_client_nb_crtp<T>::lock_client_nb_crtp(std::string_view url, std::string_vi
                 
                     size_of_allocated_url_memory = base_url_length + 1;    
                     
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
        
                     c_url_new[base_url_length] = '\0';
     
@@ -6527,7 +6527,7 @@ lock_client_nb_crtp<T>::lock_client_nb_crtp(std::string_view url, std::string_vi
                 
                     size_of_allocated_url_memory = base_url_length + 1;    
                     
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
        
                     c_url_new[base_url_length] = '\0';
     
@@ -7118,13 +7118,13 @@ lock_client_nb_crtp<T>::lock_client_nb_crtp(std::string_view url, std::string_vi
 
     if( (url.compare(0, 6, "wss://") == 0) || (url.compare(0, 6, "Wss://") == 0) || (url.compare(0, 6, "WSs://") == 0) || (url.compare(0, 6, "WSS://") == 0) || (url.compare(0, 6, "WsS://") == 0) || (url.compare(0, 6, "wSS://") == 0) || (url.compare(0, 6, "wsS://") == 0) || (url.compare(0, 6, "wSs://") == 0) ){ // endpoint is a wss:// endpoint, the second parameter to the std::string_view compare function is 6 which is the length of the string "wss://" which we are testing for the presence of, we list out and compare the 8 possible combinations of uppercase and lowercase lettering that are valid
     
-        int protocal_prefix_len = strlen("wss://");    
-        int base_url_length = url.size() - protocal_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("wss://");    
+        int base_url_length = url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix 
         
         // we copy the URL into the c_url array
         if(base_url_length < url_static_array_length){ // static memory large enough
         
-            url.copy(c_url_static, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
+            url.copy(c_url_static, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
         
             c_url_static[base_url_length] = '\0'; // null-terminate the string
         
@@ -7133,7 +7133,7 @@ lock_client_nb_crtp<T>::lock_client_nb_crtp(std::string_view url, std::string_vi
         }
         else if(base_url_length < size_of_allocated_url_memory){ // store in already allocated dynamic memory
         
-            url.copy(c_url_new, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
+            url.copy(c_url_new, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
         
             c_url_new[base_url_length] = '\0'; // null-terminate the string
         
@@ -7160,7 +7160,7 @@ lock_client_nb_crtp<T>::lock_client_nb_crtp(std::string_view url, std::string_vi
                     
                     size_of_allocated_url_memory = base_url_length + 1;    
                         
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
         
                     c_url_new[base_url_length] = '\0';
         
@@ -7188,7 +7188,7 @@ lock_client_nb_crtp<T>::lock_client_nb_crtp(std::string_view url, std::string_vi
                     
                     size_of_allocated_url_memory = base_url_length + 1;    
                         
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
             
                     c_url_new[base_url_length] = '\0';
 
@@ -7741,13 +7741,13 @@ lock_client_nb_crtp<T>::lock_client_nb_crtp(std::string_view url, std::string_vi
     
     else if( (url.compare(0, 5, "ws://") == 0) || (url.compare(0, 5, "Ws://") == 0) || (url.compare(0, 5, "wS://") == 0) || (url.compare(0, 5, "WS://") == 0)){ // ws:// endpoint, we test the 4 possible combinations of uppercase and lowercase lettering. The second parameter to the std::string_view compare function is the length of the protocol prefix which we test for the presence of
     
-        int protocal_prefix_len = strlen("ws://");    
-        int base_url_length = url.size() - protocal_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("ws://");    
+        int base_url_length = url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix 
     
         // URL copy 
         if(base_url_length < url_static_array_length){ // static array is sufficient
     
-            url.copy(c_url_static, base_url_length, protocal_prefix_len); // protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
+            url.copy(c_url_static, base_url_length, protocol_prefix_len); // protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
     
             c_url_static[base_url_length] = '\0'; // null-terminate the string
     
@@ -7756,7 +7756,7 @@ lock_client_nb_crtp<T>::lock_client_nb_crtp(std::string_view url, std::string_vi
         }
         else if(base_url_length < size_of_allocated_url_memory){ // store in already allocated dynamic memory
         
-            url.copy(c_url_new, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
+            url.copy(c_url_new, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
     
             c_url_new[base_url_length] = '\0'; // null-terminate the string
     
@@ -7783,7 +7783,7 @@ lock_client_nb_crtp<T>::lock_client_nb_crtp(std::string_view url, std::string_vi
                 
                     size_of_allocated_url_memory = base_url_length + 1;    
                     
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
        
                     c_url_new[base_url_length] = '\0';
     
@@ -7811,7 +7811,7 @@ lock_client_nb_crtp<T>::lock_client_nb_crtp(std::string_view url, std::string_vi
                 
                     size_of_allocated_url_memory = base_url_length + 1;    
                     
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
        
                     c_url_new[base_url_length] = '\0';
     
@@ -11143,8 +11143,8 @@ bool lock_client_nb_crtp<T>::connect(std::string_view url, std::string_view path
     
     if( (url.compare(0, 6, "wss://") == 0) || (url.compare(0, 6, "Wss://") == 0) || (url.compare(0, 6, "WSs://") == 0) || (url.compare(0, 6, "WSS://") == 0) || (url.compare(0, 6, "WsS://") == 0) || (url.compare(0, 6, "wSS://") == 0) || (url.compare(0, 6, "wsS://") == 0) || (url.compare(0, 6, "wSs://") == 0) ){ // endpoint is a wss:// endpoint, the second parameter to the std::string_view compare function is 6 which is the length of the string "wss://" which we are testing for the presence of, we list out and compare the 8 possible combinations of uppercase and lowercase lettering that are valid
     
-        int protocal_prefix_len = strlen("wss://");    
-        int base_url_length = url.size() - protocal_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("wss://");    
+        int base_url_length = url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix 
             
         // SSL members initialisations
         c_bio = BIO_new_ssl_connect(ssl_ctx); // creates a new bio ssl object
@@ -11162,7 +11162,7 @@ bool lock_client_nb_crtp<T>::connect(std::string_view url, std::string_view path
             // URL copy 
             if(base_url_length < url_static_array_length){ // static memory large enough
             
-                url.copy(c_url_static, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
+                url.copy(c_url_static, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
             
                 c_url_static[base_url_length] = '\0'; // null-terminate the string
             
@@ -11171,7 +11171,7 @@ bool lock_client_nb_crtp<T>::connect(std::string_view url, std::string_view path
             }
             else if(base_url_length < size_of_allocated_url_memory){ // store in already allocated dynamic memory
                 
-                url.copy(c_url_new, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
+                url.copy(c_url_new, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
             
                 c_url_new[base_url_length] = '\0'; // null-terminate the string
             
@@ -11198,7 +11198,7 @@ bool lock_client_nb_crtp<T>::connect(std::string_view url, std::string_view path
                         
                         size_of_allocated_url_memory = base_url_length + 1;    
                             
-                        url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                        url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
             
                         c_url_new[base_url_length] = '\0';
             
@@ -11226,7 +11226,7 @@ bool lock_client_nb_crtp<T>::connect(std::string_view url, std::string_view path
                         
                         size_of_allocated_url_memory = base_url_length + 1;    
                             
-                        url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                        url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
                 
                         c_url_new[base_url_length] = '\0';
 
@@ -11254,13 +11254,13 @@ bool lock_client_nb_crtp<T>::connect(std::string_view url, std::string_view path
     
     else if( (url.compare(0, 5, "ws://") == 0) || (url.compare(0, 5, "Ws://") == 0) || (url.compare(0, 5, "wS://") == 0) || (url.compare(0, 5, "WS://") == 0)){ // ws:// endpoint, we test the 4 possible combinations of uppercase and lowercase lettering. The second parameter to the std::string_view compare function is the length of the protocol prefix which we test for the presence of
     
-        int protocal_prefix_len = strlen("ws://");    
-        int base_url_length = url.size() - protocal_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("ws://");    
+        int base_url_length = url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix 
     
         // URL copy 
         if(base_url_length < url_static_array_length){ // static array is sufficient
     
-            url.copy(c_url_static, base_url_length, protocal_prefix_len); // protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
+            url.copy(c_url_static, base_url_length, protocol_prefix_len); // protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
     
             c_url_static[base_url_length] = '\0'; // null-terminate the string
     
@@ -11269,7 +11269,7 @@ bool lock_client_nb_crtp<T>::connect(std::string_view url, std::string_view path
         }
         else if(base_url_length < size_of_allocated_url_memory){ // store in already allocated dynamic memory
         
-            url.copy(c_url_new, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
+            url.copy(c_url_new, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
     
             c_url_new[base_url_length] = '\0'; // null-terminate the string
     
@@ -11296,7 +11296,7 @@ bool lock_client_nb_crtp<T>::connect(std::string_view url, std::string_view path
                 
                     size_of_allocated_url_memory = base_url_length + 1;    
                     
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
        
                     c_url_new[base_url_length] = '\0';
     
@@ -11324,7 +11324,7 @@ bool lock_client_nb_crtp<T>::connect(std::string_view url, std::string_view path
                 
                     size_of_allocated_url_memory = base_url_length + 1;    
                     
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
        
                     c_url_new[base_url_length] = '\0';
     
@@ -11901,13 +11901,13 @@ bool lock_client_nb_crtp<T>::interface_connect(std::string_view url, std::string
     
     if( (url.compare(0, 6, "wss://") == 0) || (url.compare(0, 6, "Wss://") == 0) || (url.compare(0, 6, "WSs://") == 0) || (url.compare(0, 6, "WSS://") == 0) || (url.compare(0, 6, "WsS://") == 0) || (url.compare(0, 6, "wSS://") == 0) || (url.compare(0, 6, "wsS://") == 0) || (url.compare(0, 6, "wSs://") == 0) ){ // endpoint is a wss:// endpoint, the second parameter to the std::string_view compare function is 6 which is the length of the string "wss://" which we are testing for the presence of, we list out and compare the 8 possible combinations of uppercase and lowercase lettering that are valid
     
-        int protocal_prefix_len = strlen("wss://");    
-        int base_url_length = url.size() - protocal_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("wss://");    
+        int base_url_length = url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix 
         
         // we copy the URL into the c_url array
         if(base_url_length < url_static_array_length){ // static memory large enough
         
-            url.copy(c_url_static, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
+            url.copy(c_url_static, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
         
             c_url_static[base_url_length] = '\0'; // null-terminate the string
         
@@ -11916,7 +11916,7 @@ bool lock_client_nb_crtp<T>::interface_connect(std::string_view url, std::string
         }
         else if(base_url_length < size_of_allocated_url_memory){ // store in already allocated dynamic memory
         
-            url.copy(c_url_new, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
+            url.copy(c_url_new, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
         
             c_url_new[base_url_length] = '\0'; // null-terminate the string
         
@@ -11943,7 +11943,7 @@ bool lock_client_nb_crtp<T>::interface_connect(std::string_view url, std::string
                     
                     size_of_allocated_url_memory = base_url_length + 1;    
                         
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
         
                     c_url_new[base_url_length] = '\0';
         
@@ -11971,7 +11971,7 @@ bool lock_client_nb_crtp<T>::interface_connect(std::string_view url, std::string
                     
                     size_of_allocated_url_memory = base_url_length + 1;    
                         
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
             
                     c_url_new[base_url_length] = '\0';
 
@@ -12525,13 +12525,13 @@ bool lock_client_nb_crtp<T>::interface_connect(std::string_view url, std::string
     
     else if( (url.compare(0, 5, "ws://") == 0) || (url.compare(0, 5, "Ws://") == 0) || (url.compare(0, 5, "wS://") == 0) || (url.compare(0, 5, "WS://") == 0)){ // ws:// endpoint, we test the 4 possible combinations of uppercase and lowercase lettering. The second parameter to the std::string_view compare function is the length of the protocol prefix which we test for the presence of
     
-        int protocal_prefix_len = strlen("ws://");    
-        int base_url_length = url.size() - protocal_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("ws://");    
+        int base_url_length = url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix 
     
         // URL copy 
         if(base_url_length < url_static_array_length){ // static array is sufficient
     
-            url.copy(c_url_static, base_url_length, protocal_prefix_len); // protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
+            url.copy(c_url_static, base_url_length, protocol_prefix_len); // protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
     
             c_url_static[base_url_length] = '\0'; // null-terminate the string
     
@@ -12540,7 +12540,7 @@ bool lock_client_nb_crtp<T>::interface_connect(std::string_view url, std::string
         }
         else if(base_url_length < size_of_allocated_url_memory){ // store in already allocated dynamic memory
         
-            url.copy(c_url_new, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
+            url.copy(c_url_new, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
     
             c_url_new[base_url_length] = '\0'; // null-terminate the string
     
@@ -12567,7 +12567,7 @@ bool lock_client_nb_crtp<T>::interface_connect(std::string_view url, std::string
                 
                     size_of_allocated_url_memory = base_url_length + 1;    
                     
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
        
                     c_url_new[base_url_length] = '\0';
     
@@ -12595,7 +12595,7 @@ bool lock_client_nb_crtp<T>::interface_connect(std::string_view url, std::string
                 
                     size_of_allocated_url_memory = base_url_length + 1;    
                     
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
        
                     c_url_new[base_url_length] = '\0';
     

@@ -6,7 +6,7 @@
 #pragma GCC diagnostic ignored "-Wshift-count-overflow"
 
 // lock client constructor
-lock_client::lock_client(std::string_view url, std::string_view path = "/"){
+lock_client::lock_client(std::string_view url){
 
     // initialisation of class wide variables
     if(!openssl_init){
@@ -49,8 +49,12 @@ lock_client::lock_client(std::string_view url, std::string_view path = "/"){
     
     if( (url.compare(0, 6, "wss://") == 0) || (url.compare(0, 6, "Wss://") == 0) || (url.compare(0, 6, "WSs://") == 0) || (url.compare(0, 6, "WSS://") == 0) || (url.compare(0, 6, "WsS://") == 0) || (url.compare(0, 6, "wSS://") == 0) || (url.compare(0, 6, "wsS://") == 0) || (url.compare(0, 6, "wSs://") == 0) ){ // endpoint is a wss:// endpoint, the second parameter to the std::string_view compare function is 6 which is the length of the string "wss://" which we are testing for the presence of, we list out and compare the 8 possible combinations of uppercase and lowercase lettering that are valid
     
-        int protocal_prefix_len = strlen("wss://");    
-        int base_url_length = url.size() - protocal_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("wss://");
+
+        // we fetch the url length without the wss:// prefix and any path appended to the url, we do this by finding the next '/' character after the initial wss://
+        size_t base_url_end_index = url.find('/', protocol_prefix_len);
+
+        int base_url_length = (base_url_end_index != std::string_view::npos) ? (int)base_url_end_index - protocol_prefix_len : url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix and the path if any
             
         // SSL members initialisations
         c_bio = BIO_new_ssl_connect(ssl_ctx); // creates a new bio ssl object
@@ -68,7 +72,7 @@ lock_client::lock_client(std::string_view url, std::string_view path = "/"){
             // URL copy 
             if(base_url_length < url_static_array_length){ // static memory large enough
             
-                url.copy(c_url_static, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
+                url.copy(c_url_static, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
             
                 c_url_static[base_url_length] = '\0'; // null-terminate the string
             
@@ -77,7 +81,7 @@ lock_client::lock_client(std::string_view url, std::string_view path = "/"){
             }
             else if(base_url_length < size_of_allocated_url_memory){ // store in already allocated dynamic memory
                 
-                url.copy(c_url_new, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
+                url.copy(c_url_new, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
             
                 c_url_new[base_url_length] = '\0'; // null-terminate the string
             
@@ -104,7 +108,7 @@ lock_client::lock_client(std::string_view url, std::string_view path = "/"){
                         
                         size_of_allocated_url_memory = base_url_length + 1;    
                             
-                        url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                        url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
             
                         c_url_new[base_url_length] = '\0';
             
@@ -132,7 +136,7 @@ lock_client::lock_client(std::string_view url, std::string_view path = "/"){
                         
                         size_of_allocated_url_memory = base_url_length + 1;    
                             
-                        url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                        url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
                 
                         c_url_new[base_url_length] = '\0';
 
@@ -160,13 +164,17 @@ lock_client::lock_client(std::string_view url, std::string_view path = "/"){
     
     else if( (url.compare(0, 5, "ws://") == 0) || (url.compare(0, 5, "Ws://") == 0) || (url.compare(0, 5, "wS://") == 0) || (url.compare(0, 5, "WS://") == 0)){ // ws:// endpoint, we test the 4 possible combinations of uppercase and lowercase lettering. The second parameter to the std::string_view compare function is the length of the protocol prefix which we test for the presence of
     
-        int protocal_prefix_len = strlen("ws://");    
-        int base_url_length = url.size() - protocal_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("ws://");
+
+        // we fetch the url length without the ws:// prefix and any path appended to the url, we do this by finding the next '/' character after the initial ws://
+        size_t base_url_end_index = url.find('/', protocol_prefix_len);
+
+        int base_url_length = (base_url_end_index != std::string_view::npos) ? (int)base_url_end_index - protocol_prefix_len : url.size() - protocol_prefix_len; // saves the length of the url without the ws:// prefix and the path if any
     
         // URL copy 
         if(base_url_length < url_static_array_length){ // static array is sufficient
     
-            url.copy(c_url_static, base_url_length, protocal_prefix_len); // protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
+            url.copy(c_url_static, base_url_length, protocol_prefix_len); // protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
     
             c_url_static[base_url_length] = '\0'; // null-terminate the string
     
@@ -175,7 +183,7 @@ lock_client::lock_client(std::string_view url, std::string_view path = "/"){
         }
         else if(base_url_length < size_of_allocated_url_memory){ // store in already allocated dynamic memory
         
-            url.copy(c_url_new, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
+            url.copy(c_url_new, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
     
             c_url_new[base_url_length] = '\0'; // null-terminate the string
     
@@ -202,7 +210,7 @@ lock_client::lock_client(std::string_view url, std::string_view path = "/"){
                 
                     size_of_allocated_url_memory = base_url_length + 1;    
                     
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
        
                     c_url_new[base_url_length] = '\0';
     
@@ -230,7 +238,7 @@ lock_client::lock_client(std::string_view url, std::string_view path = "/"){
                 
                     size_of_allocated_url_memory = base_url_length + 1;    
                     
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
        
                     c_url_new[base_url_length] = '\0';
     
@@ -263,9 +271,9 @@ lock_client::lock_client(std::string_view url, std::string_view path = "/"){
         
         // get the host name out of the stored url
         int last_colon = url.rfind(":"); // get location of last colon
-        int last_f_slash = url.rfind("/"); // get location of last forward slash
+        int last_f_slash = url.rfind("/", last_colon); // get location of last forward slash before the host name - we start the rfind from the last colon because starting from the end of the url string would return the forward slash before the path
         
-        if(last_colon < last_f_slash){ // This condition checks that the last colon being considered is the colon before the port number and not the colon immediately after the protocol name (wss:// for instance), we do not need to check that a colon and forward slash were found because that part is already checked by the code that checks the endpoint protocol and all protocol names contained in urls have a colon and a forward slash character in them, so so long as execution got here the supplied url has both a colon and a forward slash 
+        if(last_colon < last_f_slash){ // This condition checks that the last colon being considered is the colon before the port number and not the colon immediately after the protocol name (wss:// for instance), we do not need to check that a colon and forward slash were found because that part is already checked by the code that checks the endpoint protocol and all protocol names contained in urls have a colon and a forward slash character in them, so so long as execution got here the supplied url has both a colon and a forward slash
             
             strncpy(error_buffer, "Supplied URL parameter does not conform to the LockWebSocket endpoint convention", error_buffer_array_length);
                     
@@ -371,7 +379,13 @@ lock_client::lock_client(std::string_view url, std::string_view path = "/"){
                 
                 if(!error){
                 // only continue if no error
-                
+
+                    // we store the start index of the path from the supplied url - we search for the next forward slash after the last colon, that is the start of the path in the supplied url string view
+                    size_t path_start_index = url.find('/', last_colon);
+                    
+                    // we check if a forward slash was found after the last colon, if none was we connect to the default root path else the forward slash till the end of the url string is the path
+                    std::string_view path = (path_start_index != std::string_view::npos) ? url.substr(path_start_index) : "/";
+
                     // copy the channel path parameter into the channel path array
                     int path_string_len = path.size();
                     
@@ -711,7 +725,7 @@ lock_client::lock_client(std::string_view url, std::string_view path = "/"){
 
 }
 
-lock_client::lock_client(std::string_view url, std::string_view path = "/", in_addr* interface_address = NULL, char* interface_name = NULL){
+lock_client::lock_client(std::string_view url, in_addr* interface_address, char* interface_name){
 
     // initialisation of class wide variables
     if(!openssl_init){
@@ -754,13 +768,13 @@ lock_client::lock_client(std::string_view url, std::string_view path = "/", in_a
 
     if( (url.compare(0, 6, "wss://") == 0) || (url.compare(0, 6, "Wss://") == 0) || (url.compare(0, 6, "WSs://") == 0) || (url.compare(0, 6, "WSS://") == 0) || (url.compare(0, 6, "WsS://") == 0) || (url.compare(0, 6, "wSS://") == 0) || (url.compare(0, 6, "wsS://") == 0) || (url.compare(0, 6, "wSs://") == 0) ){ // endpoint is a wss:// endpoint, the second parameter to the std::string_view compare function is 6 which is the length of the string "wss://" which we are testing for the presence of, we list out and compare the 8 possible combinations of uppercase and lowercase lettering that are valid
     
-        int protocal_prefix_len = strlen("wss://");    
-        int base_url_length = url.size() - protocal_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("wss://");    
+        int base_url_length = url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix 
         
         // we copy the URL into the c_url array
         if(base_url_length < url_static_array_length){ // static memory large enough
         
-            url.copy(c_url_static, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
+            url.copy(c_url_static, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
         
             c_url_static[base_url_length] = '\0'; // null-terminate the string
         
@@ -769,7 +783,7 @@ lock_client::lock_client(std::string_view url, std::string_view path = "/", in_a
         }
         else if(base_url_length < size_of_allocated_url_memory){ // store in already allocated dynamic memory
         
-            url.copy(c_url_new, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
+            url.copy(c_url_new, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
         
             c_url_new[base_url_length] = '\0'; // null-terminate the string
         
@@ -796,7 +810,7 @@ lock_client::lock_client(std::string_view url, std::string_view path = "/", in_a
                     
                     size_of_allocated_url_memory = base_url_length + 1;    
                         
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
         
                     c_url_new[base_url_length] = '\0';
         
@@ -824,7 +838,7 @@ lock_client::lock_client(std::string_view url, std::string_view path = "/", in_a
                     
                     size_of_allocated_url_memory = base_url_length + 1;    
                         
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
             
                     c_url_new[base_url_length] = '\0';
 
@@ -996,6 +1010,8 @@ lock_client::lock_client(std::string_view url, std::string_view path = "/", in_a
 
                     if(!error){
                     // continue if no error
+                        
+                        std::string_view path = "/";
 
                         // copy the channel path parameter into the channel path array
                         int path_string_len = path.size();
@@ -1320,13 +1336,13 @@ lock_client::lock_client(std::string_view url, std::string_view path = "/", in_a
     
     else if( (url.compare(0, 5, "ws://") == 0) || (url.compare(0, 5, "Ws://") == 0) || (url.compare(0, 5, "wS://") == 0) || (url.compare(0, 5, "WS://") == 0)){ // ws:// endpoint, we test the 4 possible combinations of uppercase and lowercase lettering. The second parameter to the std::string_view compare function is the length of the protocol prefix which we test for the presence of
     
-        int protocal_prefix_len = strlen("ws://");    
-        int base_url_length = url.size() - protocal_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("ws://");    
+        int base_url_length = url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix 
     
         // URL copy 
         if(base_url_length < url_static_array_length){ // static array is sufficient
     
-            url.copy(c_url_static, base_url_length, protocal_prefix_len); // protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
+            url.copy(c_url_static, base_url_length, protocol_prefix_len); // protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
     
             c_url_static[base_url_length] = '\0'; // null-terminate the string
     
@@ -1335,7 +1351,7 @@ lock_client::lock_client(std::string_view url, std::string_view path = "/", in_a
         }
         else if(base_url_length < size_of_allocated_url_memory){ // store in already allocated dynamic memory
         
-            url.copy(c_url_new, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
+            url.copy(c_url_new, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
     
             c_url_new[base_url_length] = '\0'; // null-terminate the string
     
@@ -1362,7 +1378,7 @@ lock_client::lock_client(std::string_view url, std::string_view path = "/", in_a
                 
                     size_of_allocated_url_memory = base_url_length + 1;    
                     
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
        
                     c_url_new[base_url_length] = '\0';
     
@@ -1390,7 +1406,7 @@ lock_client::lock_client(std::string_view url, std::string_view path = "/", in_a
                 
                     size_of_allocated_url_memory = base_url_length + 1;    
                     
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
        
                     c_url_new[base_url_length] = '\0';
     
@@ -4669,7 +4685,7 @@ bool lock_client::basic_read(){
         
 }
        
-bool lock_client::connect(std::string_view url, std::string_view path = "/"){ // this is used to connect to connect to the url passed as a parameter, it can be used when a lock client object was created without establishing a websocket connection by using the parameterless constructor, or to connect an already established websocket connection and lock client instance to a different websocket server, it can also be used to retry connecting an instance that encountered an error during connection
+bool lock_client::connect(std::string_view url){ // this is used to connect to connect to the url passed as a parameter, it can be used when a lock client object was created without establishing a websocket connection by using the parameterless constructor, or to connect an already established websocket connection and lock client instance to a different websocket server, it can also be used to retry connecting an instance that encountered an error during connection
     
     if(client_state == CLOSED){
         
@@ -4696,8 +4712,8 @@ bool lock_client::connect(std::string_view url, std::string_view path = "/"){ //
     
     if( (url.compare(0, 6, "wss://") == 0) || (url.compare(0, 6, "Wss://") == 0) || (url.compare(0, 6, "WSs://") == 0) || (url.compare(0, 6, "WSS://") == 0) || (url.compare(0, 6, "WsS://") == 0) || (url.compare(0, 6, "wSS://") == 0) || (url.compare(0, 6, "wsS://") == 0) || (url.compare(0, 6, "wSs://") == 0) ){ // endpoint is a wss:// endpoint, the second parameter to the std::string_view compare function is 6 which is the length of the string "wss://" which we are testing for the presence of, we list out and compare the 8 possible combinations of uppercase and lowercase lettering that are valid
     
-        int protocal_prefix_len = strlen("wss://");    
-        int base_url_length = url.size() - protocal_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("wss://");    
+        int base_url_length = url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix 
             
         // SSL members initialisations
         c_bio = BIO_new_ssl_connect(ssl_ctx); // creates a new bio ssl object
@@ -4715,7 +4731,7 @@ bool lock_client::connect(std::string_view url, std::string_view path = "/"){ //
             // URL copy 
             if(base_url_length < url_static_array_length){ // static memory large enough
             
-                url.copy(c_url_static, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
+                url.copy(c_url_static, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
             
                 c_url_static[base_url_length] = '\0'; // null-terminate the string
             
@@ -4724,7 +4740,7 @@ bool lock_client::connect(std::string_view url, std::string_view path = "/"){ //
             }
             else if(base_url_length < size_of_allocated_url_memory){ // store in already allocated dynamic memory
                 
-                url.copy(c_url_new, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
+                url.copy(c_url_new, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
             
                 c_url_new[base_url_length] = '\0'; // null-terminate the string
             
@@ -4751,7 +4767,7 @@ bool lock_client::connect(std::string_view url, std::string_view path = "/"){ //
                         
                         size_of_allocated_url_memory = base_url_length + 1;    
                             
-                        url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                        url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
             
                         c_url_new[base_url_length] = '\0';
             
@@ -4779,7 +4795,7 @@ bool lock_client::connect(std::string_view url, std::string_view path = "/"){ //
                         
                         size_of_allocated_url_memory = base_url_length + 1;    
                             
-                        url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                        url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
                 
                         c_url_new[base_url_length] = '\0';
 
@@ -4807,13 +4823,13 @@ bool lock_client::connect(std::string_view url, std::string_view path = "/"){ //
     
     else if( (url.compare(0, 5, "ws://") == 0) || (url.compare(0, 5, "Ws://") == 0) || (url.compare(0, 5, "wS://") == 0) || (url.compare(0, 5, "WS://") == 0)){ // ws:// endpoint, we test the 4 possible combinations of uppercase and lowercase lettering. The second parameter to the std::string_view compare function is the length of the protocol prefix which we test for the presence of
     
-        int protocal_prefix_len = strlen("ws://");    
-        int base_url_length = url.size() - protocal_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("ws://");    
+        int base_url_length = url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix 
     
         // URL copy 
         if(base_url_length < url_static_array_length){ // static array is sufficient
     
-            url.copy(c_url_static, base_url_length, protocal_prefix_len); // protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
+            url.copy(c_url_static, base_url_length, protocol_prefix_len); // protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
     
             c_url_static[base_url_length] = '\0'; // null-terminate the string
     
@@ -4822,7 +4838,7 @@ bool lock_client::connect(std::string_view url, std::string_view path = "/"){ //
         }
         else if(base_url_length < size_of_allocated_url_memory){ // store in already allocated dynamic memory
         
-            url.copy(c_url_new, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
+            url.copy(c_url_new, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
     
             c_url_new[base_url_length] = '\0'; // null-terminate the string
     
@@ -4849,7 +4865,7 @@ bool lock_client::connect(std::string_view url, std::string_view path = "/"){ //
                 
                     size_of_allocated_url_memory = base_url_length + 1;    
                     
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
        
                     c_url_new[base_url_length] = '\0';
     
@@ -4877,7 +4893,7 @@ bool lock_client::connect(std::string_view url, std::string_view path = "/"){ //
                 
                     size_of_allocated_url_memory = base_url_length + 1;    
                     
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
        
                     c_url_new[base_url_length] = '\0';
     
@@ -5018,7 +5034,9 @@ bool lock_client::connect(std::string_view url, std::string_view path = "/"){ //
                 
                 if(!error){
                 // only continue if no error
-                
+                    
+                    std::string_view path = "/";
+
                     // copy the channel path parameter into the channel path array
                     int path_string_len = path.size();
                     
@@ -5360,7 +5378,7 @@ bool lock_client::connect(std::string_view url, std::string_view path = "/"){ //
         
 }
 
-bool lock_client::interface_connect(std::string_view url, std::string_view path = "/", in_addr* interface_address = NULL, char* interface_name = NULL){
+bool lock_client::interface_connect(std::string_view url, in_addr* interface_address = NULL, char* interface_name = NULL){
     
     if(client_state == CLOSED){
         
@@ -5387,13 +5405,13 @@ bool lock_client::interface_connect(std::string_view url, std::string_view path 
     
     if( (url.compare(0, 6, "wss://") == 0) || (url.compare(0, 6, "Wss://") == 0) || (url.compare(0, 6, "WSs://") == 0) || (url.compare(0, 6, "WSS://") == 0) || (url.compare(0, 6, "WsS://") == 0) || (url.compare(0, 6, "wSS://") == 0) || (url.compare(0, 6, "wsS://") == 0) || (url.compare(0, 6, "wSs://") == 0) ){ // endpoint is a wss:// endpoint, the second parameter to the std::string_view compare function is 6 which is the length of the string "wss://" which we are testing for the presence of, we list out and compare the 8 possible combinations of uppercase and lowercase lettering that are valid
     
-        int protocal_prefix_len = strlen("wss://");    
-        int base_url_length = url.size() - protocal_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("wss://");    
+        int base_url_length = url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix 
         
         // we copy the URL into the c_url array
         if(base_url_length < url_static_array_length){ // static memory large enough
         
-            url.copy(c_url_static, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
+            url.copy(c_url_static, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
         
             c_url_static[base_url_length] = '\0'; // null-terminate the string
         
@@ -5402,7 +5420,7 @@ bool lock_client::interface_connect(std::string_view url, std::string_view path 
         }
         else if(base_url_length < size_of_allocated_url_memory){ // store in already allocated dynamic memory
         
-            url.copy(c_url_new, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
+            url.copy(c_url_new, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
         
             c_url_new[base_url_length] = '\0'; // null-terminate the string
         
@@ -5429,7 +5447,7 @@ bool lock_client::interface_connect(std::string_view url, std::string_view path 
                     
                     size_of_allocated_url_memory = base_url_length + 1;    
                         
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
         
                     c_url_new[base_url_length] = '\0';
         
@@ -5457,7 +5475,7 @@ bool lock_client::interface_connect(std::string_view url, std::string_view path 
                     
                     size_of_allocated_url_memory = base_url_length + 1;    
                         
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
             
                     c_url_new[base_url_length] = '\0';
 
@@ -5629,6 +5647,8 @@ bool lock_client::interface_connect(std::string_view url, std::string_view path 
 
                     if(!error){
                     // continue if no error
+
+                        std::string_view path = "/";
 
                         // copy the channel path parameter into the channel path array
                         int path_string_len = path.size();
@@ -5953,13 +5973,13 @@ bool lock_client::interface_connect(std::string_view url, std::string_view path 
     
     else if( (url.compare(0, 5, "ws://") == 0) || (url.compare(0, 5, "Ws://") == 0) || (url.compare(0, 5, "wS://") == 0) || (url.compare(0, 5, "WS://") == 0)){ // ws:// endpoint, we test the 4 possible combinations of uppercase and lowercase lettering. The second parameter to the std::string_view compare function is the length of the protocol prefix which we test for the presence of
     
-        int protocal_prefix_len = strlen("ws://");    
-        int base_url_length = url.size() - protocal_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("ws://");    
+        int base_url_length = url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix 
     
         // URL copy 
         if(base_url_length < url_static_array_length){ // static array is sufficient
     
-            url.copy(c_url_static, base_url_length, protocal_prefix_len); // protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
+            url.copy(c_url_static, base_url_length, protocol_prefix_len); // protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
     
             c_url_static[base_url_length] = '\0'; // null-terminate the string
     
@@ -5968,7 +5988,7 @@ bool lock_client::interface_connect(std::string_view url, std::string_view path 
         }
         else if(base_url_length < size_of_allocated_url_memory){ // store in already allocated dynamic memory
         
-            url.copy(c_url_new, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
+            url.copy(c_url_new, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
     
             c_url_new[base_url_length] = '\0'; // null-terminate the string
     
@@ -5995,7 +6015,7 @@ bool lock_client::interface_connect(std::string_view url, std::string_view path 
                 
                     size_of_allocated_url_memory = base_url_length + 1;    
                     
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
        
                     c_url_new[base_url_length] = '\0';
     
@@ -6023,7 +6043,7 @@ bool lock_client::interface_connect(std::string_view url, std::string_view path 
                 
                     size_of_allocated_url_memory = base_url_length + 1;    
                     
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
        
                     c_url_new[base_url_length] = '\0';
     
@@ -6294,7 +6314,7 @@ bool lock_client::close(unsigned short status_code){ // this closes an establish
 // non blocking lock client function variants
 
 // constructor with url string
-lock_client_nb::lock_client_nb(std::string_view url, std::string_view path = "/"){
+lock_client_nb::lock_client_nb(std::string_view url){
 
     // initialisation of class wide variables
     if(!openssl_init){
@@ -6337,8 +6357,8 @@ lock_client_nb::lock_client_nb(std::string_view url, std::string_view path = "/"
     
     if( (url.compare(0, 6, "wss://") == 0) || (url.compare(0, 6, "Wss://") == 0) || (url.compare(0, 6, "WSs://") == 0) || (url.compare(0, 6, "WSS://") == 0) || (url.compare(0, 6, "WsS://") == 0) || (url.compare(0, 6, "wSS://") == 0) || (url.compare(0, 6, "wsS://") == 0) || (url.compare(0, 6, "wSs://") == 0) ){ // endpoint is a wss:// endpoint, the second parameter to the std::string_view compare function is 6 which is the length of the string "wss://" which we are testing for the presence of, we list out and compare the 8 possible combinations of uppercase and lowercase lettering that are valid
     
-        int protocal_prefix_len = strlen("wss://");    
-        int base_url_length = url.size() - protocal_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("wss://");    
+        int base_url_length = url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix 
             
         // SSL members initialisations
         c_bio = BIO_new_ssl_connect(ssl_ctx); // creates a new bio ssl object
@@ -6356,7 +6376,7 @@ lock_client_nb::lock_client_nb(std::string_view url, std::string_view path = "/"
             // URL copy 
             if(base_url_length < url_static_array_length){ // static memory large enough
             
-                url.copy(c_url_static, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
+                url.copy(c_url_static, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
             
                 c_url_static[base_url_length] = '\0'; // null-terminate the string
             
@@ -6365,7 +6385,7 @@ lock_client_nb::lock_client_nb(std::string_view url, std::string_view path = "/"
             }
             else if(base_url_length < size_of_allocated_url_memory){ // store in already allocated dynamic memory
                 
-                url.copy(c_url_new, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
+                url.copy(c_url_new, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
             
                 c_url_new[base_url_length] = '\0'; // null-terminate the string
             
@@ -6392,7 +6412,7 @@ lock_client_nb::lock_client_nb(std::string_view url, std::string_view path = "/"
                         
                         size_of_allocated_url_memory = base_url_length + 1;    
                             
-                        url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                        url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
             
                         c_url_new[base_url_length] = '\0';
             
@@ -6420,7 +6440,7 @@ lock_client_nb::lock_client_nb(std::string_view url, std::string_view path = "/"
                         
                         size_of_allocated_url_memory = base_url_length + 1;    
                             
-                        url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                        url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
                 
                         c_url_new[base_url_length] = '\0';
 
@@ -6448,13 +6468,13 @@ lock_client_nb::lock_client_nb(std::string_view url, std::string_view path = "/"
     
     else if( (url.compare(0, 5, "ws://") == 0) || (url.compare(0, 5, "Ws://") == 0) || (url.compare(0, 5, "wS://") == 0) || (url.compare(0, 5, "WS://") == 0)){ // ws:// endpoint, we test the 4 possible combinations of uppercase and lowercase lettering. The second parameter to the std::string_view compare function is the length of the protocol prefix which we test for the presence of
     
-        int protocal_prefix_len = strlen("ws://");    
-        int base_url_length = url.size() - protocal_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("ws://");    
+        int base_url_length = url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix 
     
         // URL copy 
         if(base_url_length < url_static_array_length){ // static array is sufficient
     
-            url.copy(c_url_static, base_url_length, protocal_prefix_len); // protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
+            url.copy(c_url_static, base_url_length, protocol_prefix_len); // protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
     
             c_url_static[base_url_length] = '\0'; // null-terminate the string
     
@@ -6463,7 +6483,7 @@ lock_client_nb::lock_client_nb(std::string_view url, std::string_view path = "/"
         }
         else if(base_url_length < size_of_allocated_url_memory){ // store in already allocated dynamic memory
         
-            url.copy(c_url_new, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
+            url.copy(c_url_new, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
     
             c_url_new[base_url_length] = '\0'; // null-terminate the string
     
@@ -6490,7 +6510,7 @@ lock_client_nb::lock_client_nb(std::string_view url, std::string_view path = "/"
                 
                     size_of_allocated_url_memory = base_url_length + 1;    
                     
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
        
                     c_url_new[base_url_length] = '\0';
     
@@ -6518,7 +6538,7 @@ lock_client_nb::lock_client_nb(std::string_view url, std::string_view path = "/"
                 
                     size_of_allocated_url_memory = base_url_length + 1;    
                     
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
        
                     c_url_new[base_url_length] = '\0';
     
@@ -6660,6 +6680,8 @@ lock_client_nb::lock_client_nb(std::string_view url, std::string_view path = "/"
                 if(!error){
                 // only continue if no error
                 
+                    std::string_view path = "/";
+
                     // copy the channel path parameter into the channel path array
                     int path_string_len = path.size();
                     
@@ -7066,7 +7088,7 @@ lock_client_nb::lock_client_nb(std::string_view url, std::string_view path = "/"
 }
 
 // constructor that binds to a network interface
-lock_client_nb::lock_client_nb(std::string_view url, std::string_view path = "/", in_addr* interface_address = NULL, char* interface_name = NULL){
+lock_client_nb::lock_client_nb(std::string_view url, in_addr* interface_address = NULL, char* interface_name = NULL){
 
     // initialisation of class wide variables
     if(!openssl_init){
@@ -7108,13 +7130,13 @@ lock_client_nb::lock_client_nb(std::string_view url, std::string_view path = "/"
 
     if( (url.compare(0, 6, "wss://") == 0) || (url.compare(0, 6, "Wss://") == 0) || (url.compare(0, 6, "WSs://") == 0) || (url.compare(0, 6, "WSS://") == 0) || (url.compare(0, 6, "WsS://") == 0) || (url.compare(0, 6, "wSS://") == 0) || (url.compare(0, 6, "wsS://") == 0) || (url.compare(0, 6, "wSs://") == 0) ){ // endpoint is a wss:// endpoint, the second parameter to the std::string_view compare function is 6 which is the length of the string "wss://" which we are testing for the presence of, we list out and compare the 8 possible combinations of uppercase and lowercase lettering that are valid
     
-        int protocal_prefix_len = strlen("wss://");    
-        int base_url_length = url.size() - protocal_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("wss://");    
+        int base_url_length = url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix 
         
         // we copy the URL into the c_url array
         if(base_url_length < url_static_array_length){ // static memory large enough
         
-            url.copy(c_url_static, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
+            url.copy(c_url_static, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
         
             c_url_static[base_url_length] = '\0'; // null-terminate the string
         
@@ -7123,7 +7145,7 @@ lock_client_nb::lock_client_nb(std::string_view url, std::string_view path = "/"
         }
         else if(base_url_length < size_of_allocated_url_memory){ // store in already allocated dynamic memory
         
-            url.copy(c_url_new, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
+            url.copy(c_url_new, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
         
             c_url_new[base_url_length] = '\0'; // null-terminate the string
         
@@ -7150,7 +7172,7 @@ lock_client_nb::lock_client_nb(std::string_view url, std::string_view path = "/"
                     
                     size_of_allocated_url_memory = base_url_length + 1;    
                         
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
         
                     c_url_new[base_url_length] = '\0';
         
@@ -7178,7 +7200,7 @@ lock_client_nb::lock_client_nb(std::string_view url, std::string_view path = "/"
                     
                     size_of_allocated_url_memory = base_url_length + 1;    
                         
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
             
                     c_url_new[base_url_length] = '\0';
 
@@ -7355,7 +7377,9 @@ lock_client_nb::lock_client_nb(std::string_view url, std::string_view path = "/"
                     // we fetch the path for this connection
 
                     if(!error){
-                    // continue if no error 
+                    // continue if no error
+
+                        std::string_view path = "/";
                         
                         // copy the channel path parameter into the channel path array
                         int path_string_len = path.size();
@@ -7731,13 +7755,13 @@ lock_client_nb::lock_client_nb(std::string_view url, std::string_view path = "/"
     
     else if( (url.compare(0, 5, "ws://") == 0) || (url.compare(0, 5, "Ws://") == 0) || (url.compare(0, 5, "wS://") == 0) || (url.compare(0, 5, "WS://") == 0)){ // ws:// endpoint, we test the 4 possible combinations of uppercase and lowercase lettering. The second parameter to the std::string_view compare function is the length of the protocol prefix which we test for the presence of
     
-        int protocal_prefix_len = strlen("ws://");    
-        int base_url_length = url.size() - protocal_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("ws://");    
+        int base_url_length = url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix 
     
         // URL copy 
         if(base_url_length < url_static_array_length){ // static array is sufficient
     
-            url.copy(c_url_static, base_url_length, protocal_prefix_len); // protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
+            url.copy(c_url_static, base_url_length, protocol_prefix_len); // protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
     
             c_url_static[base_url_length] = '\0'; // null-terminate the string
     
@@ -7746,7 +7770,7 @@ lock_client_nb::lock_client_nb(std::string_view url, std::string_view path = "/"
         }
         else if(base_url_length < size_of_allocated_url_memory){ // store in already allocated dynamic memory
         
-            url.copy(c_url_new, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
+            url.copy(c_url_new, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
     
             c_url_new[base_url_length] = '\0'; // null-terminate the string
     
@@ -7773,7 +7797,7 @@ lock_client_nb::lock_client_nb(std::string_view url, std::string_view path = "/"
                 
                     size_of_allocated_url_memory = base_url_length + 1;    
                     
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
        
                     c_url_new[base_url_length] = '\0';
     
@@ -7801,7 +7825,7 @@ lock_client_nb::lock_client_nb(std::string_view url, std::string_view path = "/"
                 
                     size_of_allocated_url_memory = base_url_length + 1;    
                     
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
        
                     c_url_new[base_url_length] = '\0';
     
@@ -11106,7 +11130,7 @@ bool lock_client_nb::basic_read(){
         
 }
        
-bool lock_client_nb::connect(std::string_view url, std::string_view path = "/"){ // this is used to connect to connect to the url passed as a parameter, it can be used when a lock client object was created without establishing a websocket connection by using the parameterless constructor, or to connect an already established websocket connection and lock client instance to a different websocket server, it can also be used to retry connecting an instance that encountered an error during connection
+bool lock_client_nb::connect(std::string_view url){ // this is used to connect to connect to the url passed as a parameter, it can be used when a lock client object was created without establishing a websocket connection by using the parameterless constructor, or to connect an already established websocket connection and lock client instance to a different websocket server, it can also be used to retry connecting an instance that encountered an error during connection
     
     if(client_state == CLOSED){
         
@@ -11133,8 +11157,8 @@ bool lock_client_nb::connect(std::string_view url, std::string_view path = "/"){
     
     if( (url.compare(0, 6, "wss://") == 0) || (url.compare(0, 6, "Wss://") == 0) || (url.compare(0, 6, "WSs://") == 0) || (url.compare(0, 6, "WSS://") == 0) || (url.compare(0, 6, "WsS://") == 0) || (url.compare(0, 6, "wSS://") == 0) || (url.compare(0, 6, "wsS://") == 0) || (url.compare(0, 6, "wSs://") == 0) ){ // endpoint is a wss:// endpoint, the second parameter to the std::string_view compare function is 6 which is the length of the string "wss://" which we are testing for the presence of, we list out and compare the 8 possible combinations of uppercase and lowercase lettering that are valid
     
-        int protocal_prefix_len = strlen("wss://");    
-        int base_url_length = url.size() - protocal_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("wss://");    
+        int base_url_length = url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix 
             
         // SSL members initialisations
         c_bio = BIO_new_ssl_connect(ssl_ctx); // creates a new bio ssl object
@@ -11152,7 +11176,7 @@ bool lock_client_nb::connect(std::string_view url, std::string_view path = "/"){
             // URL copy 
             if(base_url_length < url_static_array_length){ // static memory large enough
             
-                url.copy(c_url_static, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
+                url.copy(c_url_static, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
             
                 c_url_static[base_url_length] = '\0'; // null-terminate the string
             
@@ -11161,7 +11185,7 @@ bool lock_client_nb::connect(std::string_view url, std::string_view path = "/"){
             }
             else if(base_url_length < size_of_allocated_url_memory){ // store in already allocated dynamic memory
                 
-                url.copy(c_url_new, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
+                url.copy(c_url_new, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
             
                 c_url_new[base_url_length] = '\0'; // null-terminate the string
             
@@ -11188,7 +11212,7 @@ bool lock_client_nb::connect(std::string_view url, std::string_view path = "/"){
                         
                         size_of_allocated_url_memory = base_url_length + 1;    
                             
-                        url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                        url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
             
                         c_url_new[base_url_length] = '\0';
             
@@ -11216,7 +11240,7 @@ bool lock_client_nb::connect(std::string_view url, std::string_view path = "/"){
                         
                         size_of_allocated_url_memory = base_url_length + 1;    
                             
-                        url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                        url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
                 
                         c_url_new[base_url_length] = '\0';
 
@@ -11244,13 +11268,13 @@ bool lock_client_nb::connect(std::string_view url, std::string_view path = "/"){
     
     else if( (url.compare(0, 5, "ws://") == 0) || (url.compare(0, 5, "Ws://") == 0) || (url.compare(0, 5, "wS://") == 0) || (url.compare(0, 5, "WS://") == 0)){ // ws:// endpoint, we test the 4 possible combinations of uppercase and lowercase lettering. The second parameter to the std::string_view compare function is the length of the protocol prefix which we test for the presence of
     
-        int protocal_prefix_len = strlen("ws://");    
-        int base_url_length = url.size() - protocal_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("ws://");    
+        int base_url_length = url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix 
     
         // URL copy 
         if(base_url_length < url_static_array_length){ // static array is sufficient
     
-            url.copy(c_url_static, base_url_length, protocal_prefix_len); // protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
+            url.copy(c_url_static, base_url_length, protocol_prefix_len); // protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
     
             c_url_static[base_url_length] = '\0'; // null-terminate the string
     
@@ -11259,7 +11283,7 @@ bool lock_client_nb::connect(std::string_view url, std::string_view path = "/"){
         }
         else if(base_url_length < size_of_allocated_url_memory){ // store in already allocated dynamic memory
         
-            url.copy(c_url_new, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
+            url.copy(c_url_new, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
     
             c_url_new[base_url_length] = '\0'; // null-terminate the string
     
@@ -11286,7 +11310,7 @@ bool lock_client_nb::connect(std::string_view url, std::string_view path = "/"){
                 
                     size_of_allocated_url_memory = base_url_length + 1;    
                     
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
        
                     c_url_new[base_url_length] = '\0';
     
@@ -11314,7 +11338,7 @@ bool lock_client_nb::connect(std::string_view url, std::string_view path = "/"){
                 
                     size_of_allocated_url_memory = base_url_length + 1;    
                     
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
        
                     c_url_new[base_url_length] = '\0';
     
@@ -11456,6 +11480,8 @@ bool lock_client_nb::connect(std::string_view url, std::string_view path = "/"){
                 if(!error){
                 // only continue if no error
                 
+                    std::string_view path = "/";
+
                     // copy the channel path parameter into the channel path array
                     int path_string_len = path.size();
                     
@@ -11863,7 +11889,7 @@ bool lock_client_nb::connect(std::string_view url, std::string_view path = "/"){
         
 }
 
-bool lock_client_nb::interface_connect(std::string_view url, std::string_view path = "/", in_addr* interface_address = NULL, char* interface_name = NULL){
+bool lock_client_nb::interface_connect(std::string_view url, in_addr* interface_address = NULL, char* interface_name = NULL){
     
     if(client_state == CLOSED){
         
@@ -11890,13 +11916,13 @@ bool lock_client_nb::interface_connect(std::string_view url, std::string_view pa
     
     if( (url.compare(0, 6, "wss://") == 0) || (url.compare(0, 6, "Wss://") == 0) || (url.compare(0, 6, "WSs://") == 0) || (url.compare(0, 6, "WSS://") == 0) || (url.compare(0, 6, "WsS://") == 0) || (url.compare(0, 6, "wSS://") == 0) || (url.compare(0, 6, "wsS://") == 0) || (url.compare(0, 6, "wSs://") == 0) ){ // endpoint is a wss:// endpoint, the second parameter to the std::string_view compare function is 6 which is the length of the string "wss://" which we are testing for the presence of, we list out and compare the 8 possible combinations of uppercase and lowercase lettering that are valid
     
-        int protocal_prefix_len = strlen("wss://");    
-        int base_url_length = url.size() - protocal_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("wss://");    
+        int base_url_length = url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix 
         
         // we copy the URL into the c_url array
         if(base_url_length < url_static_array_length){ // static memory large enough
         
-            url.copy(c_url_static, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
+            url.copy(c_url_static, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
         
             c_url_static[base_url_length] = '\0'; // null-terminate the string
         
@@ -11905,7 +11931,7 @@ bool lock_client_nb::interface_connect(std::string_view url, std::string_view pa
         }
         else if(base_url_length < size_of_allocated_url_memory){ // store in already allocated dynamic memory
         
-            url.copy(c_url_new, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
+            url.copy(c_url_new, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
         
             c_url_new[base_url_length] = '\0'; // null-terminate the string
         
@@ -11932,7 +11958,7 @@ bool lock_client_nb::interface_connect(std::string_view url, std::string_view pa
                     
                     size_of_allocated_url_memory = base_url_length + 1;    
                         
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
         
                     c_url_new[base_url_length] = '\0';
         
@@ -11960,7 +11986,7 @@ bool lock_client_nb::interface_connect(std::string_view url, std::string_view pa
                     
                     size_of_allocated_url_memory = base_url_length + 1;    
                         
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
             
                     c_url_new[base_url_length] = '\0';
 
@@ -12139,6 +12165,8 @@ bool lock_client_nb::interface_connect(std::string_view url, std::string_view pa
 
                     if(!error){
                     // continue if no error
+
+                        std::string_view path = "/";
 
                         // copy the channel path parameter into the channel path array
                         int path_string_len = path.size();
@@ -12514,13 +12542,13 @@ bool lock_client_nb::interface_connect(std::string_view url, std::string_view pa
     
     else if( (url.compare(0, 5, "ws://") == 0) || (url.compare(0, 5, "Ws://") == 0) || (url.compare(0, 5, "wS://") == 0) || (url.compare(0, 5, "WS://") == 0)){ // ws:// endpoint, we test the 4 possible combinations of uppercase and lowercase lettering. The second parameter to the std::string_view compare function is the length of the protocol prefix which we test for the presence of
     
-        int protocal_prefix_len = strlen("ws://");    
-        int base_url_length = url.size() - protocal_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("ws://");    
+        int base_url_length = url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix 
     
         // URL copy 
         if(base_url_length < url_static_array_length){ // static array is sufficient
     
-            url.copy(c_url_static, base_url_length, protocal_prefix_len); // protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
+            url.copy(c_url_static, base_url_length, protocol_prefix_len); // protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
     
             c_url_static[base_url_length] = '\0'; // null-terminate the string
     
@@ -12529,7 +12557,7 @@ bool lock_client_nb::interface_connect(std::string_view url, std::string_view pa
         }
         else if(base_url_length < size_of_allocated_url_memory){ // store in already allocated dynamic memory
         
-            url.copy(c_url_new, base_url_length, protocal_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
+            url.copy(c_url_new, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
     
             c_url_new[base_url_length] = '\0'; // null-terminate the string
     
@@ -12556,7 +12584,7 @@ bool lock_client_nb::interface_connect(std::string_view url, std::string_view pa
                 
                     size_of_allocated_url_memory = base_url_length + 1;    
                     
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
        
                     c_url_new[base_url_length] = '\0';
     
@@ -12584,7 +12612,7 @@ bool lock_client_nb::interface_connect(std::string_view url, std::string_view pa
                 
                     size_of_allocated_url_memory = base_url_length + 1;    
                     
-                    url.copy(c_url_new, base_url_length, protocal_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
+                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
        
                     c_url_new[base_url_length] = '\0';
     
