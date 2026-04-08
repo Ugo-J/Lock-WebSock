@@ -7,7 +7,7 @@
 
 // lock client constructor
 template <typename T>
-lock_client_crtp<T>::lock_client_crtp(std::string_view url, std::string_view path){
+lock_client_crtp<T>::lock_client_crtp(std::string_view url){
 
     // initialisation of class wide variables
     if(!openssl_init){
@@ -50,8 +50,12 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url, std::string_view pat
     
     if( (url.compare(0, 6, "wss://") == 0) || (url.compare(0, 6, "Wss://") == 0) || (url.compare(0, 6, "WSs://") == 0) || (url.compare(0, 6, "WSS://") == 0) || (url.compare(0, 6, "WsS://") == 0) || (url.compare(0, 6, "wSS://") == 0) || (url.compare(0, 6, "wsS://") == 0) || (url.compare(0, 6, "wSs://") == 0) ){ // endpoint is a wss:// endpoint, the second parameter to the std::string_view compare function is 6 which is the length of the string "wss://" which we are testing for the presence of, we list out and compare the 8 possible combinations of uppercase and lowercase lettering that are valid
     
-        int protocol_prefix_len = strlen("wss://");    
-        int base_url_length = url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("wss://");
+
+        // we fetch the url length without the wss:// prefix and any path appended to the url, we do this by finding the next '/' character after the initial wss://
+        size_t base_url_end_index = url.find('/', protocol_prefix_len);
+
+        int base_url_length = (base_url_end_index != std::string_view::npos) ? (int)base_url_end_index - protocol_prefix_len : url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix and the path if any
             
         // SSL members initialisations
         c_bio = BIO_new_ssl_connect(ssl_ctx); // creates a new bio ssl object
@@ -161,8 +165,12 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url, std::string_view pat
     
     else if( (url.compare(0, 5, "ws://") == 0) || (url.compare(0, 5, "Ws://") == 0) || (url.compare(0, 5, "wS://") == 0) || (url.compare(0, 5, "WS://") == 0)){ // ws:// endpoint, we test the 4 possible combinations of uppercase and lowercase lettering. The second parameter to the std::string_view compare function is the length of the protocol prefix which we test for the presence of
     
-        int protocol_prefix_len = strlen("ws://");    
-        int base_url_length = url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("ws://");
+
+        // we fetch the url length without the ws:// prefix and any path appended to the url, we do this by finding the next '/' character after the initial ws://
+        size_t base_url_end_index = url.find('/', protocol_prefix_len);
+
+        int base_url_length = (base_url_end_index != std::string_view::npos) ? (int)base_url_end_index - protocol_prefix_len : url.size() - protocol_prefix_len; // saves the length of the url without the ws:// prefix and the path if any
     
         // URL copy 
         if(base_url_length < url_static_array_length){ // static array is sufficient
@@ -264,9 +272,9 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url, std::string_view pat
         
         // get the host name out of the stored url
         int last_colon = url.rfind(":"); // get location of last colon
-        int last_f_slash = url.rfind("/"); // get location of last forward slash
+        int last_f_slash = url.rfind("/", last_colon); // get location of last forward slash before the host name - we start the rfind from the last colon because starting from the end of the url string would return the forward slash before the path
         
-        if(last_colon < last_f_slash){ // This condition checks that the last colon being considered is the colon before the port number and not the colon immediately after the protocol name (wss:// for instance), we do not need to check that a colon and forward slash were found because that part is already checked by the code that checks the endpoint protocol and all protocol names contained in urls have a colon and a forward slash character in them, so so long as execution got here the supplied url has both a colon and a forward slash 
+        if(last_colon < last_f_slash){ // This condition checks that the last colon being considered is the colon before the port number and not the colon immediately after the protocol name (wss:// for instance), we do not need to check that a colon and forward slash were found because that part is already checked by the code that checks the endpoint protocol and all protocol names contained in urls have a colon and a forward slash character in them, so so long as execution got here the supplied url has both a colon and a forward slash
             
             strncpy(error_buffer, "Supplied URL parameter does not conform to the LockWebSocket endpoint convention", error_buffer_array_length);
                     
@@ -372,7 +380,13 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url, std::string_view pat
                 
                 if(!error){
                 // only continue if no error
-                
+
+                    // we store the start index of the path from the supplied url - we search for the next forward slash after the last colon, that is the start of the path in the supplied url string view
+                    size_t path_start_index = url.find('/', last_colon);
+                    
+                    // we check if a forward slash was found after the last colon, if none was we connect to the default root path else the forward slash till the end of the url string is the path
+                    std::string_view path = (path_start_index != std::string_view::npos) ? url.substr(path_start_index) : "/";
+
                     // copy the channel path parameter into the channel path array
                     int path_string_len = path.size();
                     
@@ -713,7 +727,7 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url, std::string_view pat
 }
 
 template <typename T>
-lock_client_crtp<T>::lock_client_crtp(std::string_view url, std::string_view path, in_addr* interface_address, char* interface_name){
+lock_client_crtp<T>::lock_client_crtp(std::string_view url, in_addr* interface_address, char* interface_name){
 
     // initialisation of class wide variables
     if(!openssl_init){
@@ -756,8 +770,12 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url, std::string_view pat
 
     if( (url.compare(0, 6, "wss://") == 0) || (url.compare(0, 6, "Wss://") == 0) || (url.compare(0, 6, "WSs://") == 0) || (url.compare(0, 6, "WSS://") == 0) || (url.compare(0, 6, "WsS://") == 0) || (url.compare(0, 6, "wSS://") == 0) || (url.compare(0, 6, "wsS://") == 0) || (url.compare(0, 6, "wSs://") == 0) ){ // endpoint is a wss:// endpoint, the second parameter to the std::string_view compare function is 6 which is the length of the string "wss://" which we are testing for the presence of, we list out and compare the 8 possible combinations of uppercase and lowercase lettering that are valid
     
-        int protocol_prefix_len = strlen("wss://");    
-        int base_url_length = url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("wss://");
+
+        // we fetch the url length without the wss:// prefix and any path appended to the url, we do this by finding the next '/' character after the initial wss://
+        size_t base_url_end_index = url.find('/', protocol_prefix_len);
+
+        int base_url_length = (base_url_end_index != std::string_view::npos) ? (int)base_url_end_index - protocol_prefix_len : url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix and the path if any
         
         // we copy the URL into the c_url array
         if(base_url_length < url_static_array_length){ // static memory large enough
@@ -840,7 +858,7 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url, std::string_view pat
 
         // get the host name out of the stored url
         int last_colon = url.rfind(":"); // get location of last colon
-        int last_f_slash = url.rfind("/"); // get location of last forward slash
+        int last_f_slash = url.rfind("/", last_colon); // get location of last forward slash before the host name - we start the rfind from the last colon because starting from the end of the url string would return the forward slash before the path
         
         if(last_colon < last_f_slash){ // This condition checks that the last colon being considered is the colon before the port number and not the colon immediately after the protocol name (wss:// for instance), we do not need to check that a colon and forward slash were found because that part is already checked by the code that checks the endpoint protocol and all protocol names contained in urls have a colon and a forward slash character in them, so so long as execution got here the supplied url has both a colon and a forward slash
             
@@ -932,8 +950,8 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url, std::string_view pat
         const int MAX_CHAR_FOR_PORT = 8; // a port number can have a maximum of 5 characters because port numbers are 16 bit integers
         char c_port[MAX_CHAR_FOR_PORT];
 
-        // we now copy the port from the url starting from the last colon
-        int num_of_chars_copied = url.copy(c_port, MAX_CHAR_FOR_PORT, last_colon + 1);
+        // we now copy the port from the url starting from the last colon and ending at the first "/" if any path is appended
+        int num_of_chars_copied = url.copy(c_port, (base_url_end_index != std::string_view::npos) ? (int)base_url_end_index - last_colon - 1 : MAX_CHAR_FOR_PORT, last_colon + 1); // now we copy the port starting from the first port number to the character right before the '/' for the path if any, else we copy to the end of the url string
 
         // we null terminate the c_port array
         c_port[num_of_chars_copied] = '\0';
@@ -998,6 +1016,9 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url, std::string_view pat
 
                     if(!error){
                     // continue if no error
+
+                        // we check if a forward slash was found after the last colon, if none was we connect to the default root path else the forward slash till the end of the url string is the path
+                        std::string_view path = (base_url_end_index != std::string_view::npos) ? url.substr(base_url_end_index) : "/";
 
                         // copy the channel path parameter into the channel path array
                         int path_string_len = path.size();
@@ -1322,8 +1343,12 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url, std::string_view pat
     
     else if( (url.compare(0, 5, "ws://") == 0) || (url.compare(0, 5, "Ws://") == 0) || (url.compare(0, 5, "wS://") == 0) || (url.compare(0, 5, "WS://") == 0)){ // ws:// endpoint, we test the 4 possible combinations of uppercase and lowercase lettering. The second parameter to the std::string_view compare function is the length of the protocol prefix which we test for the presence of
     
-        int protocol_prefix_len = strlen("ws://");    
-        int base_url_length = url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("ws://");
+
+        // we fetch the url length without the ws:// prefix and any path appended to the url, we do this by finding the next '/' character after the initial wss://
+        size_t base_url_end_index = url.find('/', protocol_prefix_len);
+
+        int base_url_length = (base_url_end_index != std::string_view::npos) ? (int)base_url_end_index - protocol_prefix_len : url.size() - protocol_prefix_len; // saves the length of the url without the ws:// prefix and the path if any
     
         // URL copy 
         if(base_url_length < url_static_array_length){ // static array is sufficient
@@ -4671,7 +4696,7 @@ bool lock_client_crtp<T>::basic_read(){
 }
 
 template <typename T>
-bool lock_client_crtp<T>::connect(std::string_view url, std::string_view path){ // this is used to connect to connect to the url passed as a parameter, it can be used when a lock client object was created without establishing a websocket connection by using the parameterless constructor, or to connect an already established websocket connection and lock client instance to a different websocket server, it can also be used to retry connecting an instance that encountered an error during connection
+bool lock_client_crtp<T>::connect(std::string_view url){ // this is used to connect to connect to the url passed as a parameter, it can be used when a lock client object was created without establishing a websocket connection by using the parameterless constructor, or to connect an already established websocket connection and lock client instance to a different websocket server, it can also be used to retry connecting an instance that encountered an error during connection
     
     if(client_state == CLOSED){
         
@@ -4698,8 +4723,12 @@ bool lock_client_crtp<T>::connect(std::string_view url, std::string_view path){ 
     
     if( (url.compare(0, 6, "wss://") == 0) || (url.compare(0, 6, "Wss://") == 0) || (url.compare(0, 6, "WSs://") == 0) || (url.compare(0, 6, "WSS://") == 0) || (url.compare(0, 6, "WsS://") == 0) || (url.compare(0, 6, "wSS://") == 0) || (url.compare(0, 6, "wsS://") == 0) || (url.compare(0, 6, "wSs://") == 0) ){ // endpoint is a wss:// endpoint, the second parameter to the std::string_view compare function is 6 which is the length of the string "wss://" which we are testing for the presence of, we list out and compare the 8 possible combinations of uppercase and lowercase lettering that are valid
     
-        int protocol_prefix_len = strlen("wss://");    
-        int base_url_length = url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("wss://");
+
+        // we fetch the url length without the wss:// prefix and any path appended to the url, we do this by finding the next '/' character after the initial wss://
+        size_t base_url_end_index = url.find('/', protocol_prefix_len);
+
+        int base_url_length = (base_url_end_index != std::string_view::npos) ? (int)base_url_end_index - protocol_prefix_len : url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix and the path if any
             
         // SSL members initialisations
         c_bio = BIO_new_ssl_connect(ssl_ctx); // creates a new bio ssl object
@@ -4809,8 +4838,12 @@ bool lock_client_crtp<T>::connect(std::string_view url, std::string_view path){ 
     
     else if( (url.compare(0, 5, "ws://") == 0) || (url.compare(0, 5, "Ws://") == 0) || (url.compare(0, 5, "wS://") == 0) || (url.compare(0, 5, "WS://") == 0)){ // ws:// endpoint, we test the 4 possible combinations of uppercase and lowercase lettering. The second parameter to the std::string_view compare function is the length of the protocol prefix which we test for the presence of
     
-        int protocol_prefix_len = strlen("ws://");    
-        int base_url_length = url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("ws://");
+
+        // we fetch the url length without the ws:// prefix and any path appended to the url, we do this by finding the next '/' character after the initial ws://
+        size_t base_url_end_index = url.find('/', protocol_prefix_len);
+
+        int base_url_length = (base_url_end_index != std::string_view::npos) ? (int)base_url_end_index - protocol_prefix_len : url.size() - protocol_prefix_len; // saves the length of the url without the ws:// prefix and the path if any
     
         // URL copy 
         if(base_url_length < url_static_array_length){ // static array is sufficient
@@ -4900,7 +4933,7 @@ bool lock_client_crtp<T>::connect(std::string_view url, std::string_view path){ 
     
     }
     else{ // not a valid websocket endpoint
-        
+    
         strncpy(error_buffer, "Supplied URL parameter is not a valid WebSocket endpoint", error_buffer_array_length);
                 
         error = true;
@@ -4912,7 +4945,7 @@ bool lock_client_crtp<T>::connect(std::string_view url, std::string_view path){ 
         
         // get the host name out of the stored url
         int last_colon = url.rfind(":"); // get location of last colon
-        int last_f_slash = url.rfind("/"); // get location of last forward slash
+        int last_f_slash = url.rfind("/", last_colon); // get location of last forward slash before the host name - we start the rfind from the last colon because starting from the end of the url string would return the forward slash before the path
         
         if(last_colon < last_f_slash){ // This condition checks that the last colon being considered is the colon before the port number and not the colon immediately after the protocol name (wss:// for instance), we do not need to check that a colon and forward slash were found because that part is already checked by the code that checks the endpoint protocol and all protocol names contained in urls have a colon and a forward slash character in them, so so long as execution got here the supplied url has both a colon and a forward slash
             
@@ -5014,13 +5047,19 @@ bool lock_client_crtp<T>::connect(std::string_view url, std::string_view path){ 
                             
                         error = true;
                     
-                    } 
+                    }    
                     
                 }
                 
                 if(!error){
                 // only continue if no error
-                
+
+                    // we store the start index of the path from the supplied url - we search for the next forward slash after the last colon, that is the start of the path in the supplied url string view
+                    size_t path_start_index = url.find('/', last_colon);
+                    
+                    // we check if a forward slash was found after the last colon, if none was we connect to the default root path else the forward slash till the end of the url string is the path
+                    std::string_view path = (path_start_index != std::string_view::npos) ? url.substr(path_start_index) : "/";
+
                     // copy the channel path parameter into the channel path array
                     int path_string_len = path.size();
                     
@@ -5332,7 +5371,7 @@ bool lock_client_crtp<T>::connect(std::string_view url, std::string_view path){ 
                                 }
                                 else{ // upgrade unsuccessful
                                     
-                                    strncpy(error_buffer, "Connection upgrade failed. Invalid path or url supplied", error_buffer_array_length);
+                                    strncpy(error_buffer, "Connection upgrade failed. Invalid path supplied", error_buffer_array_length);
                                     
                                     BIO_reset(c_bio); // reset bio and disconnect the underlying connection
                                     
@@ -5363,7 +5402,7 @@ bool lock_client_crtp<T>::connect(std::string_view url, std::string_view path){ 
 }
 
 template <typename T>
-bool lock_client_crtp<T>::interface_connect(std::string_view url, std::string_view path, in_addr* interface_address, char* interface_name){
+bool lock_client_crtp<T>::interface_connect(std::string_view url, in_addr* interface_address, char* interface_name){
     
     if(client_state == CLOSED){
         
@@ -5387,11 +5426,15 @@ bool lock_client_crtp<T>::interface_connect(std::string_view url, std::string_vi
     }
 
     // check if url is a ws:// or wss:// endpoint, check case insensitively
-    
+
     if( (url.compare(0, 6, "wss://") == 0) || (url.compare(0, 6, "Wss://") == 0) || (url.compare(0, 6, "WSs://") == 0) || (url.compare(0, 6, "WSS://") == 0) || (url.compare(0, 6, "WsS://") == 0) || (url.compare(0, 6, "wSS://") == 0) || (url.compare(0, 6, "wsS://") == 0) || (url.compare(0, 6, "wSs://") == 0) ){ // endpoint is a wss:// endpoint, the second parameter to the std::string_view compare function is 6 which is the length of the string "wss://" which we are testing for the presence of, we list out and compare the 8 possible combinations of uppercase and lowercase lettering that are valid
     
-        int protocol_prefix_len = strlen("wss://");    
-        int base_url_length = url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("wss://");
+
+        // we fetch the url length without the wss:// prefix and any path appended to the url, we do this by finding the next '/' character after the initial wss://
+        size_t base_url_end_index = url.find('/', protocol_prefix_len);
+
+        int base_url_length = (base_url_end_index != std::string_view::npos) ? (int)base_url_end_index - protocol_prefix_len : url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix and the path if any
         
         // we copy the URL into the c_url array
         if(base_url_length < url_static_array_length){ // static memory large enough
@@ -5474,7 +5517,7 @@ bool lock_client_crtp<T>::interface_connect(std::string_view url, std::string_vi
 
         // get the host name out of the stored url
         int last_colon = url.rfind(":"); // get location of last colon
-        int last_f_slash = url.rfind("/"); // get location of last forward slash
+        int last_f_slash = url.rfind("/", last_colon); // get location of last forward slash before the host name - we start the rfind from the last colon because starting from the end of the url string would return the forward slash before the path
         
         if(last_colon < last_f_slash){ // This condition checks that the last colon being considered is the colon before the port number and not the colon immediately after the protocol name (wss:// for instance), we do not need to check that a colon and forward slash were found because that part is already checked by the code that checks the endpoint protocol and all protocol names contained in urls have a colon and a forward slash character in them, so so long as execution got here the supplied url has both a colon and a forward slash
             
@@ -5566,8 +5609,8 @@ bool lock_client_crtp<T>::interface_connect(std::string_view url, std::string_vi
         const int MAX_CHAR_FOR_PORT = 8; // a port number can have a maximum of 5 characters because port numbers are 16 bit integers
         char c_port[MAX_CHAR_FOR_PORT];
 
-        // we now copy the port from the url starting from the last colon
-        int num_of_chars_copied = url.copy(c_port, MAX_CHAR_FOR_PORT, last_colon + 1);
+        // we now copy the port from the url starting from the last colon and ending at the first "/" if any path is appended
+        int num_of_chars_copied = url.copy(c_port, (base_url_end_index != std::string_view::npos) ? (int)base_url_end_index - last_colon - 1 : MAX_CHAR_FOR_PORT, last_colon + 1); // now we copy the port starting from the first port number to the character right before the '/' for the path if any, else we copy to the end of the url string
 
         // we null terminate the c_port array
         c_port[num_of_chars_copied] = '\0';
@@ -5632,6 +5675,9 @@ bool lock_client_crtp<T>::interface_connect(std::string_view url, std::string_vi
 
                     if(!error){
                     // continue if no error
+
+                        // we check if a forward slash was found after the last colon, if none was we connect to the default root path else the forward slash till the end of the url string is the path
+                        std::string_view path = (base_url_end_index != std::string_view::npos) ? url.substr(base_url_end_index) : "/";
 
                         // copy the channel path parameter into the channel path array
                         int path_string_len = path.size();
@@ -5956,8 +6002,12 @@ bool lock_client_crtp<T>::interface_connect(std::string_view url, std::string_vi
     
     else if( (url.compare(0, 5, "ws://") == 0) || (url.compare(0, 5, "Ws://") == 0) || (url.compare(0, 5, "wS://") == 0) || (url.compare(0, 5, "WS://") == 0)){ // ws:// endpoint, we test the 4 possible combinations of uppercase and lowercase lettering. The second parameter to the std::string_view compare function is the length of the protocol prefix which we test for the presence of
     
-        int protocol_prefix_len = strlen("ws://");    
-        int base_url_length = url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("ws://");
+
+        // we fetch the url length without the ws:// prefix and any path appended to the url, we do this by finding the next '/' character after the initial wss://
+        size_t base_url_end_index = url.find('/', protocol_prefix_len);
+
+        int base_url_length = (base_url_end_index != std::string_view::npos) ? (int)base_url_end_index - protocol_prefix_len : url.size() - protocol_prefix_len; // saves the length of the url without the ws:// prefix and the path if any
     
         // URL copy 
         if(base_url_length < url_static_array_length){ // static array is sufficient
@@ -6303,7 +6353,7 @@ bool lock_client_crtp<T>::close(unsigned short status_code){ // this closes an e
 
 // constructor with url string
 template <typename T>
-lock_client_nb_crtp<T>::lock_client_nb_crtp(std::string_view url, std::string_view path){
+lock_client_nb_crtp<T>::lock_client_nb_crtp(std::string_view url){
 
     // initialisation of class wide variables
     if(!openssl_init){
@@ -6317,7 +6367,7 @@ lock_client_nb_crtp<T>::lock_client_nb_crtp(std::string_view url, std::string_vi
         int upper_bound = 255;
             
         for(int j = 0; j<mask_array_len; j++){
-                
+        
             mask[j] = (unsigned char)(rand() % upper_bound);
 
         }
@@ -6346,8 +6396,12 @@ lock_client_nb_crtp<T>::lock_client_nb_crtp(std::string_view url, std::string_vi
     
     if( (url.compare(0, 6, "wss://") == 0) || (url.compare(0, 6, "Wss://") == 0) || (url.compare(0, 6, "WSs://") == 0) || (url.compare(0, 6, "WSS://") == 0) || (url.compare(0, 6, "WsS://") == 0) || (url.compare(0, 6, "wSS://") == 0) || (url.compare(0, 6, "wsS://") == 0) || (url.compare(0, 6, "wSs://") == 0) ){ // endpoint is a wss:// endpoint, the second parameter to the std::string_view compare function is 6 which is the length of the string "wss://" which we are testing for the presence of, we list out and compare the 8 possible combinations of uppercase and lowercase lettering that are valid
     
-        int protocol_prefix_len = strlen("wss://");    
-        int base_url_length = url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("wss://");
+
+        // we fetch the url length without the wss:// prefix and any path appended to the url, we do this by finding the next '/' character after the initial wss://
+        size_t base_url_end_index = url.find('/', protocol_prefix_len);
+
+        int base_url_length = (base_url_end_index != std::string_view::npos) ? (int)base_url_end_index - protocol_prefix_len : url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix and the path if any
             
         // SSL members initialisations
         c_bio = BIO_new_ssl_connect(ssl_ctx); // creates a new bio ssl object
@@ -6457,8 +6511,12 @@ lock_client_nb_crtp<T>::lock_client_nb_crtp(std::string_view url, std::string_vi
     
     else if( (url.compare(0, 5, "ws://") == 0) || (url.compare(0, 5, "Ws://") == 0) || (url.compare(0, 5, "wS://") == 0) || (url.compare(0, 5, "WS://") == 0)){ // ws:// endpoint, we test the 4 possible combinations of uppercase and lowercase lettering. The second parameter to the std::string_view compare function is the length of the protocol prefix which we test for the presence of
     
-        int protocol_prefix_len = strlen("ws://");    
-        int base_url_length = url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("ws://");
+
+        // we fetch the url length without the ws:// prefix and any path appended to the url, we do this by finding the next '/' character after the initial ws://
+        size_t base_url_end_index = url.find('/', protocol_prefix_len);
+
+        int base_url_length = (base_url_end_index != std::string_view::npos) ? (int)base_url_end_index - protocol_prefix_len : url.size() - protocol_prefix_len; // saves the length of the url without the ws:// prefix and the path if any
     
         // URL copy 
         if(base_url_length < url_static_array_length){ // static array is sufficient
@@ -6560,7 +6618,7 @@ lock_client_nb_crtp<T>::lock_client_nb_crtp(std::string_view url, std::string_vi
         
         // get the host name out of the stored url
         int last_colon = url.rfind(":"); // get location of last colon
-        int last_f_slash = url.rfind("/"); // get location of last forward slash
+        int last_f_slash = url.rfind("/", last_colon); // get location of last forward slash before the host name - we start the rfind from the last colon because starting from the end of the url string would return the forward slash before the path
         
         if(last_colon < last_f_slash){ // This condition checks that the last colon being considered is the colon before the port number and not the colon immediately after the protocol name (wss:// for instance), we do not need to check that a colon and forward slash were found because that part is already checked by the code that checks the endpoint protocol and all protocol names contained in urls have a colon and a forward slash character in them, so so long as execution got here the supplied url has both a colon and a forward slash
             
@@ -6669,6 +6727,12 @@ lock_client_nb_crtp<T>::lock_client_nb_crtp(std::string_view url, std::string_vi
                 if(!error){
                 // only continue if no error
                 
+                    // we store the start index of the path from the supplied url - we search for the next forward slash after the last colon, that is the start of the path in the supplied url string view
+                    size_t path_start_index = url.find('/', last_colon);
+                    
+                    // we check if a forward slash was found after the last colon, if none was we connect to the default root path else the forward slash till the end of the url string is the path
+                    std::string_view path = (path_start_index != std::string_view::npos) ? url.substr(path_start_index) : "/";
+
                     // copy the channel path parameter into the channel path array
                     int path_string_len = path.size();
                     
@@ -7076,7 +7140,7 @@ lock_client_nb_crtp<T>::lock_client_nb_crtp(std::string_view url, std::string_vi
 
 // constructor that binds to a network interface
 template <typename T>
-lock_client_nb_crtp<T>::lock_client_nb_crtp(std::string_view url, std::string_view path, in_addr* interface_address, char* interface_name){
+lock_client_nb_crtp<T>::lock_client_nb_crtp(std::string_view url, in_addr* interface_address, char* interface_name){
 
     // initialisation of class wide variables
     if(!openssl_init){
@@ -7118,8 +7182,12 @@ lock_client_nb_crtp<T>::lock_client_nb_crtp(std::string_view url, std::string_vi
 
     if( (url.compare(0, 6, "wss://") == 0) || (url.compare(0, 6, "Wss://") == 0) || (url.compare(0, 6, "WSs://") == 0) || (url.compare(0, 6, "WSS://") == 0) || (url.compare(0, 6, "WsS://") == 0) || (url.compare(0, 6, "wSS://") == 0) || (url.compare(0, 6, "wsS://") == 0) || (url.compare(0, 6, "wSs://") == 0) ){ // endpoint is a wss:// endpoint, the second parameter to the std::string_view compare function is 6 which is the length of the string "wss://" which we are testing for the presence of, we list out and compare the 8 possible combinations of uppercase and lowercase lettering that are valid
     
-        int protocol_prefix_len = strlen("wss://");    
-        int base_url_length = url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("wss://");
+
+        // we fetch the url length without the wss:// prefix and any path appended to the url, we do this by finding the next '/' character after the initial wss://
+        size_t base_url_end_index = url.find('/', protocol_prefix_len);
+
+        int base_url_length = (base_url_end_index != std::string_view::npos) ? (int)base_url_end_index - protocol_prefix_len : url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix and the path if any
         
         // we copy the URL into the c_url array
         if(base_url_length < url_static_array_length){ // static memory large enough
@@ -7202,7 +7270,7 @@ lock_client_nb_crtp<T>::lock_client_nb_crtp(std::string_view url, std::string_vi
 
         // get the host name out of the stored url
         int last_colon = url.rfind(":"); // get location of last colon
-        int last_f_slash = url.rfind("/"); // get location of last forward slash
+        int last_f_slash = url.rfind("/", last_colon); // get location of last forward slash before the host name - we start the rfind from the last colon because starting from the end of the url string would return the forward slash before the path
         
         if(last_colon < last_f_slash){ // This condition checks that the last colon being considered is the colon before the port number and not the colon immediately after the protocol name (wss:// for instance), we do not need to check that a colon and forward slash were found because that part is already checked by the code that checks the endpoint protocol and all protocol names contained in urls have a colon and a forward slash character in them, so so long as execution got here the supplied url has both a colon and a forward slash
             
@@ -7237,6 +7305,7 @@ lock_client_nb_crtp<T>::lock_client_nb_crtp(std::string_view url, std::string_vi
             if(c_host_new == NULL){ // memory has not been allocated yet 
             
                 c_host_new = new(std::nothrow) char[host_name_len + 1]; // the nothrow parameter prevents an exception from being thrown by the C++ runtime should the heap allocation fail
+        
         
                 if(c_host_new == NULL){
             
@@ -7293,8 +7362,8 @@ lock_client_nb_crtp<T>::lock_client_nb_crtp(std::string_view url, std::string_vi
         const int MAX_CHAR_FOR_PORT = 8; // a port number can have a maximum of 5 characters because port numbers are 16 bit integers
         char c_port[MAX_CHAR_FOR_PORT];
 
-        // we now copy the port from the url starting from the last colon
-        int num_of_chars_copied = url.copy(c_port, MAX_CHAR_FOR_PORT, last_colon + 1);
+        // we now copy the port from the url starting from the last colon and ending at the first "/" if any path is appended
+        int num_of_chars_copied = url.copy(c_port, (base_url_end_index != std::string_view::npos) ? (int)base_url_end_index - last_colon - 1 : MAX_CHAR_FOR_PORT, last_colon + 1); // now we copy the port starting from the first port number to the character right before the '/' for the path if any, else we copy to the end of the url string
 
         // we null terminate the c_port array
         c_port[num_of_chars_copied] = '\0';
@@ -7302,7 +7371,7 @@ lock_client_nb_crtp<T>::lock_client_nb_crtp(std::string_view url, std::string_vi
         // now we can call the connect to server function that would return the configured socket file descriptor
         int sock = connect_to_server(c_host, c_port, interface_address, interface_name);
 
-        if(!error){
+        if(error == false){
         // only continue if no error
 
             // we create an SSL object for this lock client instance
@@ -7345,28 +7414,24 @@ lock_client_nb_crtp<T>::lock_client_nb_crtp(std::string_view url, std::string_vi
                     SSL_set_connect_state(c_ssl);  // Set as client
 
                     // Perform handshake
-                    while(BIO_do_handshake(c_bio) <= 0) {
-
-                        if(BIO_should_retry(c_bio)){
-
-                            continue;
-                        }
-                        else{
-                        // an actual error occurred
-                            std::cout << "SSL handshake failed"<< std::endl;
-                            BIO_free_all(c_bio); // this throws segmentation fault when called without any network connection
-                            strncpy(error_buffer, "SSL handshake failed", error_buffer_array_length);          
-                            error = true;
-                        }
+                    if (BIO_do_handshake(c_bio) <= 0) {
+                        std::cout << "SSL handshake failed"<< std::endl;
+                        BIO_free_all(c_bio); // this throws segmentation fault when called without any network connection
+                        strncpy(error_buffer, "SSL handshake failed", error_buffer_array_length);          
+                        error = true;
                     }
-                    
-                    // getting here the ssl handshake was successful
+                    else{
+                        std::cout << "SSL handshake successful"<< std::endl;
+                    }
 
                     // we fetch the path for this connection
 
                     if(!error){
-                    // continue if no error 
-                        
+                    // continue if no error
+
+                        // we check if a forward slash was found after the last colon, if none was we connect to the default root path else the forward slash till the end of the url string is the path
+                        std::string_view path = (base_url_end_index != std::string_view::npos) ? url.substr(base_url_end_index) : "/";
+
                         // copy the channel path parameter into the channel path array
                         int path_string_len = path.size();
                         
@@ -7462,7 +7527,7 @@ lock_client_nb_crtp<T>::lock_client_nb_crtp(std::string_view url, std::string_vi
                             char char_remaining[] = "GET  HTTP/1.1\nHost: \nConnection: Upgrade\nPragma: no-cache\nUpgrade: websocket\nSec-WebSocket-Version: 13\nSec-WebSocket-Key: \n\n";
                             int upgrade_request_len = strlen(char_remaining) + length_of_supplied_data;
                             
-                            if(upgrade_request_len < upgrade_request_array_length){ // static array is large enough
+                            if( upgrade_request_len < upgrade_request_array_length ){ // static array is large enough
                                 
                                 // build the upgrade request
                                 strcpy(upgrade_request_static, "GET ");
@@ -7590,145 +7655,94 @@ lock_client_nb_crtp<T>::lock_client_nb_crtp(std::string_view url, std::string_vi
                             if(!error){ // only continue if no error
                                 
                                 data_array = data_array_static;
-
-                                // send the upgrade request
-                                while(BIO_puts(c_bio, upgrade_request) <= 0){
-                                    
-                                    if(BIO_should_retry(c_bio)){
-                                    // getting here the read request would block so we continue polling
-
-                                        continue;
-
-                                    }
-                                    else{
-                                        
-                                        strncpy(error_buffer, "Error upgrading connection.", error_buffer_array_length);
-                                    
-                                        error = true;
-
-                                        break;
-
-                                    }
-
-                                }
+                                BIO_puts(c_bio, upgrade_request);
                                 
-                                if(!error){
+                                int len = BIO_read(c_bio, data_array, static_data_array_length); // this function call would block till there is data to read
+                                data_array[len] = '\0'; // null terminate the received bytes
 
-                                    int len = BIO_read(c_bio, data_array, static_data_array_length); // non blocking call to bio read
-
-                                    while(len <= 0){
-
-                                        if(BIO_should_retry(c_bio)){
-                                        // getting here the read request would block so we keep looping
-
-                                            len = BIO_read(c_bio, data_array, static_data_array_length);
-
-                                            continue;
-
-                                        }
-                                        else{
-                                            
-                                            strncpy(error_buffer, "Error reading upgrade request response.", error_buffer_array_length);
+                                // test for the switching protocol header to confirm that the connection upgrade was successful
+                                char success_response[] = "HTTP/1.1 101 Switching Protocols";
+                                
+                                if(strncmp(success_response, strtok(data_array, "\n"), strlen(success_response)) == 0){ // upgrade successful
+                                    
+                                    // Authorise connection - confirm that the Sec-WebSocket-Accept is what it should be by calculating the key and comparing it with the server's
+                                    
+                                    // build the SHA1 parameter
+                                    strncpy(SHA1_parameter, (const char*)base64_encoded_nonce, SHA1_parameter_array_len);
+                                    strncat(SHA1_parameter, string_to_append, SHA1_parameter_array_len - strlen(SHA1_parameter));
+                                    // SHA1 parameter build end 
+                                    
+                                    SHA1((const unsigned char*)SHA1_parameter, strlen(SHA1_parameter), SHA1_digest); // get the sha1 hash digest
+                                    
+                                    // base64 encode the SHA1_digest 
+                                    BIO_write(c_base64, SHA1_digest, size_of_SHA1_digest);
+                                    BIO_flush(c_base64); 
+                                    BIO_read(c_mem_base64, local_sec_ws_accept_key, local_sec_ws_accept_key_array_len);
+                                    // base64 encoding of SHA1 digest end 
+                                    
+                                    // loop through the rest of the response string to find the Sec-WebSocket-Accept header
+                                    char key[] = "Sec";
+                                    char* cursor = strtok(NULL, "\n");
+                                    
+                                    while(!(cursor == NULL)){
+                                    // we keep looping through the HTTP upgrade request response till either cursor == NULL or we find our Sec-WebSocket-Key header
                                         
-                                            error = true;
-
-                                            break;
-
-                                        }
-
-                                    }
-
-                                    if(!error){
-
-                                        data_array[len] = '\0'; // null terminate the received bytes
-
-                                        // test for the switching protocol header to confirm that the connection upgrade was successful
-                                        char success_response[] = "HTTP/1.1 101 Switching Protocols";
-                                        
-                                        if(strncmp(success_response, strtok(data_array, "\n"), strlen(success_response)) == 0){ // upgrade successful
-
-                                            // Authorise connection - confirm that the Sec-WebSocket-Accept is what it should be by calculating the key and comparing it with the server's
-                                            
-                                            // build the SHA1 parameter
-                                            strncpy(SHA1_parameter, (const char*)base64_encoded_nonce, SHA1_parameter_array_len);
-                                            strncat(SHA1_parameter, string_to_append, SHA1_parameter_array_len - strlen(SHA1_parameter));
-                                            // SHA1 parameter build end 
-                                            
-                                            SHA1((const unsigned char*)SHA1_parameter, strlen(SHA1_parameter), SHA1_digest); // get the sha1 hash digest
-                                            
-                                            // base64 encode the SHA1_digest 
-                                            BIO_write(c_base64, SHA1_digest, size_of_SHA1_digest);
-                                            BIO_flush(c_base64); 
-                                            BIO_read(c_mem_base64, local_sec_ws_accept_key, local_sec_ws_accept_key_array_len);
-                                            // base64 encoding of SHA1 digest end 
-                                            
-                                            // loop through the rest of the response string to find the Sec-WebSocket-Accept header
-                                            char key[] = "Sec";
-                                            char* cursor = strtok(NULL, "\n");
-                                            
-                                            while(!(cursor == NULL)){
-                                            // we keep looping through the HTTP upgrade request response till either cursor == NULL or we find our Sec-WebSocket-Key header
+                                        // we use sizeof so we can get the length of key as a compile time constan, we subtract 1 from the result of sizeof() to account for the null byte that terminates the string
+                                        if((strncmp(key, cursor, sizeof(key) - 1) == 0) || (strncmp("sec", cursor, sizeof(key) - 1) == 0) || (strncmp("SEC", cursor, sizeof(key) - 1) == 0) || (strncmp("sEc", cursor, sizeof(key) - 1) == 0) || (strncmp("seC", cursor, sizeof(key) - 1) == 0) || (strncmp("sEC", cursor, sizeof(key) - 1) == 0) || (strncmp("SEc", cursor, sizeof(key) - 1) == 0) || (strncmp("SeC", cursor, sizeof(key) - 1) == 0)){ // only the Sec-WebSocket-key response header would have "Sec" in it so we test all possible upper and lower case combinations of the key word "sec"
                                                 
-                                                // we use sizeof so we can get the length of key as a compile time constan, we subtract 1 from the result of sizeof() to account for the null byte that terminates the string
-                                                if((strncmp(key, cursor, sizeof(key) - 1) == 0) || (strncmp("sec", cursor, sizeof(key) - 1) == 0) || (strncmp("SEC", cursor, sizeof(key) - 1) == 0) || (strncmp("sEc", cursor, sizeof(key) - 1) == 0) || (strncmp("seC", cursor, sizeof(key) - 1) == 0) || (strncmp("sEC", cursor, sizeof(key) - 1) == 0) || (strncmp("SEc", cursor, sizeof(key) - 1) == 0) || (strncmp("SeC", cursor, sizeof(key) - 1) == 0)){ // only the Sec-WebSocket-key response header would have "Sec" in it so we test all possible upper and lower case combinations of the key word "sec"
-                                                        
-                                                    cursor += strlen("Sec-WebSocket-Accept: "); //move cursor foward to point to accept key value
+                                            cursor += strlen("Sec-WebSocket-Accept: "); //move cursor foward to point to accept key value
+                                            
+                                            // compare server's response with our calculation
+                                            if(strncmp(local_sec_ws_accept_key, cursor, strlen(local_sec_ws_accept_key)) == 0){
+                                                
+                                                client_state = OPEN;
+                                                
+                                                break; // break if the server sec websocket key matches what we calculated. Connection authorised
                                                     
-                                                    // compare server's response with our calculation
-                                                    if(strncmp(local_sec_ws_accept_key, cursor, strlen(local_sec_ws_accept_key)) == 0){
-                                                        
-                                                        client_state = OPEN;
-
-                                                        break; // break if the server sec websocket key matches what we calculated. Connection authorised
-
-                                                    }
-                                                    else{
-                                                        
-                                                        strncpy(error_buffer, "Connection authorisation Failed", error_buffer_array_length);
-                                                            
-                                                        BIO_reset(c_bio); // reset bio and disconnect the underlying connection
-                                                            
-                                                        error = true;
-                                                            
-                                                        break;
-                                                            
-                                                    }
-                                                    
-                                                }
-                                                
-                                                cursor = strtok(NULL, "\n");
-                                                
                                             }
-                                            
-                                            if(cursor == NULL){
+                                            else{
                                                 
-                                                // getting here means no Sec-Websocket-Key header was found before strtok returned a null value
-                                                strncpy(error_buffer, "Invalid Upgrade request response received", error_buffer_array_length);
-                                                
+                                                strncpy(error_buffer, "Connection authorisation Failed", error_buffer_array_length);
+                                                    
                                                 BIO_reset(c_bio); // reset bio and disconnect the underlying connection
-                                                
+                                                    
                                                 error = true;
-                                            
+                                                    
+                                                break;
+                                                    
                                             }
                                             
                                         }
-                                        else{ // upgrade unsuccessful
-                                            
-                                            strncpy(error_buffer, "Connection upgrade failed. Invalid path or url supplied", error_buffer_array_length);
-                                            
-                                            BIO_reset(c_bio); // reset bio and disconnect the underlying connection
-                                            
-                                            error = true;
-                                            
-                                        }
-                                                            
-                                        memset(data_array, '\0', len); // zero out the data array
-
-                                        memset(upgrade_request, '\0', upgrade_request_len); // zero out the upgrade request array
+                                        
+                                        cursor = strtok(NULL, "\n");
                                         
                                     }
                                     
+                                    if(cursor == NULL){
+                                        
+                                        // getting here means no Sec-Websocket-Key header was found before strtok returned a null value
+                                        strncpy(error_buffer, "Invalid Upgrade request response received", error_buffer_array_length);
+                                        
+                                        BIO_reset(c_bio); // reset bio and disconnect the underlying connection
+                                        
+                                        error = true;
+                                    
+                                    }
+                                    
                                 }
+                                else{ // upgrade unsuccessful
+                                    
+                                    strncpy(error_buffer, "Connection upgrade failed. Invalid path supplied", error_buffer_array_length);
+                                    
+                                    BIO_reset(c_bio); // reset bio and disconnect the underlying connection
+                                    
+                                    error = true;
+                                    
+                                }
+                                                    
+                                memset(data_array, '\0', len); // zero out the data array
+
+                                memset(upgrade_request, '\0', upgrade_request_len); // zero out the upgrade request array
                         
                             }
                         
@@ -7741,8 +7755,12 @@ lock_client_nb_crtp<T>::lock_client_nb_crtp(std::string_view url, std::string_vi
     
     else if( (url.compare(0, 5, "ws://") == 0) || (url.compare(0, 5, "Ws://") == 0) || (url.compare(0, 5, "wS://") == 0) || (url.compare(0, 5, "WS://") == 0)){ // ws:// endpoint, we test the 4 possible combinations of uppercase and lowercase lettering. The second parameter to the std::string_view compare function is the length of the protocol prefix which we test for the presence of
     
-        int protocol_prefix_len = strlen("ws://");    
-        int base_url_length = url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("ws://");
+
+        // we fetch the url length without the ws:// prefix and any path appended to the url, we do this by finding the next '/' character after the initial wss://
+        size_t base_url_end_index = url.find('/', protocol_prefix_len);
+
+        int base_url_length = (base_url_end_index != std::string_view::npos) ? (int)base_url_end_index - protocol_prefix_len : url.size() - protocol_prefix_len; // saves the length of the url without the ws:// prefix and the path if any
     
         // URL copy 
         if(base_url_length < url_static_array_length){ // static array is sufficient
@@ -7825,7 +7843,7 @@ lock_client_nb_crtp<T>::lock_client_nb_crtp(std::string_view url, std::string_vi
     
         if(!error){ // this only runs if the preceding code executed without the error flag being set, meaning all is good
             
-            // Non-ssl BIO structure creation
+            //Non-ssl BIO structure creation
             c_bio = BIO_new_connect(c_url); // creates the non-ssl bio object with the url supplied
      
         }
@@ -11116,7 +11134,7 @@ bool lock_client_nb_crtp<T>::basic_read(){
 }
 
 template <typename T>
-bool lock_client_nb_crtp<T>::connect(std::string_view url, std::string_view path){ // this is used to connect to connect to the url passed as a parameter, it can be used when a lock client object was created without establishing a websocket connection by using the parameterless constructor, or to connect an already established websocket connection and lock client instance to a different websocket server, it can also be used to retry connecting an instance that encountered an error during connection
+bool lock_client_nb_crtp<T>::connect(std::string_view url){ // this is used to connect to connect to the url passed as a parameter, it can be used when a lock client object was created without establishing a websocket connection by using the parameterless constructor, or to connect an already established websocket connection and lock client instance to a different websocket server, it can also be used to retry connecting an instance that encountered an error during connection
     
     if(client_state == CLOSED){
         
@@ -11143,8 +11161,12 @@ bool lock_client_nb_crtp<T>::connect(std::string_view url, std::string_view path
     
     if( (url.compare(0, 6, "wss://") == 0) || (url.compare(0, 6, "Wss://") == 0) || (url.compare(0, 6, "WSs://") == 0) || (url.compare(0, 6, "WSS://") == 0) || (url.compare(0, 6, "WsS://") == 0) || (url.compare(0, 6, "wSS://") == 0) || (url.compare(0, 6, "wsS://") == 0) || (url.compare(0, 6, "wSs://") == 0) ){ // endpoint is a wss:// endpoint, the second parameter to the std::string_view compare function is 6 which is the length of the string "wss://" which we are testing for the presence of, we list out and compare the 8 possible combinations of uppercase and lowercase lettering that are valid
     
-        int protocol_prefix_len = strlen("wss://");    
-        int base_url_length = url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("wss://");
+
+        // we fetch the url length without the wss:// prefix and any path appended to the url, we do this by finding the next '/' character after the initial wss://
+        size_t base_url_end_index = url.find('/', protocol_prefix_len);
+
+        int base_url_length = (base_url_end_index != std::string_view::npos) ? (int)base_url_end_index - protocol_prefix_len : url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix and the path if any
             
         // SSL members initialisations
         c_bio = BIO_new_ssl_connect(ssl_ctx); // creates a new bio ssl object
@@ -11254,8 +11276,12 @@ bool lock_client_nb_crtp<T>::connect(std::string_view url, std::string_view path
     
     else if( (url.compare(0, 5, "ws://") == 0) || (url.compare(0, 5, "Ws://") == 0) || (url.compare(0, 5, "wS://") == 0) || (url.compare(0, 5, "WS://") == 0)){ // ws:// endpoint, we test the 4 possible combinations of uppercase and lowercase lettering. The second parameter to the std::string_view compare function is the length of the protocol prefix which we test for the presence of
     
-        int protocol_prefix_len = strlen("ws://");    
-        int base_url_length = url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("ws://");
+
+        // we fetch the url length without the ws:// prefix and any path appended to the url, we do this by finding the next '/' character after the initial ws://
+        size_t base_url_end_index = url.find('/', protocol_prefix_len);
+
+        int base_url_length = (base_url_end_index != std::string_view::npos) ? (int)base_url_end_index - protocol_prefix_len : url.size() - protocol_prefix_len; // saves the length of the url without the ws:// prefix and the path if any
     
         // URL copy 
         if(base_url_length < url_static_array_length){ // static array is sufficient
@@ -11357,7 +11383,7 @@ bool lock_client_nb_crtp<T>::connect(std::string_view url, std::string_view path
         
         // get the host name out of the stored url
         int last_colon = url.rfind(":"); // get location of last colon
-        int last_f_slash = url.rfind("/"); // get location of last forward slash
+        int last_f_slash = url.rfind("/", last_colon); // get location of last forward slash before the host name - we start the rfind from the last colon because starting from the end of the url string would return the forward slash before the path
         
         if(last_colon < last_f_slash){ // This condition checks that the last colon being considered is the colon before the port number and not the colon immediately after the protocol name (wss:// for instance), we do not need to check that a colon and forward slash were found because that part is already checked by the code that checks the endpoint protocol and all protocol names contained in urls have a colon and a forward slash character in them, so so long as execution got here the supplied url has both a colon and a forward slash
             
@@ -11466,6 +11492,12 @@ bool lock_client_nb_crtp<T>::connect(std::string_view url, std::string_view path
                 if(!error){
                 // only continue if no error
                 
+                    // we store the start index of the path from the supplied url - we search for the next forward slash after the last colon, that is the start of the path in the supplied url string view
+                    size_t path_start_index = url.find('/', last_colon);
+                    
+                    // we check if a forward slash was found after the last colon, if none was we connect to the default root path else the forward slash till the end of the url string is the path
+                    std::string_view path = (path_start_index != std::string_view::npos) ? url.substr(path_start_index) : "/";
+
                     // copy the channel path parameter into the channel path array
                     int path_string_len = path.size();
                     
@@ -11874,7 +11906,7 @@ bool lock_client_nb_crtp<T>::connect(std::string_view url, std::string_view path
 }
 
 template <typename T>
-bool lock_client_nb_crtp<T>::interface_connect(std::string_view url, std::string_view path, in_addr* interface_address, char* interface_name){
+bool lock_client_nb_crtp<T>::interface_connect(std::string_view url, in_addr* interface_address, char* interface_name){
     
     if(client_state == CLOSED){
         
@@ -11898,11 +11930,15 @@ bool lock_client_nb_crtp<T>::interface_connect(std::string_view url, std::string
     }
 
     // check if url is a ws:// or wss:// endpoint, check case insensitively
-    
+
     if( (url.compare(0, 6, "wss://") == 0) || (url.compare(0, 6, "Wss://") == 0) || (url.compare(0, 6, "WSs://") == 0) || (url.compare(0, 6, "WSS://") == 0) || (url.compare(0, 6, "WsS://") == 0) || (url.compare(0, 6, "wSS://") == 0) || (url.compare(0, 6, "wsS://") == 0) || (url.compare(0, 6, "wSs://") == 0) ){ // endpoint is a wss:// endpoint, the second parameter to the std::string_view compare function is 6 which is the length of the string "wss://" which we are testing for the presence of, we list out and compare the 8 possible combinations of uppercase and lowercase lettering that are valid
     
-        int protocol_prefix_len = strlen("wss://");    
-        int base_url_length = url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("wss://");
+
+        // we fetch the url length without the wss:// prefix and any path appended to the url, we do this by finding the next '/' character after the initial wss://
+        size_t base_url_end_index = url.find('/', protocol_prefix_len);
+
+        int base_url_length = (base_url_end_index != std::string_view::npos) ? (int)base_url_end_index - protocol_prefix_len : url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix and the path if any
         
         // we copy the URL into the c_url array
         if(base_url_length < url_static_array_length){ // static memory large enough
@@ -11985,7 +12021,7 @@ bool lock_client_nb_crtp<T>::interface_connect(std::string_view url, std::string
 
         // get the host name out of the stored url
         int last_colon = url.rfind(":"); // get location of last colon
-        int last_f_slash = url.rfind("/"); // get location of last forward slash
+        int last_f_slash = url.rfind("/", last_colon); // get location of last forward slash before the host name - we start the rfind from the last colon because starting from the end of the url string would return the forward slash before the path
         
         if(last_colon < last_f_slash){ // This condition checks that the last colon being considered is the colon before the port number and not the colon immediately after the protocol name (wss:// for instance), we do not need to check that a colon and forward slash were found because that part is already checked by the code that checks the endpoint protocol and all protocol names contained in urls have a colon and a forward slash character in them, so so long as execution got here the supplied url has both a colon and a forward slash
             
@@ -12020,6 +12056,7 @@ bool lock_client_nb_crtp<T>::interface_connect(std::string_view url, std::string
             if(c_host_new == NULL){ // memory has not been allocated yet 
             
                 c_host_new = new(std::nothrow) char[host_name_len + 1]; // the nothrow parameter prevents an exception from being thrown by the C++ runtime should the heap allocation fail
+        
         
                 if(c_host_new == NULL){
             
@@ -12076,8 +12113,8 @@ bool lock_client_nb_crtp<T>::interface_connect(std::string_view url, std::string
         const int MAX_CHAR_FOR_PORT = 8; // a port number can have a maximum of 5 characters because port numbers are 16 bit integers
         char c_port[MAX_CHAR_FOR_PORT];
 
-        // we now copy the port from the url starting from the last colon
-        int num_of_chars_copied = url.copy(c_port, MAX_CHAR_FOR_PORT, last_colon + 1);
+        // we now copy the port from the url starting from the last colon and ending at the first "/" if any path is appended
+        int num_of_chars_copied = url.copy(c_port, (base_url_end_index != std::string_view::npos) ? (int)base_url_end_index - last_colon - 1 : MAX_CHAR_FOR_PORT, last_colon + 1); // now we copy the port starting from the first port number to the character right before the '/' for the path if any, else we copy to the end of the url string
 
         // we null terminate the c_port array
         c_port[num_of_chars_copied] = '\0';
@@ -12085,7 +12122,7 @@ bool lock_client_nb_crtp<T>::interface_connect(std::string_view url, std::string
         // now we can call the connect to server function that would return the configured socket file descriptor
         int sock = connect_to_server(c_host, c_port, interface_address, interface_name);
 
-        if(!error){
+        if(error == false){
         // only continue if no error
 
             // we create an SSL object for this lock client instance
@@ -12128,28 +12165,23 @@ bool lock_client_nb_crtp<T>::interface_connect(std::string_view url, std::string
                     SSL_set_connect_state(c_ssl);  // Set as client
 
                     // Perform handshake
-                    while(BIO_do_handshake(c_bio) <= 0) {
-
-                        if(BIO_should_retry(c_bio)){
-
-                            continue;
-                        }
-                        else{
-                        // an actual error occurred
-                            std::cout << "SSL handshake failed"<< std::endl;
-                            BIO_free_all(c_bio); // this throws segmentation fault when called without any network connection
-                            strncpy(error_buffer, "SSL handshake failed", error_buffer_array_length);          
-                            error = true;
-                        
-                        }
+                    if (BIO_do_handshake(c_bio) <= 0) {
+                        std::cout << "SSL handshake failed"<< std::endl;
+                        BIO_free_all(c_bio); // this throws segmentation fault when called without any network connection
+                        strncpy(error_buffer, "SSL handshake failed", error_buffer_array_length);          
+                        error = true;
                     }
-                    
-                    // getting here the ssl handshake was successful
+                    else{
+                        std::cout << "SSL handshake successful"<< std::endl;
+                    }
 
                     // we fetch the path for this connection
 
                     if(!error){
                     // continue if no error
+
+                        // we check if a forward slash was found after the last colon, if none was we connect to the default root path else the forward slash till the end of the url string is the path
+                        std::string_view path = (base_url_end_index != std::string_view::npos) ? url.substr(base_url_end_index) : "/";
 
                         // copy the channel path parameter into the channel path array
                         int path_string_len = path.size();
@@ -12246,7 +12278,7 @@ bool lock_client_nb_crtp<T>::interface_connect(std::string_view url, std::string
                             char char_remaining[] = "GET  HTTP/1.1\nHost: \nConnection: Upgrade\nPragma: no-cache\nUpgrade: websocket\nSec-WebSocket-Version: 13\nSec-WebSocket-Key: \n\n";
                             int upgrade_request_len = strlen(char_remaining) + length_of_supplied_data;
                             
-                            if(upgrade_request_len < upgrade_request_array_length){ // static array is large enough
+                            if( upgrade_request_len < upgrade_request_array_length ){ // static array is large enough
                                 
                                 // build the upgrade request
                                 strcpy(upgrade_request_static, "GET ");
@@ -12374,145 +12406,94 @@ bool lock_client_nb_crtp<T>::interface_connect(std::string_view url, std::string
                             if(!error){ // only continue if no error
                                 
                                 data_array = data_array_static;
-
-                                // send the upgrade request
-                                while(BIO_puts(c_bio, upgrade_request) <= 0){
-                                    
-                                    if(BIO_should_retry(c_bio)){
-                                    // getting here the read request would block so we continue polling
-
-                                        continue;
-
-                                    }
-                                    else{
-                                        
-                                        strncpy(error_buffer, "Error upgrading connection.", error_buffer_array_length);
-                                    
-                                        error = true;
-
-                                        break;
-
-                                    }
-
-                                }
+                                BIO_puts(c_bio, upgrade_request);
                                 
-                                if(!error){
+                                int len = BIO_read(c_bio, data_array, static_data_array_length); // this function call would block till there is data to read
+                                data_array[len] = '\0'; // null terminate the received bytes
 
-                                    int len = BIO_read(c_bio, data_array, static_data_array_length); // non blocking call to bio read
-
-                                    while(len <= 0){
-
-                                        if(BIO_should_retry(c_bio)){
-                                        // getting here the read request would block so we keep looping
-
-                                            len = BIO_read(c_bio, data_array, static_data_array_length);
-
-                                            continue;
-
-                                        }
-                                        else{
-                                            
-                                            strncpy(error_buffer, "Error reading upgrade request response.", error_buffer_array_length);
+                                // test for the switching protocol header to confirm that the connection upgrade was successful
+                                char success_response[] = "HTTP/1.1 101 Switching Protocols";
+                                
+                                if(strncmp(success_response, strtok(data_array, "\n"), strlen(success_response)) == 0){ // upgrade successful
+                                    
+                                    // Authorise connection - confirm that the Sec-WebSocket-Accept is what it should be by calculating the key and comparing it with the server's
+                                    
+                                    // build the SHA1 parameter
+                                    strncpy(SHA1_parameter, (const char*)base64_encoded_nonce, SHA1_parameter_array_len);
+                                    strncat(SHA1_parameter, string_to_append, SHA1_parameter_array_len - strlen(SHA1_parameter));
+                                    // SHA1 parameter build end 
+                                    
+                                    SHA1((const unsigned char*)SHA1_parameter, strlen(SHA1_parameter), SHA1_digest); // get the sha1 hash digest
+                                    
+                                    // base64 encode the SHA1_digest 
+                                    BIO_write(c_base64, SHA1_digest, size_of_SHA1_digest);
+                                    BIO_flush(c_base64); 
+                                    BIO_read(c_mem_base64, local_sec_ws_accept_key, local_sec_ws_accept_key_array_len);
+                                    // base64 encoding of SHA1 digest end 
+                                    
+                                    // loop through the rest of the response string to find the Sec-WebSocket-Accept header
+                                    char key[] = "Sec";
+                                    char* cursor = strtok(NULL, "\n");
+                                    
+                                    while(!(cursor == NULL)){
+                                    // we keep looping through the HTTP upgrade request response till either cursor == NULL or we find our Sec-WebSocket-Key header
                                         
-                                            error = true;
-
-                                            break;
-
-                                        }
-
-                                    }
-
-                                    if(!error){
-
-                                        data_array[len] = '\0'; // null terminate the received bytes
-
-                                        // test for the switching protocol header to confirm that the connection upgrade was successful
-                                        char success_response[] = "HTTP/1.1 101 Switching Protocols";
-                                        
-                                        if(strncmp(success_response, strtok(data_array, "\n"), strlen(success_response)) == 0){ // upgrade successful
-
-                                            // Authorise connection - confirm that the Sec-WebSocket-Accept is what it should be by calculating the key and comparing it with the server's
-                                            
-                                            // build the SHA1 parameter
-                                            strncpy(SHA1_parameter, (const char*)base64_encoded_nonce, SHA1_parameter_array_len);
-                                            strncat(SHA1_parameter, string_to_append, SHA1_parameter_array_len - strlen(SHA1_parameter));
-                                            // SHA1 parameter build end 
-                                            
-                                            SHA1((const unsigned char*)SHA1_parameter, strlen(SHA1_parameter), SHA1_digest); // get the sha1 hash digest
-                                            
-                                            // base64 encode the SHA1_digest 
-                                            BIO_write(c_base64, SHA1_digest, size_of_SHA1_digest);
-                                            BIO_flush(c_base64); 
-                                            BIO_read(c_mem_base64, local_sec_ws_accept_key, local_sec_ws_accept_key_array_len);
-                                            // base64 encoding of SHA1 digest end 
-                                            
-                                            // loop through the rest of the response string to find the Sec-WebSocket-Accept header
-                                            char key[] = "Sec";
-                                            char* cursor = strtok(NULL, "\n");
-                                            
-                                            while(!(cursor == NULL)){
-                                            // we keep looping through the HTTP upgrade request response till either cursor == NULL or we find our Sec-WebSocket-Key header
+                                        // we use sizeof so we can get the length of key as a compile time constan, we subtract 1 from the result of sizeof() to account for the null byte that terminates the string
+                                        if((strncmp(key, cursor, sizeof(key) - 1) == 0) || (strncmp("sec", cursor, sizeof(key) - 1) == 0) || (strncmp("SEC", cursor, sizeof(key) - 1) == 0) || (strncmp("sEc", cursor, sizeof(key) - 1) == 0) || (strncmp("seC", cursor, sizeof(key) - 1) == 0) || (strncmp("sEC", cursor, sizeof(key) - 1) == 0) || (strncmp("SEc", cursor, sizeof(key) - 1) == 0) || (strncmp("SeC", cursor, sizeof(key) - 1) == 0)){ // only the Sec-WebSocket-key response header would have "Sec" in it so we test all possible upper and lower case combinations of the key word "sec"
                                                 
-                                                // we use sizeof so we can get the length of key as a compile time constan, we subtract 1 from the result of sizeof() to account for the null byte that terminates the string
-                                                if((strncmp(key, cursor, sizeof(key) - 1) == 0) || (strncmp("sec", cursor, sizeof(key) - 1) == 0) || (strncmp("SEC", cursor, sizeof(key) - 1) == 0) || (strncmp("sEc", cursor, sizeof(key) - 1) == 0) || (strncmp("seC", cursor, sizeof(key) - 1) == 0) || (strncmp("sEC", cursor, sizeof(key) - 1) == 0) || (strncmp("SEc", cursor, sizeof(key) - 1) == 0) || (strncmp("SeC", cursor, sizeof(key) - 1) == 0)){ // only the Sec-WebSocket-key response header would have "Sec" in it so we test all possible upper and lower case combinations of the key word "sec"
-                                                        
-                                                    cursor += strlen("Sec-WebSocket-Accept: "); //move cursor foward to point to accept key value
+                                            cursor += strlen("Sec-WebSocket-Accept: "); //move cursor foward to point to accept key value
+                                            
+                                            // compare server's response with our calculation
+                                            if(strncmp(local_sec_ws_accept_key, cursor, strlen(local_sec_ws_accept_key)) == 0){
+                                                
+                                                client_state = OPEN;
+                                                
+                                                break; // break if the server sec websocket key matches what we calculated. Connection authorised
                                                     
-                                                    // compare server's response with our calculation
-                                                    if(strncmp(local_sec_ws_accept_key, cursor, strlen(local_sec_ws_accept_key)) == 0){
-                                                        
-                                                        client_state = OPEN;
-
-                                                        break; // break if the server sec websocket key matches what we calculated. Connection authorised
-
-                                                    }
-                                                    else{
-                                                        
-                                                        strncpy(error_buffer, "Connection authorisation Failed", error_buffer_array_length);
-                                                            
-                                                        BIO_reset(c_bio); // reset bio and disconnect the underlying connection
-                                                            
-                                                        error = true;
-                                                            
-                                                        break;
-                                                            
-                                                    }
-                                                    
-                                                }
-                                                
-                                                cursor = strtok(NULL, "\n");
-                                                
                                             }
-                                            
-                                            if(cursor == NULL){
+                                            else{
                                                 
-                                                // getting here means no Sec-Websocket-Key header was found before strtok returned a null value
-                                                strncpy(error_buffer, "Invalid Upgrade request response received", error_buffer_array_length);
-                                                
+                                                strncpy(error_buffer, "Connection authorisation Failed", error_buffer_array_length);
+                                                    
                                                 BIO_reset(c_bio); // reset bio and disconnect the underlying connection
-                                                
+                                                    
                                                 error = true;
-                                            
+                                                    
+                                                break;
+                                                    
                                             }
                                             
                                         }
-                                        else{ // upgrade unsuccessful
-                                            
-                                            strncpy(error_buffer, "Connection upgrade failed. Invalid path or url supplied", error_buffer_array_length);
-                                            
-                                            BIO_reset(c_bio); // reset bio and disconnect the underlying connection
-                                            
-                                            error = true;
-                                            
-                                        }
-                                                            
-                                        memset(data_array, '\0', len); // zero out the data array
-
-                                        memset(upgrade_request, '\0', upgrade_request_len); // zero out the upgrade request array
+                                        
+                                        cursor = strtok(NULL, "\n");
                                         
                                     }
                                     
+                                    if(cursor == NULL){
+                                        
+                                        // getting here means no Sec-Websocket-Key header was found before strtok returned a null value
+                                        strncpy(error_buffer, "Invalid Upgrade request response received", error_buffer_array_length);
+                                        
+                                        BIO_reset(c_bio); // reset bio and disconnect the underlying connection
+                                        
+                                        error = true;
+                                    
+                                    }
+                                    
                                 }
+                                else{ // upgrade unsuccessful
+                                    
+                                    strncpy(error_buffer, "Connection upgrade failed. Invalid path supplied", error_buffer_array_length);
+                                    
+                                    BIO_reset(c_bio); // reset bio and disconnect the underlying connection
+                                    
+                                    error = true;
+                                    
+                                }
+                                                    
+                                memset(data_array, '\0', len); // zero out the data array
+
+                                memset(upgrade_request, '\0', upgrade_request_len); // zero out the upgrade request array
                         
                             }
                         
@@ -12525,8 +12506,12 @@ bool lock_client_nb_crtp<T>::interface_connect(std::string_view url, std::string
     
     else if( (url.compare(0, 5, "ws://") == 0) || (url.compare(0, 5, "Ws://") == 0) || (url.compare(0, 5, "wS://") == 0) || (url.compare(0, 5, "WS://") == 0)){ // ws:// endpoint, we test the 4 possible combinations of uppercase and lowercase lettering. The second parameter to the std::string_view compare function is the length of the protocol prefix which we test for the presence of
     
-        int protocol_prefix_len = strlen("ws://");    
-        int base_url_length = url.size() - protocol_prefix_len; // saves the length of the url without the wss:// prefix 
+        int protocol_prefix_len = strlen("ws://");
+
+        // we fetch the url length without the ws:// prefix and any path appended to the url, we do this by finding the next '/' character after the initial wss://
+        size_t base_url_end_index = url.find('/', protocol_prefix_len);
+
+        int base_url_length = (base_url_end_index != std::string_view::npos) ? (int)base_url_end_index - protocol_prefix_len : url.size() - protocol_prefix_len; // saves the length of the url without the ws:// prefix and the path if any
     
         // URL copy 
         if(base_url_length < url_static_array_length){ // static array is sufficient
@@ -12609,7 +12594,7 @@ bool lock_client_nb_crtp<T>::interface_connect(std::string_view url, std::string
     
         if(!error){ // this only runs if the preceding code executed without the error flag being set, meaning all is good
             
-            // Non-ssl BIO structure creation
+            //Non-ssl BIO structure creation
             c_bio = BIO_new_connect(c_url); // creates the non-ssl bio object with the url supplied
      
         }

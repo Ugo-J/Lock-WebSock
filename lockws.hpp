@@ -5399,7 +5399,7 @@ bool lock_client::connect(std::string_view url){ // this is used to connect to c
         
 }
 
-bool lock_client::interface_connect(std::string_view url, in_addr* interface_address = NULL, char* interface_name = NULL){
+bool lock_client::interface_connect(std::string_view url, in_addr* interface_address, char* interface_name){
     
     if(client_state == CLOSED){
         
