@@ -7,6 +7,7 @@ A lightweight, header-only WebSocket client library for C++ with support for bot
 - Header-only library - just include and use
 - Support for both `ws://` and `wss://` protocols
 - Blocking (`lock_client`) and non-blocking (`lock_client_nb`) client implementations
+- CRTP base classes (`lock_client_crtp<T>`, `lock_client_nb_crtp<T>`) for zero-overhead custom receive handlers via inheritance
 - Built on OpenSSL for secure connections
 - Custom receive function callbacks
 - Ping/Pong support with configurable backlog
@@ -25,7 +26,8 @@ A lightweight, header-only WebSocket client library for C++ with support for bot
 This is a header-only library. Simply include the necessary headers in your project:
 
 ```cpp
-#include "lockws.hpp"
+#include "lockws.hpp"        // for lock_client / lock_client_nb
+#include "lockws_crtp.hpp"   // for lock_client_crtp / lock_client_nb_crtp
 ```
 
 Make sure to link against OpenSSL when compiling:
@@ -33,6 +35,17 @@ Make sure to link against OpenSSL when compiling:
 ```bash
 g++ -std=c++17 your_program.cpp -lssl -lcrypto -o your_program
 ```
+
+## URL Format
+
+The path is now part of the URL — there is no separate path parameter. Pass the full URL including the path directly:
+
+```
+ws://hostname:port/path
+wss://hostname:port/path
+```
+
+If no path is provided, the library defaults to `/`.
 
 ## Quick Start
 
@@ -42,25 +55,21 @@ g++ -std=c++17 your_program.cpp -lssl -lcrypto -o your_program
 #include "lockws.hpp"
 
 int main() {
-    // Create a blocking WebSocket client
     lock_client client;
-    
-    // Connect to a WebSocket server
-    if (client.connect("wss://example.com:443", "/ws")) {
-        std::cout << "Error: " << client.get_error_message() << std::endl;
+
+    if (client.connect("wss://example.com:443/ws")) {
+        std::cerr << "Error: " << client.get_error_message() << std::endl;
         return 1;
     }
-    
-    std::cout << "Connected successfully!" << std::endl;
-    
-    // Send a message
+
+    std::cout << "Connected successfully" << std::endl;
+
     client.send(R"({"type":"hello","data":"world"})");
-    
-    // Receive messages
+
     while (client.is_open()) {
         client.basic_read();
     }
-    
+
     return 0;
 }
 ```
@@ -72,18 +81,16 @@ int main() {
 
 int main() {
     lock_client_nb client;
-    
-    if (!client.connect("wss://stream.example.com:443", "/ws")) {
-        // Send subscription message
+
+    if (!client.connect("wss://stream.example.com:443/ws")) {
         client.send(R"({"method":"SUBSCRIBE","params":["data@stream"]})");
-        
-        // Non-blocking read loop
+
         while (client.is_open()) {
             client.basic_read();
             // Do other work here
         }
     }
-    
+
     return 0;
 }
 ```
@@ -109,44 +116,39 @@ Both classes share the same API:
 lock_client();
 
 // Connect during construction
-lock_client(std::string_view url, std::string_view path = "/");
+lock_client(std::string_view url);
 
 // Connect with specific network interface
-lock_client(std::string_view url, std::string_view path, 
-            in_addr* interface_address, char* interface_name);
+lock_client(std::string_view url, in_addr* interface_address, char* interface_name);
 ```
 
 ### Connection Methods
 
 #### `connect()`
 ```cpp
-bool connect(std::string_view url, std::string_view path = "/");
+bool connect(std::string_view url);
 ```
 Establishes a WebSocket connection to the specified URL.
 
 - **Parameters:**
-  - `url`: WebSocket URL (e.g., `"wss://example.com:443"` or `"ws://example.com:80"`)
-  - `path`: WebSocket path (default: `"/"`)
+  - `url`: Full WebSocket URL including path (e.g., `"wss://example.com:443/ws"`)
 - **Returns:** `true` on error, `false` on success
-- **URL Format:** `ws://hostname:port` or `wss://hostname:port`
 
 **Example:**
 ```cpp
-if (client.connect("wss://echo.websocket.org:443", "/")) {
+if (client.connect("wss://echo.websocket.org:443/")) {
     std::cerr << "Connection failed: " << client.get_error_message() << std::endl;
 }
 ```
 
 #### `interface_connect()`
 ```cpp
-bool interface_connect(std::string_view url, std::string_view path,
-                      in_addr* interface_address, char* interface_name);
+bool interface_connect(std::string_view url, in_addr* interface_address, char* interface_name);
 ```
 Connects to a WebSocket server using a specific network interface.
 
 - **Parameters:**
-  - `url`: WebSocket URL
-  - `path`: WebSocket path
+  - `url`: Full WebSocket URL including path
   - `interface_address`: Pointer to the interface IP address
   - `interface_name`: Name of the network interface
 - **Returns:** `true` on error, `false` on success
@@ -155,7 +157,7 @@ Connects to a WebSocket server using a specific network interface.
 ```cpp
 in_addr addr;
 inet_pton(AF_INET, "192.168.1.100", &addr);
-client.interface_connect("wss://example.com:443", "/ws", &addr, "eth0");
+client.interface_connect("wss://example.com:443/ws", &addr, "eth0");
 ```
 
 ### Sending Data
@@ -203,7 +205,7 @@ while (client.is_open()) {
 ```cpp
 void set_receive_function(lock_function fn);
 ```
-Sets a custom callback function for handling received data.
+Sets a custom callback function for handling received data. Available on `lock_client` and `lock_client_nb`.
 
 - **Parameters:**
   - `fn`: Function with signature `int(char* data, int length, int buffer_size)`
@@ -273,18 +275,18 @@ bool close(unsigned short status_code = NORMAL_CLOSE);
 Closes the WebSocket connection gracefully.
 
 - **Parameters:**
-  - `status_code`: WebSocket close status code (default: 1000 - Normal Closure)
+  - `status_code`: WebSocket close status code (default: `NORMAL_CLOSE`)
 - **Returns:** `true` on error, `false` on success
 
 **Common Status Codes:**
-- `1000` - Normal Closure
-- `1001` - Going Away
-- `1002` - Protocol Error
-- `1003` - Unrecognised Data
-- `1007` - Inconsistent Message
-- `1008` - Policy Violation
-- `1009` - Frame Too Large
-- `1011` - Unexpected Condition
+- `NORMAL_CLOSE` (1000) - Normal Closure
+- `GOING_AWAY` (1001) - Going Away
+- `PROTOCOL_ERROR` (1002) - Protocol Error
+- `UNRECOGNISED_DATA` (1003) - Unrecognised Data
+- `INCONSISTENT_MESSAGE` (1007) - Inconsistent Message
+- `POLICY_VIOLATION` (1008) - Policy Violation
+- `FRAME_TOO_LARGE` (1009) - Frame Too Large
+- `UNEXPECTED_CONDITION` (1011) - Unexpected Condition
 
 **Example:**
 ```cpp
@@ -333,40 +335,53 @@ Clears error flags for clients in open state.
 - **Returns:** `true` on error, `false` on success
 - **Note:** For closed clients, errors can only be cleared by calling `connect()`
 
-## Advanced Usage
+## CRTP Interface
 
-### Custom Receive Handler
+For use cases where you want to define receive handlers via inheritance rather than callbacks, the library provides CRTP base classes: `lock_client_crtp<T>` and `lock_client_nb_crtp<T>`.
+
+These expose the same public API as `lock_client` / `lock_client_nb` but instead of `set_receive_function()`, you override `recv_data()` and `recv_pong()` directly in your derived class.
+
+### Usage
 
 ```cpp
-#include "lockws.hpp"
-#include <json/json.h> // Example JSON library
+#include "lockws_crtp.hpp"
 
-int handle_message(char* data, int length, int buffer_size) {
-    std::string message(data, length);
-    
-    // Parse JSON
-    Json::Value root;
-    Json::Reader reader;
-    if (reader.parse(message, root)) {
-        std::cout << "Type: " << root["type"].asString() << std::endl;
+class MyClient : public lock_client_crtp<MyClient> {
+public:
+    int recv_data(char* data, int length, int buffer_size) {
+        std::cout << "Received: " << std::string(data, length) << std::endl;
+        return 0;
     }
-    
-    return 0;
-}
+};
 
 int main() {
-    lock_client client;
-    client.set_receive_function(handle_message);
-    
-    if (!client.connect("wss://api.example.com:443", "/stream")) {
+    MyClient client;
+
+    if (!client.connect("wss://stream.example.com:443/ws")) {
+        client.send(R"({"method":"SUBSCRIBE","params":["data@stream"]})");
+
         while (client.is_open()) {
             client.basic_read();
         }
     }
-    
+
     return 0;
 }
 ```
+
+### Non-Blocking CRTP Variant
+
+```cpp
+class MyNbClient : public lock_client_nb_crtp<MyNbClient> {
+public:
+    int recv_data(char* data, int length, int buffer_size) {
+        // handle data
+        return 0;
+    }
+};
+```
+
+## Advanced Usage
 
 ### Multiple Concurrent Connections
 
@@ -374,10 +389,10 @@ int main() {
 #include "lockws.hpp"
 #include <thread>
 
-void handle_connection(const char* url, const char* path) {
+void handle_connection(const char* url) {
     lock_client_nb client;
-    
-    if (!client.connect(url, path)) {
+
+    if (!client.connect(url)) {
         while (client.is_open()) {
             client.basic_read();
         }
@@ -385,12 +400,12 @@ void handle_connection(const char* url, const char* path) {
 }
 
 int main() {
-    std::thread t1(handle_connection, "wss://stream1.example.com:443", "/ws");
-    std::thread t2(handle_connection, "wss://stream2.example.com:443", "/ws");
-    
+    std::thread t1(handle_connection, "wss://stream1.example.com:443/ws");
+    std::thread t2(handle_connection, "wss://stream2.example.com:443/ws");
+
     t1.join();
     t2.join();
-    
+
     return 0;
 }
 ```
@@ -404,26 +419,24 @@ int main() {
 int main() {
     net_interface_handler network_handler;
     network_handler.get_network_interfaces();
-    
-    std::cout << network_handler.num_of_network_interfaces 
+
+    std::cout << network_handler.num_of_network_interfaces
               << " Network Interfaces Available" << std::endl;
-    
+
     lock_client_nb client;
-    
-    // Connect using first available interface
+
     if (!client.interface_connect(
-            "wss://stream.example.com:443", 
-            "/ws",
+            "wss://stream.example.com:443/ws",
             &(network_handler.interface_array[0].ip_addr),
             network_handler.interface_array[0].name)) {
-        
+
         client.send(R"({"method":"SUBSCRIBE","params":["data@stream"]})");
-        
+
         while (client.is_open()) {
             client.basic_read();
         }
     }
-    
+
     return 0;
 }
 ```
@@ -432,26 +445,30 @@ int main() {
 
 The library uses a hybrid memory allocation strategy:
 
-- **Static buffers** (64KB) for typical use cases - zero allocation overhead
-- **Dynamic allocation** automatically kicks in for larger messages
-- **Automatic fragmentation** for messages exceeding buffer limits
-- **No memory leaks** - all resources cleaned up in destructor
+- Static buffers (64KB) for typical use cases - zero allocation overhead
+- Dynamic allocation automatically kicks in for larger messages
+- Automatic fragmentation for messages exceeding buffer limits
+- No memory leaks - all resources cleaned up in destructor
 
 ## Thread Safety
 
-- Each `lock_client` or `lock_client_nb` instance is **not thread-safe**
+- Each client instance is not thread-safe
 - Use separate instances per thread for concurrent connections
 - Synchronize access if sharing an instance across threads
 
 ## Protocol Support
 
-- **WebSocket Protocol:** RFC 6455
-- **TLS/SSL:** Via OpenSSL (TLS 1.2+)
-- **Message Types:** Text and binary frames
-- **Extensions:** None (base protocol only)
-- **Compression:** Not supported
+- WebSocket Protocol: RFC 6455
+- TLS/SSL: Via OpenSSL (TLS 1.2+)
+- Message Types: Text and binary frames
+- Extensions: None (base protocol only)
+- Compression: Not supported
 
 ## Changelog
+
+### 08-04-2026
+- The path is now embedded directly in the URL parameter — the separate `path` argument has been removed from all constructors and connection methods
+- Added CRTP base classes (`lock_client_crtp<T>`, `lock_client_nb_crtp<T>`) for defining receive handlers via inheritance
 
 ### 29-03-2024
 - Enabled send function to send fragmented messages if message size exceeds static send buffer
@@ -510,7 +527,7 @@ SOFTWARE.
 
 ## Contributing
 
-Contributions are welcome! Feel free to submit pull requests for bug fixes, improvements, or new features. 
+Contributions are welcome! Feel free to submit pull requests for bug fixes, improvements, or new features.
 
 Please note that all pull requests will be manually reviewed before merging. When contributing:
 
