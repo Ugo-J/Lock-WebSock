@@ -951,16 +951,10 @@ lock_client::lock_client(std::string_view url, in_addr* interface_address, char*
             const int MAX_CHAR_FOR_PORT = 8; // a port number can have a maximum of 5 characters because port numbers are 16 bit integers
             char c_port[MAX_CHAR_FOR_PORT];
 
-            // we get the port colon index
-            size_t port_colon_index = url.find(':', protocol_prefix_len);
+            // since the host_name_end_index already finds the first character out of : and / after the host name we use it to finc the port number location if any
 
-            // we derive the port end index by searching for the forward slash that starts the path, we start from the beginning of the url just after the protocol prefix instead of the port colon index because the port colon could return std::string_view::npos
-            size_t port_end_index = url.find('/', protocol_prefix_len);
-
-            int port_length = (port_end_index != std::string_view::npos) ? 
-
-            // we get the port number from the url object if any and append it if none
-            std::string_view port = (port_colon_index != std::string_view::npos) ? url.substr(port_colon_index + 1, ) : "443"; 
+            // we first check if the host name end index was either std::string_view::npos or / in which case we know the host wasn't supplied so we store 443 as the host, but if the : character was found then the host was supplied so we just create a sub string view from after the : character to either the / starting the path if supplied, but if not supplied till std::string_view::npos - host_name_end_index - 1 which would be a very large number the copy takes the rest of the url string_view
+            std::string_view port = (host_name_end_index == std::string_view::npos || url[host_name_end_index] == '/') ? "443" : url.substr(host_name_end_index + 1, url.find('/', host_name_end_index) - host_name_end_index - 1);
 
             // we now copy the derived port into char array
             int num_of_chars_copied = port.copy(c_port, port.size());
@@ -1363,90 +1357,84 @@ lock_client::lock_client(std::string_view url, in_addr* interface_address, char*
 
         int base_url_length = (base_url_end_index != std::string_view::npos) ? (int)base_url_end_index - protocol_prefix_len : url.size() - protocol_prefix_len; // saves the length of the url without the ws:// prefix and the path if any
     
+        // size of required memory in bytes to store the base url and the port number if it would be appended
+        int req_mem = base_url_length + 4; // we add an extra 4 bytes to the base url length to accomodate for the chance that this url was supplied without a port number so we have enough room to append port :80 to the base url
+        
         // URL copy 
-        if(base_url_length < url_static_array_length){ // static array is sufficient
-    
-            url.copy(c_url_static, base_url_length, protocol_prefix_len); // protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
-    
+        if(req_mem < url_static_array_length){ // static memory large enough
+        
+            url.copy(c_url_static, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
+        
             c_url_static[base_url_length] = '\0'; // null-terminate the string
-    
+        
             c_url = c_url_static;
-    
+        
         }
-        else if(base_url_length < size_of_allocated_url_memory){ // store in already allocated dynamic memory
+        else if(req_mem < size_of_allocated_url_memory){ // store in already allocated dynamic memory
         
             url.copy(c_url_new, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
-    
+        
             c_url_new[base_url_length] = '\0'; // null-terminate the string
-    
+        
             c_url = c_url_new;
-        
-    
-        }
-        else{ // neither static or dynamic memory is large enough, we test whether memory has already been allocated or not 
-        
-            if(c_url_new == NULL){ // memory has not yet been allocated
             
-                // heap memory allocation for urls larger than the static array length
-                c_url_new = new(std::nothrow) char[base_url_length + 1]; // the nothrow parameter prevents an exception from being thrown by the C++ runtime should the heap allocation fail
         
-           
+        }
+        else{ // neither static or dynamic memory is large enough, we test whether memory has already been allocated or not
+            
+            if(c_url_new == NULL){ // memory has not yet been allocated
+                
+                c_url_new = new(std::nothrow) char[req_mem]; // the nothrow parameter prevents an exception from being thrown by the C++ runtime should the heap allocation fail
+            
                 if(c_url_new == NULL){
-                
+                    
                     strncpy(error_buffer, "Error allocating heap memory for lock_client url parameter ", error_buffer_array_length);
-                
+                    
                     error = true;
-                
+                    
                 }
                 else{
-                
-                    size_of_allocated_url_memory = base_url_length + 1;    
                     
+                    size_of_allocated_url_memory = req_mem;    
+                        
                     url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
-       
+        
                     c_url_new[base_url_length] = '\0';
-    
+        
                     c_url = c_url_new;
-            
+                
                 }
-    
+        
             }
             else{ // memory has been allocated but still isn't large enough
-            
+                
                 delete [] c_url_new; // delete the already allocated memory
-            
+                
                 // heap memory allocation for urls larger than the static array length
-                c_url_new = new(std::nothrow) char[base_url_length + 1]; // the nothrow parameter prevents an exception from being thrown by the C++ runtime should the heap allocation fail
-        
-           
+                c_url_new = new(std::nothrow) char[req_mem]; // the nothrow parameter prevents an exception from being thrown by the C++ runtime should the heap allocation fail
+            
+                
                 if(c_url_new == NULL){
-                
+                    
                     strncpy(error_buffer, "Error allocating heap memory for lock_client url parameter ", error_buffer_array_length);
-                
+                    
                     error = true;
-                
+                    
                 }
                 else{
-                
-                    size_of_allocated_url_memory = base_url_length + 1;    
                     
+                    size_of_allocated_url_memory = req_mem;    
+                        
                     url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
-       
-                    c_url_new[base_url_length] = '\0';
-    
-                    c_url = c_url_new;
             
+                    c_url_new[base_url_length] = '\0';
+
+                    c_url = c_url_new;
+                
                 }
             
             }
-    
-        }
-    
-        if(!error){ // this only runs if the preceding code executed without the error flag being set, meaning all is good
-            
-            //Non-ssl BIO structure creation
-            c_bio = BIO_new_connect(c_url); // creates the non-ssl bio object with the url supplied
-     
+
         }
     
     }
