@@ -1,3 +1,5 @@
+#pragma once
+
 #include "lockws_headers.hpp"
 #include "lockws_structure.hpp"
 
