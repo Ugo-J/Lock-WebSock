@@ -2295,9 +2295,34 @@ bool lock_client::basic_read(){
             
             // block SIGPIPE signal before attempting to read data, just incase the connection is closed
             block_sigpipe_signal();
-            
-            if(BIO_read(c_bio, rand_bytes, 2) <= 0){
+
             // attempt to read the first two bytes to test the FIN bit, the opcode and the size of the frame. We use the rand bytes array because it is not in use by the program at this point
+
+            // we set our bytes to read variable to the number of bytes we are trying to read
+            int bytes_to_read = 2;
+
+            // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array BIO_read should write to
+            int total_read_bytes = 0;
+
+            // we initialise our read bytes to 0, read bytes keeps track of how many bytes were read in each BIO_read call
+            int read_bytes = 0;
+
+            // we keep reading till we have our total bytes to read
+            while(total_read_bytes < bytes_to_read){
+
+                // we call BIO_read to attempt to read the bytes into the buffer
+                read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
+
+                // if BIO_read returns a value <= 0 it indicates an error so we break out from the loop
+                if(read_bytes <= 0) break;
+
+                // we increment our total read bytes
+                total_read_bytes += read_bytes;
+
+            }
+            
+            // we check if the last BIO_read call returned 0 or < 0 which would indicate an error
+            if(read_bytes <= 0){
                 
                 // here bio_read couldn't fetch any data
                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
@@ -2329,28 +2354,52 @@ bool lock_client::basic_read(){
                     // getting here the SIGPIPE signal is still blocked
 
                     // read the next 2 bytes from c_bio to get the length
-                    if(BIO_read(c_bio, rand_bytes, 2) <= 0){
 
-                        // here bio_read couldn't fetch any extra data
+                    // we set our bytes to read variable to the number of bytes we are trying to read
+                    bytes_to_read = 2;
+
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array BIO_read should write to. We reset it to 0
+                    total_read_bytes = 0;
+
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each BIO_read call
+                    read_bytes = 0;
+
+                    // we keep reading till we have our total bytes to read
+                    while(total_read_bytes < bytes_to_read){
+
+                        // we call BIO_read to attempt to read the bytes into the buffer
+                        read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
+
+                        // if BIO_read returns a value <= 0 it indicates an error so we break out from the loop
+                        if(read_bytes <= 0) break;
+
+                        // we increment our total read bytes
+                        total_read_bytes += read_bytes;
+
+                    }
+                    
+                    // we check if the last BIO_read call returned 0 or < 0 which would indicate an error
+                    if(read_bytes <= 0){
+                        
+                        // here bio_read couldn't fetch any data
                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                         error = true;
 
-                        // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
+                        // we unblock the sigpipe signal because fail_ws_connection internally blocks it
                         unblock_sigpipe_signal();
                         
-                        fail_ws_connection(GOING_AWAY); // fail the websocket connection
-
-                        return error;
-
-                    }
-                    else{
-                    
-                        // SIGPIPE signal still remains blocked
+                        fail_ws_connection(GOING_AWAY);
+                        // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
                         
-                        frame_data_len = (rand_bytes[0] << 8) | rand_bytes[1];
-
+                        return error;
+                        
                     }
+                
+                    // SIGPIPE signal still remains blocked
+                    
+                    // getting here we successfully fetched the next 2 bytes so we set the frame data len
+                    frame_data_len = (rand_bytes[0] << 8) | rand_bytes[1];
                     
                 }
                 else if( rand_bytes[1] == 127 ){ // this would mean that the next 8 bytes is our length
@@ -2359,40 +2408,61 @@ bool lock_client::basic_read(){
 
                     // read the next 8 bytes from c_bio to get our length
 
-                    if(!(BIO_read(c_bio, rand_bytes, 8) <= 0)){
-                    
-                        if((rand_bytes[0] & 128) != 0){ // most significant bit of most significant byte is set which is against protocol rules
-                            
-                            strncpy(error_buffer, "Protocol error: Most significant bit of 64-bit frame length set", error_buffer_array_length);
-                            
-                            error = true;
+                    // we set our bytes to read variable to the number of bytes we are trying to read
+                    bytes_to_read = 8;
 
-                            // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                            unblock_sigpipe_signal();
-                            
-                            fail_ws_connection(PROTOCOL_ERROR); // fail the websocket connection
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array BIO_read should write to. We reset it to 0
+                    total_read_bytes = 0;
 
-                            return error;
-                            
-                        }
-                        
-                        // getting here the frame length was successfully read but the SIGPIPE signal still remains blocked
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each BIO_read call
+                    read_bytes = 0;
+
+                    // we keep reading till we have our total bytes to read
+                    while(total_read_bytes < bytes_to_read){
+
+                        // we call BIO_read to attempt to read the bytes into the buffer
+                        read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
+
+                        // if BIO_read returns a value <= 0 it indicates an error so we break out from the loop
+                        if(read_bytes <= 0) break;
+
+                        // we increment our total read bytes
+                        total_read_bytes += read_bytes;
 
                     }
-                    else{
-                    // here bio_read couldn't fetch any extra data
-
+                    
+                    // we check if the last BIO_read call returned 0 or < 0 which would indicate an error
+                    if(read_bytes <= 0){
+                        
+                        // here bio_read couldn't fetch any data
                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
+                        error = true;
+
+                        // we unblock the sigpipe signal because fail_ws_connection internally blocks it
+                        unblock_sigpipe_signal();
+                        
+                        fail_ws_connection(GOING_AWAY);
+                        // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
+                        
+                        return error;
+                        
+                    }
+
+                    // we check if the most significant bit of most significant byte is set which is against protocol rules
+                    if((rand_bytes[0] & 128) != 0){
+
+                        strncpy(error_buffer, "Protocol error: Most significant bit of 64-bit frame length set", error_buffer_array_length);
+                        
                         error = true;
 
                         // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                         unblock_sigpipe_signal();
                         
-                        fail_ws_connection(GOING_AWAY); // fail the websocket connection
+                        fail_ws_connection(PROTOCOL_ERROR); // fail the websocket connection
 
                         return error;
-
+                        
                     }
                     
                     
@@ -2802,28 +2872,52 @@ bool lock_client::basic_read(){
                     // getting here the SIGPIPE signal is still blocked
 
                     // read the next 2 bytes from c_bio to get the length
-                    if(BIO_read(c_bio, rand_bytes, 2) <= 0){
 
-                        // here bio_read couldn't fetch any extra data
+                    // we set our bytes to read variable to the number of bytes we are trying to read
+                    bytes_to_read = 2;
+
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array BIO_read should write to. We reset it to 0
+                    total_read_bytes = 0;
+
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each BIO_read call
+                    read_bytes = 0;
+
+                    // we keep reading till we have our total bytes to read
+                    while(total_read_bytes < bytes_to_read){
+
+                        // we call BIO_read to attempt to read the bytes into the buffer
+                        read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
+
+                        // if BIO_read returns a value <= 0 it indicates an error so we break out from the loop
+                        if(read_bytes <= 0) break;
+
+                        // we increment our total read bytes
+                        total_read_bytes += read_bytes;
+
+                    }
+                    
+                    // we check if the last BIO_read call returned 0 or < 0 which would indicate an error
+                    if(read_bytes <= 0){
+                        
+                        // here bio_read couldn't fetch any data
                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                         error = true;
 
-                        // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
+                        // we unblock the sigpipe signal because fail_ws_connection internally blocks it
                         unblock_sigpipe_signal();
                         
-                        fail_ws_connection(GOING_AWAY); // fail the websocket connection
-
-                        return error;
-
-                    }
-                    else{
-                    
-                        // SIGPIPE signal still remains blocked
+                        fail_ws_connection(GOING_AWAY);
+                        // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
                         
-                        frame_data_len = (rand_bytes[0] << 8) | rand_bytes[1];
-
+                        return error;
+                        
                     }
+                
+                    // SIGPIPE signal still remains blocked
+                    
+                    // getting here we successfully fetched the next 2 bytes so we set the frame data len
+                    frame_data_len = (rand_bytes[0] << 8) | rand_bytes[1];
                     
                 }
                 else if( rand_bytes[1] == 127 ){ // this would mean that the next 8 bytes is our length
@@ -2832,40 +2926,61 @@ bool lock_client::basic_read(){
 
                     // read the next 8 bytes from c_bio to get our length
 
-                    if(!(BIO_read(c_bio, rand_bytes, 8) <= 0)){
-                    
-                        if((rand_bytes[0] & 128) != 0){ // most significant bit of most significant byte is set which is against protocol rules
-                            
-                            strncpy(error_buffer, "Protocol error: Most significant bit of 64-bit frame length set", error_buffer_array_length);
-                            
-                            error = true;
+                    // we set our bytes to read variable to the number of bytes we are trying to read
+                    bytes_to_read = 8;
 
-                            // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                            unblock_sigpipe_signal();
-                            
-                            fail_ws_connection(PROTOCOL_ERROR); // fail the websocket connection
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array BIO_read should write to. We reset it to 0
+                    total_read_bytes = 0;
 
-                            return error;
-                            
-                        }
-                        
-                        // getting here the frame length was successfully read but the SIGPIPE signal still remains blocked
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each BIO_read call
+                    read_bytes = 0;
+
+                    // we keep reading till we have our total bytes to read
+                    while(total_read_bytes < bytes_to_read){
+
+                        // we call BIO_read to attempt to read the bytes into the buffer
+                        read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
+
+                        // if BIO_read returns a value <= 0 it indicates an error so we break out from the loop
+                        if(read_bytes <= 0) break;
+
+                        // we increment our total read bytes
+                        total_read_bytes += read_bytes;
 
                     }
-                    else{
-                    // here bio_read couldn't fetch any extra data
-
+                    
+                    // we check if the last BIO_read call returned 0 or < 0 which would indicate an error
+                    if(read_bytes <= 0){
+                        
+                        // here bio_read couldn't fetch any data
                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
+                        error = true;
+
+                        // we unblock the sigpipe signal because fail_ws_connection internally blocks it
+                        unblock_sigpipe_signal();
+                        
+                        fail_ws_connection(GOING_AWAY);
+                        // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
+                        
+                        return error;
+                        
+                    }
+
+                    // we check if the most significant bit of most significant byte is set which is against protocol rules
+                    if((rand_bytes[0] & 128) != 0){
+
+                        strncpy(error_buffer, "Protocol error: Most significant bit of 64-bit frame length set", error_buffer_array_length);
+                        
                         error = true;
 
                         // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                         unblock_sigpipe_signal();
                         
-                        fail_ws_connection(GOING_AWAY); // fail the websocket connection
+                        fail_ws_connection(PROTOCOL_ERROR); // fail the websocket connection
 
                         return error;
-
+                        
                     }
                     
                     
@@ -3239,28 +3354,52 @@ bool lock_client::basic_read(){
                     // getting here the SIGPIPE signal is still blocked
 
                     // read the next 2 bytes from c_bio to get the length
-                    if(BIO_read(c_bio, rand_bytes, 2) <= 0){
 
-                        // here bio_read couldn't fetch any extra data
+                    // we set our bytes to read variable to the number of bytes we are trying to read
+                    bytes_to_read = 2;
+
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array BIO_read should write to. We reset it to 0
+                    total_read_bytes = 0;
+
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each BIO_read call
+                    read_bytes = 0;
+
+                    // we keep reading till we have our total bytes to read
+                    while(total_read_bytes < bytes_to_read){
+
+                        // we call BIO_read to attempt to read the bytes into the buffer
+                        read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
+
+                        // if BIO_read returns a value <= 0 it indicates an error so we break out from the loop
+                        if(read_bytes <= 0) break;
+
+                        // we increment our total read bytes
+                        total_read_bytes += read_bytes;
+
+                    }
+                    
+                    // we check if the last BIO_read call returned 0 or < 0 which would indicate an error
+                    if(read_bytes <= 0){
+                        
+                        // here bio_read couldn't fetch any data
                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                         error = true;
 
-                        // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
+                        // we unblock the sigpipe signal because fail_ws_connection internally blocks it
                         unblock_sigpipe_signal();
                         
-                        fail_ws_connection(GOING_AWAY); // fail the websocket connection
-
-                        return error;
-
-                    }
-                    else{
-                    
-                        // SIGPIPE signal still remains blocked
+                        fail_ws_connection(GOING_AWAY);
+                        // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
                         
-                        frame_data_len = (rand_bytes[0] << 8) | rand_bytes[1];
-
+                        return error;
+                        
                     }
+                
+                    // SIGPIPE signal still remains blocked
+                    
+                    // getting here we successfully fetched the next 2 bytes so we set the frame data len
+                    frame_data_len = (rand_bytes[0] << 8) | rand_bytes[1];
                     
                 }
                 else if( rand_bytes[1] == 127 ){ // this would mean that the next 8 bytes is our length
@@ -3269,40 +3408,61 @@ bool lock_client::basic_read(){
 
                     // read the next 8 bytes from c_bio to get our length
 
-                    if(!(BIO_read(c_bio, rand_bytes, 8) <= 0)){
-                    
-                        if((rand_bytes[0] & 128) != 0){ // most significant bit of most significant byte is set which is against protocol rules
-                            
-                            strncpy(error_buffer, "Protocol error: Most significant bit of 64-bit frame length set", error_buffer_array_length);
-                            
-                            error = true;
+                    // we set our bytes to read variable to the number of bytes we are trying to read
+                    bytes_to_read = 8;
 
-                            // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                            unblock_sigpipe_signal();
-                            
-                            fail_ws_connection(PROTOCOL_ERROR); // fail the websocket connection
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array BIO_read should write to. We reset it to 0
+                    total_read_bytes = 0;
 
-                            return error;
-                            
-                        }
-                        
-                        // getting here the frame length was successfully read but the SIGPIPE signal still remains blocked
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each BIO_read call
+                    read_bytes = 0;
+
+                    // we keep reading till we have our total bytes to read
+                    while(total_read_bytes < bytes_to_read){
+
+                        // we call BIO_read to attempt to read the bytes into the buffer
+                        read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
+
+                        // if BIO_read returns a value <= 0 it indicates an error so we break out from the loop
+                        if(read_bytes <= 0) break;
+
+                        // we increment our total read bytes
+                        total_read_bytes += read_bytes;
 
                     }
-                    else{
-                    // here bio_read couldn't fetch any extra data
-
+                    
+                    // we check if the last BIO_read call returned 0 or < 0 which would indicate an error
+                    if(read_bytes <= 0){
+                        
+                        // here bio_read couldn't fetch any data
                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
+                        error = true;
+
+                        // we unblock the sigpipe signal because fail_ws_connection internally blocks it
+                        unblock_sigpipe_signal();
+                        
+                        fail_ws_connection(GOING_AWAY);
+                        // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
+                        
+                        return error;
+                        
+                    }
+
+                    // we check if the most significant bit of most significant byte is set which is against protocol rules
+                    if((rand_bytes[0] & 128) != 0){
+
+                        strncpy(error_buffer, "Protocol error: Most significant bit of 64-bit frame length set", error_buffer_array_length);
+                        
                         error = true;
 
                         // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                         unblock_sigpipe_signal();
                         
-                        fail_ws_connection(GOING_AWAY); // fail the websocket connection
+                        fail_ws_connection(PROTOCOL_ERROR); // fail the websocket connection
 
                         return error;
-
+                        
                     }
                     
                     
@@ -3476,7 +3636,6 @@ bool lock_client::basic_read(){
                     
                 }
                 else if( (data_array == data_array_static) && ( (length_of_array_data + frame_data_len) > size_of_allocated_data_memory) ){ // there are two parts to this condition, either memory has been allocated of memory has not been allocated 
-                    
                     
                     if( data_array_new == NULL ){ // memory has not been allocated
                         
@@ -3801,28 +3960,52 @@ bool lock_client::basic_read(){
                     // getting here the SIGPIPE signal is still blocked
 
                     // read the next 2 bytes from c_bio to get the length
-                    if(BIO_read(c_bio, rand_bytes, 2) <= 0){
 
-                        // here bio_read couldn't fetch any extra data
+                    // we set our bytes to read variable to the number of bytes we are trying to read
+                    bytes_to_read = 2;
+
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array BIO_read should write to. We reset it to 0
+                    total_read_bytes = 0;
+
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each BIO_read call
+                    read_bytes = 0;
+
+                    // we keep reading till we have our total bytes to read
+                    while(total_read_bytes < bytes_to_read){
+
+                        // we call BIO_read to attempt to read the bytes into the buffer
+                        read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
+
+                        // if BIO_read returns a value <= 0 it indicates an error so we break out from the loop
+                        if(read_bytes <= 0) break;
+
+                        // we increment our total read bytes
+                        total_read_bytes += read_bytes;
+
+                    }
+                    
+                    // we check if the last BIO_read call returned 0 or < 0 which would indicate an error
+                    if(read_bytes <= 0){
+                        
+                        // here bio_read couldn't fetch any data
                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                         error = true;
 
-                        // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
+                        // we unblock the sigpipe signal because fail_ws_connection internally blocks it
                         unblock_sigpipe_signal();
                         
-                        fail_ws_connection(GOING_AWAY); // fail the websocket connection
-
-                        return error;
-
-                    }
-                    else{
-                    
-                        // SIGPIPE signal still remains blocked
+                        fail_ws_connection(GOING_AWAY);
+                        // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
                         
-                        frame_data_len = (rand_bytes[0] << 8) | rand_bytes[1];
-
+                        return error;
+                        
                     }
+                
+                    // SIGPIPE signal still remains blocked
+                    
+                    // getting here we successfully fetched the next 2 bytes so we set the frame data len
+                    frame_data_len = (rand_bytes[0] << 8) | rand_bytes[1];
                     
                 }
                 else if( rand_bytes[1] == 127 ){ // this would mean that the next 8 bytes is our length
@@ -3831,40 +4014,61 @@ bool lock_client::basic_read(){
 
                     // read the next 8 bytes from c_bio to get our length
 
-                    if(!(BIO_read(c_bio, rand_bytes, 8) <= 0)){
-                    
-                        if((rand_bytes[0] & 128) != 0){ // most significant bit of most significant byte is set which is against protocol rules
-                            
-                            strncpy(error_buffer, "Protocol error: Most significant bit of 64-bit frame length set", error_buffer_array_length);
-                            
-                            error = true;
+                    // we set our bytes to read variable to the number of bytes we are trying to read
+                    bytes_to_read = 8;
 
-                            // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                            unblock_sigpipe_signal();
-                            
-                            fail_ws_connection(PROTOCOL_ERROR); // fail the websocket connection
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array BIO_read should write to. We reset it to 0
+                    total_read_bytes = 0;
 
-                            return error;
-                            
-                        }
-                        
-                        // getting here the frame length was successfully read but the SIGPIPE signal still remains blocked
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each BIO_read call
+                    read_bytes = 0;
+
+                    // we keep reading till we have our total bytes to read
+                    while(total_read_bytes < bytes_to_read){
+
+                        // we call BIO_read to attempt to read the bytes into the buffer
+                        read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
+
+                        // if BIO_read returns a value <= 0 it indicates an error so we break out from the loop
+                        if(read_bytes <= 0) break;
+
+                        // we increment our total read bytes
+                        total_read_bytes += read_bytes;
 
                     }
-                    else{
-                    // here bio_read couldn't fetch any extra data
-
+                    
+                    // we check if the last BIO_read call returned 0 or < 0 which would indicate an error
+                    if(read_bytes <= 0){
+                        
+                        // here bio_read couldn't fetch any data
                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
+                        error = true;
+
+                        // we unblock the sigpipe signal because fail_ws_connection internally blocks it
+                        unblock_sigpipe_signal();
+                        
+                        fail_ws_connection(GOING_AWAY);
+                        // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
+                        
+                        return error;
+                        
+                    }
+
+                    // we check if the most significant bit of most significant byte is set which is against protocol rules
+                    if((rand_bytes[0] & 128) != 0){
+
+                        strncpy(error_buffer, "Protocol error: Most significant bit of 64-bit frame length set", error_buffer_array_length);
+                        
                         error = true;
 
                         // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                         unblock_sigpipe_signal();
                         
-                        fail_ws_connection(GOING_AWAY); // fail the websocket connection
+                        fail_ws_connection(PROTOCOL_ERROR); // fail the websocket connection
 
                         return error;
-
+                        
                     }
                     
                     
@@ -4053,7 +4257,6 @@ bool lock_client::basic_read(){
                     
                 }
                 else if( (data_array == data_array_static) && ( (length_of_array_data + frame_data_len) > size_of_allocated_data_memory) ){ // there are two parts to this condition, either memory has been allocated of memory has not been allocated 
-                    
                     
                     if(data_array_new == NULL){ // memory has not been allocated
                         
@@ -4275,7 +4478,6 @@ bool lock_client::basic_read(){
                     }
                     
                 }
-                
                 else{ // dynamic memory already in use but it is not sufficient for incoming continuation frame
                     
                     char* local_data_array_new = new(std::nothrow) char[length_of_array_data + frame_data_len + 1024]; // make the new array 1KB bigger than the previous array size + the incoming continuation frame
@@ -4418,9 +4620,33 @@ bool lock_client::basic_read(){
                     if(frame_data_len > 0){
 
                         // read in the ping frame data, we use the upgrade request static array because it isn't currently in use by the program
-                        if(BIO_read(c_bio, upgrade_request_static, frame_data_len) <= 0){
-                        // there was an error reading in the ping frame data
 
+                        // we set our bytes to read variable to the number of bytes we are trying to read
+                        bytes_to_read = (int)frame_data_len;
+
+                        // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the upgrade request static array BIO_read should write to. We reset it to 0
+                        total_read_bytes = 0;
+
+                        // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each BIO_read call
+                        read_bytes = 0;
+
+                        // we keep reading till we have our total bytes to read
+                        while(total_read_bytes < bytes_to_read){
+
+                            // we call BIO_read to attempt to read the bytes into the buffer
+                            read_bytes = BIO_read(c_bio, &upgrade_request_static[total_read_bytes], bytes_to_read - total_read_bytes);
+
+                            // if BIO_read returns a value <= 0 it indicates an error so we break out from the loop
+                            if(read_bytes <= 0) break;
+
+                            // we increment our total read bytes
+                            total_read_bytes += read_bytes;
+
+                        }
+                        
+                        // we check if the last BIO_read call returned 0 or < 0 which would indicate an error
+                        if(read_bytes <= 0){
+                            
                             // here bio_read couldn't fetch any data
                             strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
@@ -4433,7 +4659,7 @@ bool lock_client::basic_read(){
                             // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
                             
                             return error;
-
+                            
                         }
 
                     }
