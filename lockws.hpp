@@ -9114,37 +9114,73 @@ bool lock_client_nb::basic_read(){
             
             // block SIGPIPE signal before attempting to read data, just incase the connection is closed
             block_sigpipe_signal();
-            
-            while(BIO_read(c_bio, rand_bytes, 2) <= 0){
+
             // attempt to read the first two bytes to test the FIN bit, the opcode and the size of the frame. We use the rand bytes array because it is not in use by the program at this point
-                
-                if(BIO_should_retry(c_bio)){
-                // getting here the read request fails for reading the first 2 bytes so there is no data available
 
-                    // we unblock the sigpipe signal
-                    unblock_sigpipe_signal();
+            // we set our bytes to read variable to the number of bytes we are trying to read
+            int bytes_to_read = 2;
 
-                    // we return error at this point because it is still 0 and it signals that basic read didn't fail there just is no data to read
-                    return error;
+            // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array BIO_read should write to
+            int total_read_bytes = 0;
+
+            // we initialise our read bytes to 0, read bytes keeps track of how many bytes were read in each BIO_read call
+            int read_bytes = 0;
+
+            // we keep reading till we have our total bytes to read
+            while(total_read_bytes < bytes_to_read){
+
+                // we call BIO_read to attempt to read the bytes into the buffer
+                read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
+
+                // if BIO_read returns a value <= 0 we check if there is data available to be read
+                if(read_bytes <= 0){
+
+                    // we check if the BIO should retry
+                    if(BIO_should_retry(c_bio)){
+
+                        // getting here BIO should retry returns true so we check if any ata has been fetched in this basic read call
+                        if(total_read_bytes > 0){
+                        // getting here data has been gotten in this current basic read call so we continue the loop till the entire data is fetched
+
+                            continue;
+
+                        }
+                        else{
+                        // getting here no data has been fetched in this basic read call so we unblock the sigpipe signal and exit
+
+                            // we unblock the sigpipe signal
+                            unblock_sigpipe_signal();
+
+                            // we return error at this point because it is still 0 and it signals that basic read didn't fail there just is no data to read
+                            return error;
+
+                        }
+
+
+                    }
+                    else{
+                    // getting here the error number returned by BIO read isn't due to BIO should retry so we fail this websocket connection
+                    
+                        // here bio_read couldn't fetch any data
+                        strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
+
+                        error = true;
+
+                        // we unblock the sigpipe signal because fail_ws_connection internally blocks it
+                        unblock_sigpipe_signal();
+                        
+                        fail_ws_connection(GOING_AWAY);
+                        // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
+                        
+                        return error;
+
+                    }
 
                 }
-                else{
-                    
-                    // here bio_read couldn't fetch any data
-                    strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
-                    error = true;
+                // we increment our total read bytes
+                total_read_bytes += read_bytes;
 
-                    // we unblock the sigpipe signal because fail_ws_connection internally blocks it
-                    unblock_sigpipe_signal();
-                    
-                    fail_ws_connection(GOING_AWAY);
-                    // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
-                    
-                    return error;
-
-                }
-                
             }
             
             // SIGPIPE signal remains blocked   
@@ -9162,30 +9198,69 @@ bool lock_client_nb::basic_read(){
                     // getting here the SIGPIPE signal is still blocked
 
                     // read the next 2 bytes from c_bio to get the length
-                    while(BIO_read(c_bio, rand_bytes, 2) <= 0){
 
-                        if(BIO_should_retry(c_bio)){
-                        // getting here the read request would block so we continue polling
+                    // we set our bytes to read variable to the number of bytes we are trying to read
+                    bytes_to_read = 2;
 
-                            continue;
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array BIO_read should write to
+                    total_read_bytes = 0;
+
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each BIO_read call
+                    read_bytes = 0;
+
+                    // we keep reading till we have our total bytes to read
+                    while(total_read_bytes < bytes_to_read){
+
+                        // we call BIO_read to attempt to read the bytes into the buffer
+                        read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
+
+                        // if BIO_read returns a value <= 0 we check if there is data available to be read
+                        if(read_bytes <= 0){
+
+                            // we check if the BIO should retry
+                            if(BIO_should_retry(c_bio)){
+
+                                // getting here BIO should retry returns true so we check if any ata has been fetched in this basic read call
+                                if(total_read_bytes > 0){
+                                // getting here data has been gotten in this current basic read call so we continue the loop till the entire data is fetched
+
+                                    continue;
+
+                                }
+                                else{
+                                // getting here no data has been fetched in this basic read call so we unblock the sigpipe signal and exit
+
+                                    // we unblock the sigpipe signal
+                                    unblock_sigpipe_signal();
+
+                                    // we return error at this point because it is still 0 and it signals that basic read didn't fail there just is no data to read
+                                    return error;
+
+                                }
+
+                            }
+                            else{
+                            // getting here the error number returned by BIO read isn't due to BIO should retry so we fail this websocket connection
+                            
+                                // here bio_read couldn't fetch any data
+                                strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
+
+                                error = true;
+
+                                // we unblock the sigpipe signal because fail_ws_connection internally blocks it
+                                unblock_sigpipe_signal();
+                                
+                                fail_ws_connection(GOING_AWAY);
+                                // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
+                                
+                                return error;
+
+                            }
 
                         }
-                        else{
-                            
-                            // here bio_read couldn't fetch any data
-                            strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
-                            error = true;
-
-                            // we unblock the sigpipe signal because fail_ws_connection internally blocks it
-                            unblock_sigpipe_signal();
-                            
-                            fail_ws_connection(GOING_AWAY);
-                            // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
-                            
-                            return error;
-
-                        }
+                        // we increment our total read bytes
+                        total_read_bytes += read_bytes;
 
                     }
                 
@@ -9200,30 +9275,68 @@ bool lock_client_nb::basic_read(){
 
                     // read the next 8 bytes from c_bio to get our length
 
-                    while(BIO_read(c_bio, rand_bytes, 8) <= 0){
+                    // we set our bytes to read variable to the number of bytes we are trying to read
+                    bytes_to_read = 8;
 
-                        if(BIO_should_retry(c_bio)){
-                        // getting here the read request would block so we continue polling
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array BIO_read should write to
+                    total_read_bytes = 0;
 
-                            continue;
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each BIO_read call
+                    read_bytes = 0;
+
+                    // we keep reading till we have our total bytes to read
+                    while(total_read_bytes < bytes_to_read){
+
+                        // we call BIO_read to attempt to read the bytes into the buffer
+                        read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
+
+                        // if BIO_read returns a value <= 0 we check if there is data available to be read
+                        if(read_bytes <= 0){
+
+                            // we check if the BIO should retry
+                            if(BIO_should_retry(c_bio)){
+
+                                // getting here BIO should retry returns true so we check if any ata has been fetched in this basic read call
+                                if(total_read_bytes > 0){
+                                // getting here data has been gotten in this current basic read call so we continue the loop till the entire data is fetched
+
+                                    continue;
+
+                                }
+                                else{
+                                // getting here no data has been fetched in this basic read call so we unblock the sigpipe signal and exit
+
+                                    // we unblock the sigpipe signal
+                                    unblock_sigpipe_signal();
+
+                                    // we return error at this point because it is still 0 and it signals that basic read didn't fail there just is no data to read
+                                    return error;
+
+                                }
+
+                            }
+                            else{
+                            // getting here the error number returned by BIO read isn't due to BIO should retry so we fail this websocket connection
+                            
+                                // here bio_read couldn't fetch any data
+                                strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
+
+                                error = true;
+
+                                // we unblock the sigpipe signal because fail_ws_connection internally blocks it
+                                unblock_sigpipe_signal();
+                                
+                                fail_ws_connection(GOING_AWAY);
+                                // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
+                                
+                                return error;
+
+                            }
 
                         }
-                        else{
-                            
-                            // here bio_read couldn't fetch any data
-                            strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
-                            error = true;
-
-                            // we unblock the sigpipe signal because fail_ws_connection internally blocks it
-                            unblock_sigpipe_signal();
-                            
-                            fail_ws_connection(GOING_AWAY);
-                            // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
-                            
-                            return error;
-
-                        }
+                        // we increment our total read bytes
+                        total_read_bytes += read_bytes;
 
                     }
 
@@ -9588,30 +9701,69 @@ bool lock_client_nb::basic_read(){
                     // getting here the SIGPIPE signal is still blocked
 
                     // read the next 2 bytes from c_bio to get the length
-                    while(BIO_read(c_bio, rand_bytes, 2) <= 0){
 
-                        if(BIO_should_retry(c_bio)){
-                        // getting here the read request would block so we continue polling
+                    // we set our bytes to read variable to the number of bytes we are trying to read
+                    bytes_to_read = 2;
 
-                            continue;
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array BIO_read should write to
+                    total_read_bytes = 0;
+
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each BIO_read call
+                    read_bytes = 0;
+
+                    // we keep reading till we have our total bytes to read
+                    while(total_read_bytes < bytes_to_read){
+
+                        // we call BIO_read to attempt to read the bytes into the buffer
+                        read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
+
+                        // if BIO_read returns a value <= 0 we check if there is data available to be read
+                        if(read_bytes <= 0){
+
+                            // we check if the BIO should retry
+                            if(BIO_should_retry(c_bio)){
+
+                                // getting here BIO should retry returns true so we check if any ata has been fetched in this basic read call
+                                if(total_read_bytes > 0){
+                                // getting here data has been gotten in this current basic read call so we continue the loop till the entire data is fetched
+
+                                    continue;
+
+                                }
+                                else{
+                                // getting here no data has been fetched in this basic read call so we unblock the sigpipe signal and exit
+
+                                    // we unblock the sigpipe signal
+                                    unblock_sigpipe_signal();
+
+                                    // we return error at this point because it is still 0 and it signals that basic read didn't fail there just is no data to read
+                                    return error;
+
+                                }
+
+                            }
+                            else{
+                            // getting here the error number returned by BIO read isn't due to BIO should retry so we fail this websocket connection
+                            
+                                // here bio_read couldn't fetch any data
+                                strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
+
+                                error = true;
+
+                                // we unblock the sigpipe signal because fail_ws_connection internally blocks it
+                                unblock_sigpipe_signal();
+                                
+                                fail_ws_connection(GOING_AWAY);
+                                // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
+                                
+                                return error;
+
+                            }
 
                         }
-                        else{
-                            
-                            // here bio_read couldn't fetch any data
-                            strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
-                            error = true;
-
-                            // we unblock the sigpipe signal because fail_ws_connection internally blocks it
-                            unblock_sigpipe_signal();
-                            
-                            fail_ws_connection(GOING_AWAY);
-                            // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
-                            
-                            return error;
-
-                        }
+                        // we increment our total read bytes
+                        total_read_bytes += read_bytes;
 
                     }
                 
@@ -9626,30 +9778,68 @@ bool lock_client_nb::basic_read(){
 
                     // read the next 8 bytes from c_bio to get our length
 
-                    while(BIO_read(c_bio, rand_bytes, 8) <= 0){
+                    // we set our bytes to read variable to the number of bytes we are trying to read
+                    bytes_to_read = 8;
 
-                        if(BIO_should_retry(c_bio)){
-                        // getting here the read request would block so we continue polling
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array BIO_read should write to
+                    total_read_bytes = 0;
 
-                            continue;
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each BIO_read call
+                    read_bytes = 0;
+
+                    // we keep reading till we have our total bytes to read
+                    while(total_read_bytes < bytes_to_read){
+
+                        // we call BIO_read to attempt to read the bytes into the buffer
+                        read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
+
+                        // if BIO_read returns a value <= 0 we check if there is data available to be read
+                        if(read_bytes <= 0){
+
+                            // we check if the BIO should retry
+                            if(BIO_should_retry(c_bio)){
+
+                                // getting here BIO should retry returns true so we check if any ata has been fetched in this basic read call
+                                if(total_read_bytes > 0){
+                                // getting here data has been gotten in this current basic read call so we continue the loop till the entire data is fetched
+
+                                    continue;
+
+                                }
+                                else{
+                                // getting here no data has been fetched in this basic read call so we unblock the sigpipe signal and exit
+
+                                    // we unblock the sigpipe signal
+                                    unblock_sigpipe_signal();
+
+                                    // we return error at this point because it is still 0 and it signals that basic read didn't fail there just is no data to read
+                                    return error;
+
+                                }
+
+                            }
+                            else{
+                            // getting here the error number returned by BIO read isn't due to BIO should retry so we fail this websocket connection
+                            
+                                // here bio_read couldn't fetch any data
+                                strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
+
+                                error = true;
+
+                                // we unblock the sigpipe signal because fail_ws_connection internally blocks it
+                                unblock_sigpipe_signal();
+                                
+                                fail_ws_connection(GOING_AWAY);
+                                // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
+                                
+                                return error;
+
+                            }
 
                         }
-                        else{
-                            
-                            // here bio_read couldn't fetch any data
-                            strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
-                            error = true;
-
-                            // we unblock the sigpipe signal because fail_ws_connection internally blocks it
-                            unblock_sigpipe_signal();
-                            
-                            fail_ws_connection(GOING_AWAY);
-                            // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
-                            
-                            return error;
-
-                        }
+                        // we increment our total read bytes
+                        total_read_bytes += read_bytes;
 
                     }
 
@@ -10000,30 +10190,69 @@ bool lock_client_nb::basic_read(){
                     // getting here the SIGPIPE signal is still blocked
 
                     // read the next 2 bytes from c_bio to get the length
-                    while(BIO_read(c_bio, rand_bytes, 2) <= 0){
 
-                        if(BIO_should_retry(c_bio)){
-                        // getting here the read request would block so we continue polling
+                    // we set our bytes to read variable to the number of bytes we are trying to read
+                    bytes_to_read = 2;
 
-                            continue;
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array BIO_read should write to
+                    total_read_bytes = 0;
+
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each BIO_read call
+                    read_bytes = 0;
+
+                    // we keep reading till we have our total bytes to read
+                    while(total_read_bytes < bytes_to_read){
+
+                        // we call BIO_read to attempt to read the bytes into the buffer
+                        read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
+
+                        // if BIO_read returns a value <= 0 we check if there is data available to be read
+                        if(read_bytes <= 0){
+
+                            // we check if the BIO should retry
+                            if(BIO_should_retry(c_bio)){
+
+                                // getting here BIO should retry returns true so we check if any ata has been fetched in this basic read call
+                                if(total_read_bytes > 0){
+                                // getting here data has been gotten in this current basic read call so we continue the loop till the entire data is fetched
+
+                                    continue;
+
+                                }
+                                else{
+                                // getting here no data has been fetched in this basic read call so we unblock the sigpipe signal and exit
+
+                                    // we unblock the sigpipe signal
+                                    unblock_sigpipe_signal();
+
+                                    // we return error at this point because it is still 0 and it signals that basic read didn't fail there just is no data to read
+                                    return error;
+
+                                }
+
+                            }
+                            else{
+                            // getting here the error number returned by BIO read isn't due to BIO should retry so we fail this websocket connection
+                            
+                                // here bio_read couldn't fetch any data
+                                strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
+
+                                error = true;
+
+                                // we unblock the sigpipe signal because fail_ws_connection internally blocks it
+                                unblock_sigpipe_signal();
+                                
+                                fail_ws_connection(GOING_AWAY);
+                                // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
+                                
+                                return error;
+
+                            }
 
                         }
-                        else{
-                            
-                            // here bio_read couldn't fetch any data
-                            strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
-                            error = true;
-
-                            // we unblock the sigpipe signal because fail_ws_connection internally blocks it
-                            unblock_sigpipe_signal();
-                            
-                            fail_ws_connection(GOING_AWAY);
-                            // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
-                            
-                            return error;
-
-                        }
+                        // we increment our total read bytes
+                        total_read_bytes += read_bytes;
 
                     }
                 
@@ -10038,30 +10267,68 @@ bool lock_client_nb::basic_read(){
 
                     // read the next 8 bytes from c_bio to get our length
 
-                    while(BIO_read(c_bio, rand_bytes, 8) <= 0){
+                    // we set our bytes to read variable to the number of bytes we are trying to read
+                    bytes_to_read = 8;
 
-                        if(BIO_should_retry(c_bio)){
-                        // getting here the read request would block so we continue polling
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array BIO_read should write to
+                    total_read_bytes = 0;
 
-                            continue;
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each BIO_read call
+                    read_bytes = 0;
+
+                    // we keep reading till we have our total bytes to read
+                    while(total_read_bytes < bytes_to_read){
+
+                        // we call BIO_read to attempt to read the bytes into the buffer
+                        read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
+
+                        // if BIO_read returns a value <= 0 we check if there is data available to be read
+                        if(read_bytes <= 0){
+
+                            // we check if the BIO should retry
+                            if(BIO_should_retry(c_bio)){
+
+                                // getting here BIO should retry returns true so we check if any ata has been fetched in this basic read call
+                                if(total_read_bytes > 0){
+                                // getting here data has been gotten in this current basic read call so we continue the loop till the entire data is fetched
+
+                                    continue;
+
+                                }
+                                else{
+                                // getting here no data has been fetched in this basic read call so we unblock the sigpipe signal and exit
+
+                                    // we unblock the sigpipe signal
+                                    unblock_sigpipe_signal();
+
+                                    // we return error at this point because it is still 0 and it signals that basic read didn't fail there just is no data to read
+                                    return error;
+
+                                }
+
+                            }
+                            else{
+                            // getting here the error number returned by BIO read isn't due to BIO should retry so we fail this websocket connection
+                            
+                                // here bio_read couldn't fetch any data
+                                strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
+
+                                error = true;
+
+                                // we unblock the sigpipe signal because fail_ws_connection internally blocks it
+                                unblock_sigpipe_signal();
+                                
+                                fail_ws_connection(GOING_AWAY);
+                                // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
+                                
+                                return error;
+
+                            }
 
                         }
-                        else{
-                            
-                            // here bio_read couldn't fetch any data
-                            strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
-                            error = true;
-
-                            // we unblock the sigpipe signal because fail_ws_connection internally blocks it
-                            unblock_sigpipe_signal();
-                            
-                            fail_ws_connection(GOING_AWAY);
-                            // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
-                            
-                            return error;
-
-                        }
+                        // we increment our total read bytes
+                        total_read_bytes += read_bytes;
 
                     }
 
@@ -10522,30 +10789,69 @@ bool lock_client_nb::basic_read(){
                     // getting here the SIGPIPE signal is still blocked
 
                     // read the next 2 bytes from c_bio to get the length
-                    while(BIO_read(c_bio, rand_bytes, 2) <= 0){
 
-                        if(BIO_should_retry(c_bio)){
-                        // getting here the read request would block so we continue polling
+                    // we set our bytes to read variable to the number of bytes we are trying to read
+                    bytes_to_read = 2;
 
-                            continue;
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array BIO_read should write to
+                    total_read_bytes = 0;
+
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each BIO_read call
+                    read_bytes = 0;
+
+                    // we keep reading till we have our total bytes to read
+                    while(total_read_bytes < bytes_to_read){
+
+                        // we call BIO_read to attempt to read the bytes into the buffer
+                        read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
+
+                        // if BIO_read returns a value <= 0 we check if there is data available to be read
+                        if(read_bytes <= 0){
+
+                            // we check if the BIO should retry
+                            if(BIO_should_retry(c_bio)){
+
+                                // getting here BIO should retry returns true so we check if any ata has been fetched in this basic read call
+                                if(total_read_bytes > 0){
+                                // getting here data has been gotten in this current basic read call so we continue the loop till the entire data is fetched
+
+                                    continue;
+
+                                }
+                                else{
+                                // getting here no data has been fetched in this basic read call so we unblock the sigpipe signal and exit
+
+                                    // we unblock the sigpipe signal
+                                    unblock_sigpipe_signal();
+
+                                    // we return error at this point because it is still 0 and it signals that basic read didn't fail there just is no data to read
+                                    return error;
+
+                                }
+
+                            }
+                            else{
+                            // getting here the error number returned by BIO read isn't due to BIO should retry so we fail this websocket connection
+                            
+                                // here bio_read couldn't fetch any data
+                                strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
+
+                                error = true;
+
+                                // we unblock the sigpipe signal because fail_ws_connection internally blocks it
+                                unblock_sigpipe_signal();
+                                
+                                fail_ws_connection(GOING_AWAY);
+                                // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
+                                
+                                return error;
+
+                            }
 
                         }
-                        else{
-                            
-                            // here bio_read couldn't fetch any data
-                            strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
-                            error = true;
-
-                            // we unblock the sigpipe signal because fail_ws_connection internally blocks it
-                            unblock_sigpipe_signal();
-                            
-                            fail_ws_connection(GOING_AWAY);
-                            // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
-                            
-                            return error;
-
-                        }
+                        // we increment our total read bytes
+                        total_read_bytes += read_bytes;
 
                     }
                 
@@ -10560,30 +10866,68 @@ bool lock_client_nb::basic_read(){
 
                     // read the next 8 bytes from c_bio to get our length
 
-                    while(BIO_read(c_bio, rand_bytes, 8) <= 0){
+                    // we set our bytes to read variable to the number of bytes we are trying to read
+                    bytes_to_read = 8;
 
-                        if(BIO_should_retry(c_bio)){
-                        // getting here the read request would block so we continue polling
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array BIO_read should write to
+                    total_read_bytes = 0;
 
-                            continue;
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each BIO_read call
+                    read_bytes = 0;
+
+                    // we keep reading till we have our total bytes to read
+                    while(total_read_bytes < bytes_to_read){
+
+                        // we call BIO_read to attempt to read the bytes into the buffer
+                        read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
+
+                        // if BIO_read returns a value <= 0 we check if there is data available to be read
+                        if(read_bytes <= 0){
+
+                            // we check if the BIO should retry
+                            if(BIO_should_retry(c_bio)){
+
+                                // getting here BIO should retry returns true so we check if any ata has been fetched in this basic read call
+                                if(total_read_bytes > 0){
+                                // getting here data has been gotten in this current basic read call so we continue the loop till the entire data is fetched
+
+                                    continue;
+
+                                }
+                                else{
+                                // getting here no data has been fetched in this basic read call so we unblock the sigpipe signal and exit
+
+                                    // we unblock the sigpipe signal
+                                    unblock_sigpipe_signal();
+
+                                    // we return error at this point because it is still 0 and it signals that basic read didn't fail there just is no data to read
+                                    return error;
+
+                                }
+
+                            }
+                            else{
+                            // getting here the error number returned by BIO read isn't due to BIO should retry so we fail this websocket connection
+                            
+                                // here bio_read couldn't fetch any data
+                                strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
+
+                                error = true;
+
+                                // we unblock the sigpipe signal because fail_ws_connection internally blocks it
+                                unblock_sigpipe_signal();
+                                
+                                fail_ws_connection(GOING_AWAY);
+                                // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
+                                
+                                return error;
+
+                            }
 
                         }
-                        else{
-                            
-                            // here bio_read couldn't fetch any data
-                            strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
-                            error = true;
-
-                            // we unblock the sigpipe signal because fail_ws_connection internally blocks it
-                            unblock_sigpipe_signal();
-                            
-                            fail_ws_connection(GOING_AWAY);
-                            // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
-                            
-                            return error;
-
-                        }
+                        // we increment our total read bytes
+                        total_read_bytes += read_bytes;
 
                     }
 
