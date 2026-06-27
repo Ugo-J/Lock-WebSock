@@ -36,7 +36,7 @@ lock_client::lock_client(std::string_view url){
         
     }
     
-    // check if url is a ws:// or wss:// endpoint, check case insensitively
+    // check if url is a wss:// endpoint, check case insensitively
     
     if( (url.compare(0, 6, "wss://") == 0) || (url.compare(0, 6, "Wss://") == 0) || (url.compare(0, 6, "WSs://") == 0) || (url.compare(0, 6, "WSS://") == 0) || (url.compare(0, 6, "WsS://") == 0) || (url.compare(0, 6, "wSS://") == 0) || (url.compare(0, 6, "wsS://") == 0) || (url.compare(0, 6, "wSs://") == 0) ){ // endpoint is a wss:// endpoint, the second parameter to the std::string_view compare function is 6 which is the length of the string "wss://" which we are testing for the presence of, we list out and compare the 8 possible combinations of uppercase and lowercase lettering that are valid
     
@@ -249,7 +249,7 @@ lock_client::lock_client(std::string_view url){
                         
                     error = true;
                 
-                }    
+                } 
                 
             }
             
@@ -342,7 +342,7 @@ lock_client::lock_client(std::string_view url){
                     const int MAX_CHAR_FOR_PORT = 8; // a port number can have a maximum of 5 characters because port numbers are 16 bit integers
                     char c_port[MAX_CHAR_FOR_PORT];
 
-                    // since the host_name_end_index already finds the first character out of : and / after the host name we use it to finc the port number location if any
+                    // since the host_name_end_index already finds the first character out of : and / after the host name we use it to find the port number location if any
 
                     // we first check if the host name end index was either std::string_view::npos or / in which case we know the host wasn't supplied so we store 443 as the host, but if the : character was found then the host was supplied so we just create a sub string view from after the : character to either the / starting the path if supplied, but if not supplied till std::string_view::npos - host_name_end_index - 1 which would be a very large number the copy takes the rest of the url string_view
                     std::string_view port = (host_name_end_index == std::string_view::npos || url[host_name_end_index] == '/') ? "443" : url.substr(host_name_end_index + 1, url.find('/', host_name_end_index) - host_name_end_index - 1);
@@ -371,7 +371,7 @@ lock_client::lock_client(std::string_view url){
                         }
 
                         // only continue if no error
-                        if(!error){ 
+                        if(!error){
                             
                             // upgrade the connection to websocket
                             
@@ -546,8 +546,6 @@ lock_client::lock_client(std::string_view url){
 
                                     // we update our sha context with the data to be hashed
                                     wc_ShaUpdate(&sha_context, SHA1_parameter, strlen(SHA1_parameter));
-
-                                    SHA1((const unsigned char*)SHA1_parameter, strlen(SHA1_parameter), SHA1_digest); // get the sha1 hash digest
 
                                     wc_ShaFinal(&sha_context, SHA1_digest);
 
@@ -845,7 +843,7 @@ lock_client::lock_client(std::string_view url, in_addr* interface_address, char*
             const int MAX_CHAR_FOR_PORT = 8; // a port number can have a maximum of 5 characters because port numbers are 16 bit integers
             char c_port[MAX_CHAR_FOR_PORT];
 
-            // since the host_name_end_index already finds the first character out of : and / after the host name we use it to finc the port number location if any
+            // since the host_name_end_index already finds the first character out of : and / after the host name we use it to find the port number location if any
 
             // we first check if the host name end index was either std::string_view::npos or / in which case we know the host wasn't supplied so we store 443 as the host, but if the : character was found then the host was supplied so we just create a sub string view from after the : character to either the / starting the path if supplied, but if not supplied till std::string_view::npos - host_name_end_index - 1 which would be a very large number the copy takes the rest of the url string_view
             std::string_view port = (host_name_end_index == std::string_view::npos || url[host_name_end_index] == '/') ? "443" : url.substr(host_name_end_index + 1, url.find('/', host_name_end_index) - host_name_end_index - 1);
@@ -1148,8 +1146,6 @@ lock_client::lock_client(std::string_view url, in_addr* interface_address, char*
 
                                     // we update our sha context with the data to be hashed
                                     wc_ShaUpdate(&sha_context, SHA1_parameter, strlen(SHA1_parameter));
-
-                                    SHA1((const unsigned char*)SHA1_parameter, strlen(SHA1_parameter), SHA1_digest); // get the sha1 hash digest
 
                                     wc_ShaFinal(&sha_context, SHA1_digest);
 
@@ -5037,7 +5033,7 @@ bool lock_client::connect(std::string_view url){ // this is used to connect to c
                     const int MAX_CHAR_FOR_PORT = 8; // a port number can have a maximum of 5 characters because port numbers are 16 bit integers
                     char c_port[MAX_CHAR_FOR_PORT];
 
-                    // since the host_name_end_index already finds the first character out of : and / after the host name we use it to finc the port number location if any
+                    // since the host_name_end_index already finds the first character out of : and / after the host name we use it to find the port number location if any
 
                     // we first check if the host name end index was either std::string_view::npos or / in which case we know the host wasn't supplied so we store 443 as the host, but if the : character was found then the host was supplied so we just create a sub string view from after the : character to either the / starting the path if supplied, but if not supplied till std::string_view::npos - host_name_end_index - 1 which would be a very large number the copy takes the rest of the url string_view
                     std::string_view port = (host_name_end_index == std::string_view::npos || url[host_name_end_index] == '/') ? "443" : url.substr(host_name_end_index + 1, url.find('/', host_name_end_index) - host_name_end_index - 1);
@@ -5241,8 +5237,6 @@ bool lock_client::connect(std::string_view url){ // this is used to connect to c
 
                                     // we update our sha context with the data to be hashed
                                     wc_ShaUpdate(&sha_context, SHA1_parameter, strlen(SHA1_parameter));
-
-                                    SHA1((const unsigned char*)SHA1_parameter, strlen(SHA1_parameter), SHA1_digest); // get the sha1 hash digest
 
                                     wc_ShaFinal(&sha_context, SHA1_digest);
 
@@ -5539,7 +5533,7 @@ bool lock_client::interface_connect(std::string_view url, in_addr* interface_add
             const int MAX_CHAR_FOR_PORT = 8; // a port number can have a maximum of 5 characters because port numbers are 16 bit integers
             char c_port[MAX_CHAR_FOR_PORT];
 
-            // since the host_name_end_index already finds the first character out of : and / after the host name we use it to finc the port number location if any
+            // since the host_name_end_index already finds the first character out of : and / after the host name we use it to find the port number location if any
 
             // we first check if the host name end index was either std::string_view::npos or / in which case we know the host wasn't supplied so we store 443 as the host, but if the : character was found then the host was supplied so we just create a sub string view from after the : character to either the / starting the path if supplied, but if not supplied till std::string_view::npos - host_name_end_index - 1 which would be a very large number the copy takes the rest of the url string_view
             std::string_view port = (host_name_end_index == std::string_view::npos || url[host_name_end_index] == '/') ? "443" : url.substr(host_name_end_index + 1, url.find('/', host_name_end_index) - host_name_end_index - 1);
@@ -5842,8 +5836,6 @@ bool lock_client::interface_connect(std::string_view url, in_addr* interface_add
 
                                     // we update our sha context with the data to be hashed
                                     wc_ShaUpdate(&sha_context, SHA1_parameter, strlen(SHA1_parameter));
-
-                                    SHA1((const unsigned char*)SHA1_parameter, strlen(SHA1_parameter), SHA1_digest); // get the sha1 hash digest
 
                                     wc_ShaFinal(&sha_context, SHA1_digest);
 
@@ -6211,8 +6203,13 @@ lock_client_nb::lock_client_nb(std::string_view url){
 
     // initialisation of class wide variables
     if(!wolfssl_init){
+
+        if(wolfSSL_Init() != WOLFSSL_SUCCESS) std::cout<<"Failed to initialize wolfSSL core runtime.\n";
         
-        ssl_ctx = SSL_CTX_new(TLS_client_method()); // initialises the SSL_CTX pointer with method TLS, this SSL_CTX structure is shared among all lock_client instance
+        // we create our ssl ctx and register our static memory poll to prevent runtime memory allocation - the 'WOLFSSL_STATIC_MALLOC' flag enforces strict, non-growing bounds.
+        ssl_ctx = wolfSSL_CTX_new_ex(wolfTLSv1_3_client_method(), reinterpret_cast<byte*>(crypto_memory_pool), CRYPTO_ARENA_SIZE, WOLFSSL_STATIC_MALLOC);
+
+        if(!ssl_ctx) std::cout<<"Context creation failed. Memory pool may be too small or misaligned.\n";
         
         // seed the random number generator
         srand(std::chrono::duration_cast< std::chrono::milliseconds >(std::chrono::system_clock::now().time_since_epoch()).count());
@@ -6221,7 +6218,7 @@ lock_client_nb::lock_client_nb(std::string_view url){
         int upper_bound = 255;
             
         for(int j = 0; j<mask_array_len; j++){
-        
+                
             mask[j] = (unsigned char)(rand() % upper_bound);
 
         }
@@ -6230,23 +6227,8 @@ lock_client_nb::lock_client_nb(std::string_view url){
         
     }
     
-    // set the screen output bio
-    out_bio = BIO_new_fp(stdout, BIO_NOCLOSE); // sets the out bio to print to stdout
     
-    // sets the mem bio 
-    c_mem_base64 = BIO_new(BIO_s_mem());
-    
-    // sets the base64 bio 
-    c_base64 = BIO_new(BIO_f_base64()); // initialise the base64 BIO structure
-    
-    // set the no newline option on the base64 bio to prevent it from adding superfluous newlines to output
-    BIO_set_flags(c_base64, BIO_FLAGS_BASE64_NO_NL);
-    
-    // chain base64 and mem bio 
-    BIO_push(c_base64, c_mem_base64);
-    
-    
-    // check if url is a ws:// or wss:// endpoint, check case insensitively
+    // check if url is a wss:// endpoint, check case insensitively - for thw wolfssl client we only implement the wss client
     
     if( (url.compare(0, 6, "wss://") == 0) || (url.compare(0, 6, "Wss://") == 0) || (url.compare(0, 6, "WSs://") == 0) || (url.compare(0, 6, "WSS://") == 0) || (url.compare(0, 6, "WsS://") == 0) || (url.compare(0, 6, "wSS://") == 0) || (url.compare(0, 6, "wsS://") == 0) || (url.compare(0, 6, "wSs://") == 0) ){ // endpoint is a wss:// endpoint, the second parameter to the std::string_view compare function is 6 which is the length of the string "wss://" which we are testing for the presence of, we list out and compare the 8 possible combinations of uppercase and lowercase lettering that are valid
     
@@ -6260,16 +6242,8 @@ lock_client_nb::lock_client_nb(std::string_view url){
         // size of required memory in bytes to store the base url and the port number if it would be appended
         int req_mem = base_url_length + 5; // we add an extra 5 bytes to the base url length to accomodate for the chance that this url was supplied without a port number so we have enough room to append port :443 to the base url
 
-        // SSL members initialisations
-        c_bio = BIO_new_ssl_connect(ssl_ctx); // creates a new bio ssl object
-        BIO_get_ssl(c_bio, &c_ssl); // get the SSL structure component of the ssl bio for per instance SSL settings
-        if(c_ssl == NULL){
-            
-            strncpy(error_buffer, "Error fetching SSL structure pointer ", error_buffer_array_length);
-                    
-            error = true;
-            
-        }
+        // we create our ssl object
+        c_ssl = wolfSSL_new(ssl_ctx);
     
         if(!error){ // the constructor continues only if there was no error fetching the ssl pointer
 
@@ -6358,130 +6332,21 @@ lock_client_nb::lock_client_nb(std::string_view url){
                     strcat(c_url, ":443"); // we use strcat here because the array length check already checks that we have enough space in the array to accomodate for the port number
                 }
 
-                // set the websocket url(port included)
-                BIO_set_conn_hostname(c_bio, c_url);
-                
                 // set SSL mode to retry automatically should SSL connection fail
-                SSL_set_mode(c_ssl, SSL_MODE_AUTO_RETRY);
+                wolfSSL_set_mode(c_ssl, WOLFSSL_MODE_AUTO_RETRY);
         
             }
         
         }
     
     }
-    
-    else if( (url.compare(0, 5, "ws://") == 0) || (url.compare(0, 5, "Ws://") == 0) || (url.compare(0, 5, "wS://") == 0) || (url.compare(0, 5, "WS://") == 0)){ // ws:// endpoint, we test the 4 possible combinations of uppercase and lowercase lettering. The second parameter to the std::string_view compare function is the length of the protocol prefix which we test for the presence of
-    
-        int protocol_prefix_len = strlen("ws://");
-
-        // we fetch the url length without the ws:// prefix and any path appended to the url, we do this by finding the next '/' character after the initial ws://
-        size_t base_url_end_index = url.find('/', protocol_prefix_len);
-
-        int base_url_length = (base_url_end_index != std::string_view::npos) ? (int)base_url_end_index - protocol_prefix_len : url.size() - protocol_prefix_len; // saves the length of the url without the ws:// prefix and the path if any
-
-        // size of required memory in bytes to store the base url and the port number if it would be appended
-        int req_mem = base_url_length + 4; // we add an extra 4 bytes to the base url length to accomodate for the chance that this url was supplied without a port number so we have enough room to append port :80 to the base url
-    
-        // URL copy 
-        if(req_mem < url_static_array_length){ // static array is sufficient
-    
-            url.copy(c_url_static, base_url_length, protocol_prefix_len); // protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
-    
-            c_url_static[base_url_length] = '\0'; // null-terminate the string
-    
-            c_url = c_url_static;
-    
-        }
-        else if(req_mem < size_of_allocated_url_memory){ // store in already allocated dynamic memory
+    else{ // not a valid/supported websocket endpoint
         
-            url.copy(c_url_new, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
-    
-            c_url_new[base_url_length] = '\0'; // null-terminate the string
-    
-            c_url = c_url_new;
-        
-    
-        }
-        else{ // neither static or dynamic memory is large enough, we test whether memory has already been allocated or not 
-        
-            if(c_url_new == NULL){ // memory has not yet been allocated
-            
-                // heap memory allocation for urls larger than the static array length
-                c_url_new = new(std::nothrow) char[req_mem]; // the nothrow parameter prevents an exception from being thrown by the C++ runtime should the heap allocation fail
-        
-           
-                if(c_url_new == NULL){
-                
-                    strncpy(error_buffer, "Error allocating heap memory for lock_client url parameter ", error_buffer_array_length);
-                
-                    error = true;
-                
-                }
-                else{
-                
-                    size_of_allocated_url_memory = req_mem;    
-                    
-                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
-       
-                    c_url_new[base_url_length] = '\0';
-    
-                    c_url = c_url_new;
-            
-                }
-    
-            }
-            else{ // memory has been allocated but still isn't large enough
-            
-                delete [] c_url_new; // delete the already allocated memory
-            
-                // heap memory allocation for urls larger than the static array length
-                c_url_new = new(std::nothrow) char[req_mem]; // the nothrow parameter prevents an exception from being thrown by the C++ runtime should the heap allocation fail
-        
-           
-                if(c_url_new == NULL){
-                
-                    strncpy(error_buffer, "Error allocating heap memory for lock_client url parameter ", error_buffer_array_length);
-                
-                    error = true;
-                
-                }
-                else{
-                
-                    size_of_allocated_url_memory = req_mem;    
-                    
-                    url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
-       
-                    c_url_new[base_url_length] = '\0';
-    
-                    c_url = c_url_new;
-            
-                }
-            
-            }
-    
-        }
-    
-        if(!error){ // this only runs if the preceding code executed without the error flag being set, meaning all is good
-            
-            // we check if the supplied url has the port number appended if not we append it
-            if(strchr(c_url, ':') == NULL){
-                strcat(c_url, ":80"); // we use strcat here because the array length check already checks that we have enough space in the array to accomodate for the port number
-            }
-
-            //Non-ssl BIO structure creation
-            c_bio = BIO_new_connect(c_url); // creates the non-ssl bio object with the url supplied
-     
-        }
-    
-    }
-    else{ // not a valid websocket endpoint
-        
-        strncpy(error_buffer, "Supplied URL parameter is not a valid WebSocket endpoint", error_buffer_array_length);
+        strncpy(error_buffer, "Supplied URL parameter is not a valid/supported WebSocket endpoint", error_buffer_array_length);
                 
         error = true;
         
     }
-    // initialisation of BIO and SSL structures end
     
     if(!error){ // only continue if no error
         
@@ -6492,7 +6357,7 @@ lock_client_nb::lock_client_nb(std::string_view url){
         
         int host_name_len = (host_name_end_index == std::string_view::npos) ? url.size() - search_start_index : (int)host_name_end_index - search_start_index;
 
-        if( host_name_len < host_static_array_length ){ // static array is large enough
+        if(host_name_len < host_static_array_length){ // static array is large enough
         
             url.copy(c_host_static, host_name_len, search_start_index);
         
@@ -6501,7 +6366,7 @@ lock_client_nb::lock_client_nb(std::string_view url){
             c_host = c_host_static;
         
         }
-        else if( host_name_len < size_of_allocated_host_memory){ // dynamic memory is large enough
+        else if(host_name_len < size_of_allocated_host_memory){ // dynamic memory is large enough
             
             url.copy(c_host_new, host_name_len, search_start_index);
         
@@ -6573,14 +6438,14 @@ lock_client_nb::lock_client_nb(std::string_view url){
             // we set the host name we wish to connect to for server name identification(SNI) if the websocket address passed is a wss:// address. We test this by checking that the c_ssl pointer is non-null
             if(!(c_ssl == NULL)){
                 
-                if(!SSL_set_tlsext_host_name(c_ssl, c_host)){
-                // we test the return value. SSL_set_tlsext_host_name returns 0 on error and 1 on success
+                if(!wolfSSL_UseSNI(c_ssl, WOLFSSL_SNI_HOST_NAME, c_host, host_name_len)){
+                // we test the return value. wolfSSL_UseSNI returns 0 on error and 1 on success
                     
                     strncpy(error_buffer, "Error setting up Lock client for SNI TLS extension", error_buffer_array_length);
                         
                     error = true;
                 
-                } 
+                }
                 
             }
             
@@ -6669,32 +6534,61 @@ lock_client_nb::lock_client_nb(std::string_view url){
                 
                 if(!error){ // only continue if no error
 
-                    // Set the BIO to non-blocking
-                    BIO_set_nbio(c_bio, 1);
+                    // we create a local char array to hold the port extracted from the url
+                    const int MAX_CHAR_FOR_PORT = 8; // a port number can have a maximum of 5 characters because port numbers are 16 bit integers
+                    char c_port[MAX_CHAR_FOR_PORT];
 
-                    // make the connection
-                    while(BIO_do_connect(c_bio) <= 0){
-                        
-                        if(BIO_should_retry(c_bio)){
-                        // getting here the read request would block so we just return
+                    // since the host_name_end_index already finds the first character out of : and / after the host name we use it to find the port number location if any
 
-                            continue;
+                    // we first check if the host name end index was either std::string_view::npos or / in which case we know the host wasn't supplied so we store 443 as the host, but if the : character was found then the host was supplied so we just create a sub string view from after the : character to either the / starting the path if supplied, but if not supplied till std::string_view::npos - host_name_end_index - 1 which would be a very large number the copy takes the rest of the url string_view
+                    std::string_view port = (host_name_end_index == std::string_view::npos || url[host_name_end_index] == '/') ? "443" : url.substr(host_name_end_index + 1, url.find('/', host_name_end_index) - host_name_end_index - 1);
 
-                        }
-                        else{
-                            
-                            strncpy(error_buffer, "Error connecting to WebSocket host ", error_buffer_array_length);
-                        
-                            error = true;
+                    // we now copy the derived port into char array
+                    int num_of_chars_copied = port.copy(c_port, port.size());
 
-                            break;
+                    // we null terminate the c_port array
+                    c_port[num_of_chars_copied] = '\0';
 
-                        }
-
-                    }
+                    // we call our connect to server function with the interface parameters set to null
+                    int sockfd = connect_to_server(c_host, c_port, nullptr, nullptr);
                     
-                    // upgrade the connection to websocket
                     if(!error){ // only continue if no error
+
+                        // getting here the connect to server function returned successfully so now we bind the returned socket fd to our c_ssl object
+                        wolfSSL_set_fd(c_ssl, sockfd);
+
+                        // we perform our tls handshake - since this is a non blocking socket we loop till our handshake is complete
+                        int ret = wolfSSL_connect(c_ssl);
+
+                        while(ret != WOLFSSL_SUCCESS){
+                            
+                            // we get the error message
+                            int err = wolfSSL_get_error(c_ssl, ret);
+
+                            // we check if the wolfssl handle is still expecting a read or a write
+                            if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
+                            
+                                // we call wolfssl connect again before continuing this loop
+                                ret = wolfSSL_connect(c_ssl);
+
+                                continue;
+
+                            }
+                            else{
+
+                                // getting here we got a actual error so we set our error flag
+                                strncpy(error_buffer, "Error performing tls handshake ", error_buffer_array_length);
+                            
+                                error = true;
+
+                                // we break out of this loop
+                                break;
+
+                            }
+
+                        }
+
+                        // upgrade the connection to websocket
                         
                         // fill the random bytes array with 16 random bytes between 0 and 255
                         int upper_bound = 255;
@@ -6705,9 +6599,7 @@ lock_client_nb::lock_client_nb(std::string_view url){
                         }
                         
                         // get the Base-64 encoding of the random number to give the value of the nonce
-                        BIO_write(c_base64, rand_bytes, rand_byte_array_len);
-                        BIO_flush(c_base64); 
-                        BIO_read(c_mem_base64, base64_encoded_nonce, nonce_array_len);
+                        Base64_Encode_NoNl(rand_bytes, rand_byte_array_len, base64_encoded_nonce, nonce_array_len);
                     
                         // request connection upgrade
                         int length_of_supplied_data = strlen(c_path) + strlen( (const char*)base64_encoded_nonce) + strlen(c_host);
@@ -6736,7 +6628,7 @@ lock_client_nb::lock_client_nb(std::string_view url){
                             
                         }
                         else if(upgrade_request_len < size_of_allocated_upgrade_request_memory){ // allocated memory large enough
-                            
+                        
                             // build the upgrade request
                             strcpy(upgrade_request_new, "GET ");
                             strcat(upgrade_request_new, c_path);
@@ -6771,7 +6663,7 @@ lock_client_nb::lock_client_nb(std::string_view url){
                                     reset(); // disconnect the underlying bio
                                     
                                 }
-                                else{ 
+                                else{
                                     
                                     size_of_allocated_upgrade_request_memory = upgrade_request_len + 1;
                                     
@@ -6843,21 +6735,31 @@ lock_client_nb::lock_client_nb(std::string_view url){
                             
                             data_array = data_array_static;
 
-                            // send the upgrade request
-                            while(BIO_puts(c_bio, upgrade_request) <= 0){
+                            // we send our upgrade request
+                            ret = wolfSSL_write(c_ssl, reinterpret_cast<const void*>(upgrade_request), strlen(upgrade_request));
+
+                            while(ret != WOLFSSL_SUCCESS){
+                            
+                                // we get the error message
+                                int err = wolfSSL_get_error(c_ssl, ret);
+
+                                // we check if the wolfssl handle is still expecting a read or a write
+                                if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
                                 
-                                if(BIO_should_retry(c_bio)){
-                                // getting here the read request would block so we continue polling
+                                    // we call wolfssl again before continuing this loop
+                                    ret = wolfSSL_write(c_ssl, reinterpret_cast<const void*>(upgrade_request), strlen(upgrade_request));
 
                                     continue;
 
                                 }
                                 else{
-                                    
-                                    strncpy(error_buffer, "Error upgrading connection.", error_buffer_array_length);
+
+                                    // getting here we got a actual error so we set our error flag
+                                    strncpy(error_buffer, "Error sending websocket upgrade request ", error_buffer_array_length);
                                 
                                     error = true;
 
+                                    // we break out of this loop
                                     break;
 
                                 }
@@ -6866,24 +6768,30 @@ lock_client_nb::lock_client_nb(std::string_view url){
                             
                             if(!error){
 
-                                int len = wolfSSL_read(c_ssl, data_array, static_data_array_length); // non blocking call to bio read
+                                ret = wolfSSL_read(c_ssl, data_array, static_data_array_length); // non blocking call to wolfssl read
 
-                                while(len <= 0){
+                                while(ret != WOLFSSL_SUCCESS){
+                            
+                                    // we get the error message
+                                    int err = wolfSSL_get_error(c_ssl, ret);
 
-                                    if(BIO_should_retry(c_bio)){
-                                    // getting here the read request would block so we keep looping
-
-                                        len = wolfSSL_read(c_ssl, data_array, static_data_array_length);
+                                    // we check if the wolfssl handle is still expecting a read or a write
+                                    if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
+                                    
+                                        // we call wolfssl again before continuing this loop
+                                        ret = wolfSSL_read(c_ssl, data_array, static_data_array_length);
 
                                         continue;
 
                                     }
                                     else{
-                                        
-                                        strncpy(error_buffer, "Error reading upgrade request response.", error_buffer_array_length);
+
+                                        // getting here we got a actual error so we set our error flag
+                                        strncpy(error_buffer, "Error reading websocket upgrade response ", error_buffer_array_length);
                                     
                                         error = true;
 
+                                        // we break out of this loop
                                         break;
 
                                     }
@@ -6906,13 +6814,19 @@ lock_client_nb::lock_client_nb(std::string_view url){
                                         strncat(SHA1_parameter, string_to_append, SHA1_parameter_array_len - strlen(SHA1_parameter));
                                         // SHA1 parameter build end 
                                         
-                                        SHA1((const unsigned char*)SHA1_parameter, strlen(SHA1_parameter), SHA1_digest); // get the sha1 hash digest
-                                        
-                                        // base64 encode the SHA1_digest 
-                                        BIO_write(c_base64, SHA1_digest, size_of_SHA1_digest);
-                                        BIO_flush(c_base64); 
-                                        BIO_read(c_mem_base64, local_sec_ws_accept_key, local_sec_ws_accept_key_array_len);
-                                        // base64 encoding of SHA1 digest end 
+                                        // we create a sha context for computing our sha1 hash
+                                        wc_Sha sha_context;
+
+                                        // sha context init
+                                        wc_InitSha(&sha_context);
+
+                                        // we update our sha context with the data to be hashed
+                                        wc_ShaUpdate(&sha_context, SHA1_parameter, strlen(SHA1_parameter));
+
+                                        wc_ShaFinal(&sha_context, SHA1_digest);
+
+                                        // base64 encode the SHA1 digest
+                                        Base64_Encode_NoNl(SHA1_digest, SHA1_digest_array_len, local_sec_ws_accept_key, local_sec_ws_accept_key_array_len);
                                         
                                         // loop through the rest of the response string to find the Sec-WebSocket-Accept header
                                         char key[] = "Sec";
@@ -6938,7 +6852,7 @@ lock_client_nb::lock_client_nb(std::string_view url){
                                                     
                                                     strncpy(error_buffer, "Connection authorisation Failed", error_buffer_array_length);
                                                         
-                                                    reset(); // reset bio and disconnect the underlying connection
+                                                    reset(); // reset session and disconnect the underlying connection
                                                         
                                                     error = true;
                                                         
@@ -6957,7 +6871,7 @@ lock_client_nb::lock_client_nb(std::string_view url){
                                             // getting here means no Sec-Websocket-Key header was found before strtok returned a null value
                                             strncpy(error_buffer, "Invalid Upgrade request response received", error_buffer_array_length);
                                             
-                                            reset(); // reset bio and disconnect the underlying connection
+                                            reset(); // reset session and disconnect the underlying connection
                                             
                                             error = true;
                                         
@@ -6968,7 +6882,7 @@ lock_client_nb::lock_client_nb(std::string_view url){
                                         
                                         strncpy(error_buffer, "Connection upgrade failed. Invalid path or url supplied", error_buffer_array_length);
                                         
-                                        reset(); // reset bio and disconnect the underlying connection
+                                        reset(); // reset session and disconnect the underlying connection
                                         
                                         error = true;
                                         
@@ -7218,7 +7132,7 @@ lock_client_nb::lock_client_nb(std::string_view url, in_addr* interface_address,
             const int MAX_CHAR_FOR_PORT = 8; // a port number can have a maximum of 5 characters because port numbers are 16 bit integers
             char c_port[MAX_CHAR_FOR_PORT];
 
-            // since the host_name_end_index already finds the first character out of : and / after the host name we use it to finc the port number location if any
+            // since the host_name_end_index already finds the first character out of : and / after the host name we use it to find the port number location if any
 
             // we first check if the host name end index was either std::string_view::npos or / in which case we know the host wasn't supplied so we store 443 as the host, but if the : character was found then the host was supplied so we just create a sub string view from after the : character to either the / starting the path if supplied, but if not supplied till std::string_view::npos - host_name_end_index - 1 which would be a very large number the copy takes the rest of the url string_view
             std::string_view port = (host_name_end_index == std::string_view::npos || url[host_name_end_index] == '/') ? "443" : url.substr(host_name_end_index + 1, url.find('/', host_name_end_index) - host_name_end_index - 1);
@@ -7846,10 +7760,8 @@ inline char* lock_client_nb::get_error_message(){ // returns the error message: 
 
 inline bool lock_client_nb::is_open(){
 
-    if(client_state == OPEN)
-        return true;
-    else
-        return false;
+    if(client_state == OPEN) return true;
+    else return false;
     
 }
 
@@ -7956,7 +7868,7 @@ bool lock_client_nb::pong(int ping_data_len){ // sends out a pong frame unsolici
             i++;
                 
             for(int j = 0; j<mask_array_len; j++){
-                    
+            
                 send_data[i] = mask[j]; // store the mask in the send data array
                     
                 i++;
@@ -7968,7 +7880,7 @@ bool lock_client_nb::pong(int ping_data_len){ // sends out a pong frame unsolici
             int k = 0; // variable used to store the mask index of the exact byte in the mask array to mask with
                 
             for(int j = 0; j<ping_data_len; j++){
-                    
+            
                 k = j % 4;
                     
                 send_data[i] = upgrade_request_static[j] ^ mask[k]; // received ping data if any, is stored in the upgrade request static array
@@ -8063,7 +7975,7 @@ inline bool lock_client_nb::set_ping_backlog(int backlog_num){
 inline bool lock_client_nb::clear(){ // clear the error flag of a lock client in open state
 
     if(client_state == OPEN){
-            
+    
         memset(error_buffer, '\0', strlen(error_buffer));
             
         error = false;
@@ -8083,7 +7995,7 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
             uint64_t payload_data_len = payload_data.size();
             int i = 0; // variable for traversing the send data array
             
-            if( (payload_data_len + biggest_header_len) < send_data_array_len ){ // static array is large enough
+            if((payload_data_len + biggest_header_len) < send_data_array_len){ // static array is large enough
                 
                 send_data = (char*)send_data_static;
                 
@@ -8093,13 +8005,13 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
                 
                 // set the second byte
                 if(payload_data_len < 126){ // if payload data length is less than 126 the next 7 bits represent the payload length
-                    
+                
                     send_data[i] = MASK_BIT_SET | (unsigned char)payload_data_len;
                     i++;
                     
                 }
                 else if( (payload_data_len > 125) && (payload_data_len < MAX_2BYTE_INT) ){ // next byte stores the value 126 and the next two bytes store the payload length
-                    
+                
                     send_data[i] = (unsigned char)(MASK_BIT_SET | (unsigned char)126);
                     i++;
                     
@@ -8111,8 +8023,8 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
                     
                 }
                 else if( (payload_data_len > (MAX_2BYTE_INT - 1)) && (payload_data_len < (MAX_8BYTE_INT - 1)) ){
-                    // next byte stores the value 127 and he next 8 bytes store the payload length
-                    
+                // next byte stores the value 127 and he next 8 bytes store the payload length
+                
                     send_data[i] = (unsigned char)(MASK_BIT_SET | (unsigned char)127);
                     i++;
                     
@@ -8143,7 +8055,7 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
                     
                 }
                 else{ // ERROR!! Data length too large - execution never gets here normally because the static send data array is only a few kilobytes long and the payload data would have to be > 2^64 bytes in length to get here which would already fail the outer if statement for being > static send data array, the code is just added for completeness
-                    
+                
                     strncpy(error_buffer, "Send data length too large", error_buffer_array_length);
                     
                     error = true;
@@ -8153,7 +8065,7 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
                 if(!error){ // only continue if no error
                     
                     for(int j = 0; j<mask_array_len; j++){
-                        
+                    
                         send_data[i] = mask[j]; // store the mask in the send data array
                         
                         i++;
@@ -8165,7 +8077,7 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
                     int k = 0; // variable used to store the mask index of the exact byte in the mask array to mask with
                     
                     for(int j = 0; j<payload_data_len; j++){
-                        
+                    
                         k = j % 4;
                         
                         send_data[i] = payload_data[j] ^ mask[k];
@@ -8244,13 +8156,13 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
                 
                 // set the second byte
                 if(frame_data_len < 126){ // if frame data length is less than 126 the next 7 bits represent the frame length
-                    
+                
                     send_data[i] = MASK_BIT_SET | (unsigned char)frame_data_len;
                     i++;
                     
                 }
                 else if( (frame_data_len > 125) && (frame_data_len < MAX_2BYTE_INT) ){ // next byte stores the value 126 and the next two bytes store the payload length
-                    
+                
                     send_data[i] = (unsigned char)(MASK_BIT_SET | (unsigned char)126);
                     i++;
                     
@@ -8263,7 +8175,7 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
                 }
                 else if( (frame_data_len > (MAX_2BYTE_INT - 1)) && (frame_data_len < (MAX_8BYTE_INT - 1)) ){
                 // next byte stores the value 127 and he next 8 bytes store the payload length
-                    
+                
                     send_data[i] = (unsigned char)(MASK_BIT_SET | (unsigned char)127);
                     i++;
                     
@@ -8295,7 +8207,7 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
                 }
                 
                 for(int j = 0; j<mask_array_len; j++){
-                    
+                
                     send_data[i] = mask[j]; // store the mask in the send data array
                     
                     i++;
@@ -8389,13 +8301,13 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
 
                         // set the second byte
                         if(frame_data_len < 126){ // if payload data length is less than 126 the next 7 bits represent the payload length
-                            
+                        
                             send_data[i] = MASK_BIT_SET | (unsigned char)frame_data_len;
                             i++;
                             
                         }
                         else if( (frame_data_len > 125) && (frame_data_len < MAX_2BYTE_INT) ){ // next byte stores the value 126 and the next two bytes store the payload length
-                            
+                        
                             send_data[i] = (unsigned char)(MASK_BIT_SET | (unsigned char)126);
                             i++;
                             
@@ -8408,7 +8320,7 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
                         }
                         else if( (frame_data_len > (MAX_2BYTE_INT - 1)) && (frame_data_len < (MAX_8BYTE_INT - 1)) ){
                         // next byte stores the value 127 and he next 8 bytes store the payload length
-                            
+                        
                             send_data[i] = (unsigned char)(MASK_BIT_SET | (unsigned char)127);
                             i++;
                             
@@ -8441,7 +8353,7 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
             
                         // we reuse the already generated mask to save computation
                         for(int j = 0; j<mask_array_len; j++){
-                            
+                        
                             send_data[i] = mask[j]; // store the mask in the send data array
                             
                             i++;
@@ -8527,13 +8439,13 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
 
                         // set the second byte
                         if(frame_data_len < 126){ // if payload data length is less than 126 the next 7 bits represent the payload length
-                            
+                        
                             send_data[i] = MASK_BIT_SET | (unsigned char)frame_data_len;
                             i++;
                             
                         }
                         else if( (frame_data_len > 125) && (frame_data_len < MAX_2BYTE_INT) ){ // next byte stores the value 126 and the next two bytes store the payload length
-                            
+                        
                             send_data[i] = (unsigned char)(MASK_BIT_SET | (unsigned char)126);
                             i++;
                             
@@ -8546,7 +8458,7 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
                         }
                         else if( (frame_data_len > (MAX_2BYTE_INT - 1)) && (frame_data_len < (MAX_8BYTE_INT - 1)) ){
                         // next byte stores the value 127 and he next 8 bytes store the payload length
-                            
+                        
                             send_data[i] = (unsigned char)(MASK_BIT_SET | (unsigned char)127);
                             i++;
                             
@@ -8579,7 +8491,7 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
             
                         // we reuse the already generated mask to save computation
                         for(int j = 0; j<mask_array_len; j++){
-                            
+                        
                             send_data[i] = mask[j]; // store the mask in the send data array
                             
                             i++;
@@ -12315,7 +12227,7 @@ bool lock_client_nb::interface_connect(std::string_view url, in_addr* interface_
             const int MAX_CHAR_FOR_PORT = 8; // a port number can have a maximum of 5 characters because port numbers are 16 bit integers
             char c_port[MAX_CHAR_FOR_PORT];
 
-            // since the host_name_end_index already finds the first character out of : and / after the host name we use it to finc the port number location if any
+            // since the host_name_end_index already finds the first character out of : and / after the host name we use it to find the port number location if any
 
             // we first check if the host name end index was either std::string_view::npos or / in which case we know the host wasn't supplied so we store 443 as the host, but if the : character was found then the host was supplied so we just create a sub string view from after the : character to either the / starting the path if supplied, but if not supplied till std::string_view::npos - host_name_end_index - 1 which would be a very large number the copy takes the rest of the url string_view
             std::string_view port = (host_name_end_index == std::string_view::npos || url[host_name_end_index] == '/') ? "443" : url.substr(host_name_end_index + 1, url.find('/', host_name_end_index) - host_name_end_index - 1);
@@ -12813,7 +12725,8 @@ bool lock_client_nb::interface_connect(std::string_view url, in_addr* interface_
     return error;
 }
 
-int lock_client_nb::connect_to_server(const char *hostname, const char *port, in_addr* interface_address, const char *interface_name){
+int lock_client_nb::connect_to_server(const char *hostname, const char *port, in_addr* interface_address, const char *interface_name{
+
     struct addrinfo hints, *res = NULL, *p = NULL;
 
     // we create the socket the BIO structure would use
@@ -12825,30 +12738,40 @@ int lock_client_nb::connect_to_server(const char *hostname, const char *port, in
         return -1;
     }
 
-    // Bind to a specific device
-    if (setsockopt(sock, SOL_SOCKET, SO_BINDTODEVICE, interface_name, strlen(interface_name)) < 0) {
-        std::cout<<"Error binding socket to device"<<std::endl;
-        perror("setsockopt(SO_BINDTODEVICE)");
-        strncpy(error_buffer, "Error binding socket to device", error_buffer_array_length);          
-        error = true;
-        close(sock);
-        return -1;
-    }
-    else{
-        std::cout<<"Successfully bound socket to device "<<interface_name<<std::endl;
+    // we bind to the supplied interface if any
+    if(interface_name != nullptr){
+
+        // Bind to a specific device
+        if (setsockopt(sock, SOL_SOCKET, SO_BINDTODEVICE, interface_name, strlen(interface_name)) < 0) {
+            std::cout<<"Error binding socket to device"<<std::endl;
+            perror("setsockopt(SO_BINDTODEVICE)");
+            strncpy(error_buffer, "Error binding socket to device", error_buffer_array_length);          
+            error = true;
+            close(sock);
+            return -1;
+        }
+        else{
+            std::cout<<"Successfully bound socket to device "<<interface_name<<std::endl;
+        }
+
     }
 
-    // Set up local address structure
-    struct sockaddr_in localaddr;
-    memset(&localaddr, 0, sizeof(localaddr));
-    localaddr.sin_family = AF_INET;
-    localaddr.sin_addr.s_addr = interface_address->s_addr;
-    localaddr.sin_port = 0;  // Lets the system choose port
+    // we bind to the supplied interface address if any
+    if(interface_address != nullptr){
 
-    // Bind socket to specific interface
-    if (bind(sock, (struct sockaddr*)&localaddr, sizeof(localaddr)) < 0) {
-        // if the binding fails the library does not set the error flag to true it just prints the error message, ignores the specified interface and attempts to make the connection with whatever network interface is available
-        std::cout<<"Lockws Error: Binding To Supplied Interface Address Failed...Connection Will Be Attempted With The Default Network Interface Address..."<<std::endl;
+        // Set up local address structure
+        struct sockaddr_in localaddr;
+        memset(&localaddr, 0, sizeof(localaddr));
+        localaddr.sin_family = AF_INET;
+        localaddr.sin_addr.s_addr = interface_address->s_addr;
+        localaddr.sin_port = 0;  // Lets the system choose port
+
+        // Bind socket to specific interface
+        if(bind(sock, (struct sockaddr*)&localaddr, sizeof(localaddr)) < 0) {
+            // if the binding fails the library does not set the error flag to true it just prints the error message, ignores the specified interface and attempts to make the connection with whatever network interface is available
+            std::cout<<"Lockws Error: Binding To Supplied Interface Address Failed...Connection Will Be Attempted With The Default Network Interface Address..."<<std::endl;
+        }
+
     }
 
     // Set up hints for getaddrinfo
@@ -12857,7 +12780,7 @@ int lock_client_nb::connect_to_server(const char *hostname, const char *port, in
     hints.ai_socktype = SOCK_STREAM; // TCP stream sockets
 
     // Perform DNS resolution
-    if (getaddrinfo(hostname, port, &hints, &res) != 0) {
+    if(getaddrinfo(hostname, port, &hints, &res) != 0) {
         std::cout<<"Error resolving hostname: "<<hostname<<std::endl;
         strncpy(error_buffer, "Error resolving hostname", error_buffer_array_length);          
         error = true;

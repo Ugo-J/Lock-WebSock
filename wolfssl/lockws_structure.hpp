@@ -262,6 +262,7 @@ private:
     inline void block_sigpipe_signal(); // function to block sigpipe signals before any write or read
     void unblock_sigpipe_signal(); // function to unblock sigpipe signals after any write or read
     int connect_to_server(const char *hostname, const char *port, in_addr* interface_address, const char *interface_name); // function to connect to server when we manually configure the socket
+    int reset(); // function to reset a wolfssl session and disconnect the underlying connection
 
 // private signal handling variables
 private: 
@@ -314,11 +315,7 @@ private:
 // Openssl Library instance variables    
 private:
         
-   BIO* c_bio = NULL; // sets the lock_client instance connection handle
-   BIO* out_bio = NULL; // sets the bio instance used for screen output
-   BIO* c_base64 = NULL; //  BIO structure for Base64 encoding
-   BIO* c_mem_base64 = NULL; // mem bio that is chained to the base64 filter bio 
-   SSL* c_ssl = NULL; // defines the ssl object that is used to set instance-specific openssl options  
+   WOLFSSL* c_ssl = NULL; // defines the ssl object that is used to set instance-specific openssl options
 
 // variables for upgrading to and maintaining WebSocket connection    
 private:
