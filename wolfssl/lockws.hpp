@@ -445,7 +445,7 @@ lock_client::lock_client(std::string_view url){
                                         
                                         error = true;
                                         
-                                        BIO_reset(c_bio); // disconnect the underlying bio
+                                        reset(); // disconnect the underlying bio
                                         
                                     }
                                     else{ 
@@ -485,7 +485,7 @@ lock_client::lock_client(std::string_view url){
                                     
                                         error = true;
                                         
-                                        BIO_reset(c_bio); // disconnect the underlying bio
+                                        reset(); // disconnect the underlying bio
                                     
                                     }
                                     else{ 
@@ -1047,7 +1047,7 @@ lock_client::lock_client(std::string_view url, in_addr* interface_address, char*
                                         
                                         error = true;
                                         
-                                        BIO_reset(c_bio); // disconnect the underlying bio
+                                        reset(); // disconnect the underlying bio
                                         
                                     }
                                     else{ 
@@ -1087,7 +1087,7 @@ lock_client::lock_client(std::string_view url, in_addr* interface_address, char*
                                     
                                         error = true;
                                         
-                                        BIO_reset(c_bio); // disconnect the underlying bio
+                                        reset(); // disconnect the underlying bio
                                     
                                     }
                                     else{ 
@@ -1341,10 +1341,8 @@ inline char* lock_client::get_error_message(){ // returns the error message: the
 
 inline bool lock_client::is_open(){
 
-    if(client_state == OPEN)
-        return true;
-    else
-        return false;
+    if(client_state == OPEN) return true;
+    else return false;
     
 }
 
@@ -1378,7 +1376,7 @@ bool lock_client::ping(){ // sends a ping on an established websocket connection
             block_sigpipe_signal();
             
             // send out the ping frame
-            if(BIO_write(c_bio, send_data, i) <= 0){
+            if(wolfSSL_write(c_ssl, send_data, i) <= 0){
                 
                 // we unblock the sigpipe signal because the fail_ws_connection function blocks it internally
                 unblock_sigpipe_signal();
@@ -1456,7 +1454,7 @@ bool lock_client::pong(int ping_data_len){ // sends out a pong frame unsolicited
             block_sigpipe_signal();
             
             // send out the pong frame
-            if(BIO_write(c_bio, send_data, i) <= 0){
+            if(wolfSSL_write(c_ssl, send_data, i) <= 0){
                 
                 // we unblock the sigpipe signal because the fail_ws_connection function blocks it internally
                 unblock_sigpipe_signal();
@@ -1534,7 +1532,7 @@ bool lock_client::send(std::string_view payload_data){ // sends data passed as p
             uint64_t payload_data_len = payload_data.size();
             int i = 0; // variable for traversing the send data array
             
-            if( (payload_data_len + biggest_header_len) < send_data_array_len ){ // static array is large enough
+            if((payload_data_len + biggest_header_len) < send_data_array_len ){ // static array is large enough
                 
                 send_data = (char*)send_data_static;
                 
@@ -1562,7 +1560,7 @@ bool lock_client::send(std::string_view payload_data){ // sends data passed as p
                     
                 }
                 else if( (payload_data_len > (MAX_2BYTE_INT - 1)) && (payload_data_len < (MAX_8BYTE_INT - 1)) ){
-                    // next byte stores the value 127 and he next 8 bytes store the payload length
+                // next byte stores the value 127 and he next 8 bytes store the payload length
                     
                     send_data[i] = (unsigned char)(MASK_BIT_SET | (unsigned char)127);
                     i++;
@@ -1631,7 +1629,7 @@ bool lock_client::send(std::string_view payload_data){ // sends data passed as p
                     block_sigpipe_signal();
                     
                     // send the data
-                    if(BIO_write(c_bio, send_data, i) <= 0){
+                    if(wolfSSL_write(c_ssl, send_data, i) <= 0){
                     
                         // we unblock the sigpipe signal because the fail_ws_connection function blocks it internally
                         unblock_sigpipe_signal();
@@ -1749,7 +1747,7 @@ bool lock_client::send(std::string_view payload_data){ // sends data passed as p
                 block_sigpipe_signal();
                 
                 // send the data
-                if(BIO_write(c_bio, send_data, i) <= 0){
+                if(wolfSSL_write(c_ssl, send_data, i) <= 0){
                 
                     // we unblock the sigpipe signal because the fail_ws_connection function blocks it internally
                     unblock_sigpipe_signal();
@@ -1793,7 +1791,7 @@ bool lock_client::send(std::string_view payload_data){ // sends data passed as p
                             i++;
                             
                         }
-                        else if( (frame_data_len > 125) && (frame_data_len < MAX_2BYTE_INT) ){ // next byte stores the value 126 and the next two bytes store the payload length
+                        else if((frame_data_len > 125) && (frame_data_len < MAX_2BYTE_INT) ){ // next byte stores the value 126 and the next two bytes store the payload length
                             
                             send_data[i] = (unsigned char)(MASK_BIT_SET | (unsigned char)126);
                             i++;
@@ -1865,7 +1863,7 @@ bool lock_client::send(std::string_view payload_data){ // sends data passed as p
                         block_sigpipe_signal();
                         
                         // send the data
-                        if(BIO_write(c_bio, send_data, i) <= 0){
+                        if(wolfSSL_write(c_ssl, send_data, i) <= 0){
                         
                             // we unblock the sigpipe signal because the fail_ws_connection function blocks it internally
                             unblock_sigpipe_signal();
@@ -1975,7 +1973,7 @@ bool lock_client::send(std::string_view payload_data){ // sends data passed as p
                         block_sigpipe_signal();
                         
                         // send the data
-                        if(BIO_write(c_bio, send_data, i) <= 0){
+                        if(wolfSSL_write(c_ssl, send_data, i) <= 0){
                         
                             // we unblock the sigpipe signal because the fail_ws_connection function blocks it internally
                             unblock_sigpipe_signal();
@@ -2071,7 +2069,7 @@ bool lock_client::basic_read(){
             while(total_read_bytes < bytes_to_read){
 
                 // we call BIO_read to attempt to read the bytes into the buffer
-                read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
+                read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
                 // if BIO_read returns a value <= 0 it indicates an error so we break out from the loop
                 if(read_bytes <= 0) break;
@@ -2109,7 +2107,7 @@ bool lock_client::basic_read(){
                     frame_data_len = rand_bytes[1];
                     
                 }
-                else if( rand_bytes[1] == 126 ){ // next two bytes store the data length
+                else if(rand_bytes[1] == 126 ){ // next two bytes store the data length
                     
                     // getting here the SIGPIPE signal is still blocked
 
@@ -2128,7 +2126,7 @@ bool lock_client::basic_read(){
                     while(total_read_bytes < bytes_to_read){
 
                         // we call BIO_read to attempt to read the bytes into the buffer
-                        read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
+                        read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
                         // if BIO_read returns a value <= 0 it indicates an error so we break out from the loop
                         if(read_bytes <= 0) break;
@@ -2181,7 +2179,7 @@ bool lock_client::basic_read(){
                     while(total_read_bytes < bytes_to_read){
 
                         // we call BIO_read to attempt to read the bytes into the buffer
-                        read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
+                        read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
                         // if BIO_read returns a value <= 0 it indicates an error so we break out from the loop
                         if(read_bytes <= 0) break;
@@ -2263,7 +2261,7 @@ bool lock_client::basic_read(){
                     // we only attempt to read extra data if the frame data len is > 0 because some websocket servers may send an empty frame as acknowledgment of a message
                     if(frame_data_len > 0){
 
-                        int64_t len = BIO_read(c_bio, cursor, frame_data_len);
+                        int64_t len = wolfSSL_read(c_ssl, cursor, frame_data_len);
 
                         if(len > 0){
                         // bio_read fetched some extra bytes
@@ -2273,7 +2271,7 @@ bool lock_client::basic_read(){
                             // test that all data was read in
                             while(len < frame_data_len){
                                 
-                                int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
+                                int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len));
                                 
                                 if(extra_bytes_read > 0){
                                 // bio_read fetched extra data
@@ -2345,7 +2343,7 @@ bool lock_client::basic_read(){
                     // we only attempt to read extra data if the frame data len is > 0 because some websocket servers may send an empty frame as acknowledgment of a message
                     if(frame_data_len > 0){
 
-                        int64_t len = BIO_read(c_bio, cursor, frame_data_len);
+                        int64_t len = wolfSSL_read(c_ssl, cursor, frame_data_len);
 
                         if(len > 0){
                         // bio_read fetched some extra bytes
@@ -2355,7 +2353,7 @@ bool lock_client::basic_read(){
                             // test that all data was read in
                             while(len < frame_data_len){
                                 
-                                int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
+                                int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                                 
                                 if(extra_bytes_read > 0){
                                 // bio_read fetched extra data
@@ -2446,7 +2444,7 @@ bool lock_client::basic_read(){
                             // we only attempt to read extra data if the frame data len is > 0 because some websocket servers may send an empty frame as acknowledgment of a message
                             if(frame_data_len > 0){
 
-                                int64_t len = BIO_read(c_bio, cursor, frame_data_len);
+                                int64_t len = wolfSSL_read(c_ssl, cursor, frame_data_len);
 
                                 if(len > 0){
                                 // bio_read fetched some extra bytes
@@ -2456,7 +2454,7 @@ bool lock_client::basic_read(){
                                     // test that all data was read in
                                     while(len < frame_data_len){
                                         
-                                        int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
+                                        int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                                         
                                         if(extra_bytes_read > 0){
                                         // bio_read fetched extra data
@@ -2546,7 +2544,7 @@ bool lock_client::basic_read(){
                         
                             // SIGPIPE signal is still blocked
 
-                            int64_t len = BIO_read(c_bio, cursor, frame_data_len);
+                            int64_t len = wolfSSL_read(c_ssl, cursor, frame_data_len);
 
                             if(len > 0){
                             // bio_read fetched some extra bytes
@@ -2556,7 +2554,7 @@ bool lock_client::basic_read(){
                                 // test that all data was read in
                                 while(len < frame_data_len){
                                     
-                                    int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
+                                    int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                                     
                                     if(extra_bytes_read > 0){
                                     // bio_read fetched extra data
@@ -2646,7 +2644,7 @@ bool lock_client::basic_read(){
                     while(total_read_bytes < bytes_to_read){
 
                         // we call BIO_read to attempt to read the bytes into the buffer
-                        read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
+                        read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
                         // if BIO_read returns a value <= 0 it indicates an error so we break out from the loop
                         if(read_bytes <= 0) break;
@@ -2699,7 +2697,7 @@ bool lock_client::basic_read(){
                     while(total_read_bytes < bytes_to_read){
 
                         // we call BIO_read to attempt to read the bytes into the buffer
-                        read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
+                        read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
                         // if BIO_read returns a value <= 0 it indicates an error so we break out from the loop
                         if(read_bytes <= 0) break;
@@ -2775,7 +2773,7 @@ bool lock_client::basic_read(){
                     
                     // SIGPIPE signal is still blocked
 
-                    int64_t len = BIO_read(c_bio, cursor, frame_data_len);
+                    int64_t len = wolfSSL_read(c_ssl, cursor, frame_data_len);
 
                     if(len > 0){
                     // bio_read fetched some extra bytes
@@ -2785,7 +2783,7 @@ bool lock_client::basic_read(){
                         // test that all data was read in
                         while(len < frame_data_len){
                             
-                            int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
+                            int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                             
                             if(extra_bytes_read > 0){
                             // bio_read fetched extra data
@@ -2846,7 +2844,7 @@ bool lock_client::basic_read(){
                     cursor = data_array;
                     length_of_array = size_of_allocated_data_memory;
                     
-                    int64_t len = BIO_read(c_bio, cursor, frame_data_len);
+                    int64_t len = wolfSSL_read(c_ssl, cursor, frame_data_len);
 
                     if(len > 0){
                     // bio_read fetched some extra bytes
@@ -2856,7 +2854,7 @@ bool lock_client::basic_read(){
                         // test that all data was read in
                         while(len < frame_data_len){
                             
-                            int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
+                            int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                             
                             if(extra_bytes_read > 0){
                             // bio_read fetched extra data
@@ -2937,7 +2935,7 @@ bool lock_client::basic_read(){
                             size_of_allocated_data_memory = frame_data_len + 1024;
                             length_of_array = size_of_allocated_data_memory;
                     
-                            int64_t len = BIO_read(c_bio, cursor, frame_data_len);
+                            int64_t len = wolfSSL_read(c_ssl, cursor, frame_data_len);
 
                             if(len > 0){
                             // bio_read fetched some extra bytes
@@ -2947,7 +2945,7 @@ bool lock_client::basic_read(){
                                 // test that all data was read in
                                 while(len < frame_data_len){
                                     
-                                    int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
+                                    int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                                     
                                     if(extra_bytes_read > 0){
                                     // bio_read fetched extra data
@@ -3030,7 +3028,7 @@ bool lock_client::basic_read(){
                             size_of_allocated_data_memory = frame_data_len + 1024;
                             length_of_array = size_of_allocated_data_memory;
                     
-                            int64_t len = BIO_read(c_bio, cursor, frame_data_len);
+                            int64_t len = wolfSSL_read(c_ssl, cursor, frame_data_len);
 
                             if(len > 0){
                             // bio_read fetched some extra bytes
@@ -3040,7 +3038,7 @@ bool lock_client::basic_read(){
                                 // test that all data was read in
                                 while(len < frame_data_len){
                                     
-                                    int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
+                                    int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                                     
                                     if(extra_bytes_read > 0){
                                     // bio_read fetched extra data
@@ -3128,7 +3126,7 @@ bool lock_client::basic_read(){
                     while(total_read_bytes < bytes_to_read){
 
                         // we call BIO_read to attempt to read the bytes into the buffer
-                        read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
+                        read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
                         // if BIO_read returns a value <= 0 it indicates an error so we break out from the loop
                         if(read_bytes <= 0) break;
@@ -3181,7 +3179,7 @@ bool lock_client::basic_read(){
                     while(total_read_bytes < bytes_to_read){
 
                         // we call BIO_read to attempt to read the bytes into the buffer
-                        read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
+                        read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
                         // if BIO_read returns a value <= 0 it indicates an error so we break out from the loop
                         if(read_bytes <= 0) break;
@@ -3254,7 +3252,7 @@ bool lock_client::basic_read(){
                     
                     // SIGPIPE signal is still blocked
 
-                    int64_t len = BIO_read(c_bio, cursor, frame_data_len);
+                    int64_t len = wolfSSL_read(c_ssl, cursor, frame_data_len);
 
                     if(len > 0){
                     // bio_read fetched some extra bytes
@@ -3264,7 +3262,7 @@ bool lock_client::basic_read(){
                         // test that all data was read in
                         while(len < frame_data_len){
                             
-                            int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
+                            int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                             
                             if(extra_bytes_read > 0){
                             // bio_read fetched extra data
@@ -3332,7 +3330,7 @@ bool lock_client::basic_read(){
                     
                     // SIGPIPE signal is still blocked
 
-                    int64_t len = BIO_read(c_bio, cursor, frame_data_len);
+                    int64_t len = wolfSSL_read(c_ssl, cursor, frame_data_len);
 
                     if(len > 0){
                     // bio_read fetched some extra bytes
@@ -3342,7 +3340,7 @@ bool lock_client::basic_read(){
                         // test that all data was read in
                         while(len < frame_data_len){
                             
-                            int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
+                            int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                             
                             if(extra_bytes_read > 0){
                             // bio_read fetched extra data
@@ -3397,7 +3395,7 @@ bool lock_client::basic_read(){
                 }
                 else if( (data_array == data_array_static) && ( (length_of_array_data + frame_data_len) > size_of_allocated_data_memory) ){ // there are two parts to this condition, either memory has been allocated of memory has not been allocated 
                     
-                    if( data_array_new == NULL ){ // memory has not been allocated
+                    if(data_array_new == NULL ){ // memory has not been allocated
                         
                         data_array_new = new(std::nothrow) char[length_of_array_data + frame_data_len + 1024]; // allocate memory 1KB bigger than the length of array data + the length of the incoming continuation frame
             
@@ -3431,7 +3429,7 @@ bool lock_client::basic_read(){
                             
                             // SIGPIPE signal is still blocked
 
-                            int64_t len = BIO_read(c_bio, cursor, frame_data_len);
+                            int64_t len = wolfSSL_read(c_ssl, cursor, frame_data_len);
 
                             if(len > 0){
                             // bio_read fetched some extra bytes
@@ -3441,7 +3439,7 @@ bool lock_client::basic_read(){
                                 // test that all data was read in
                                 while(len < frame_data_len){
                                     
-                                    int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
+                                    int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                                     
                                     if(extra_bytes_read > 0){
                                     // bio_read fetched extra data
@@ -3534,7 +3532,7 @@ bool lock_client::basic_read(){
                             
                             // SIGPIPE signal is still blocked
 
-                            int64_t len = BIO_read(c_bio, cursor, frame_data_len);
+                            int64_t len = wolfSSL_read(c_ssl, cursor, frame_data_len);
 
                             if(len > 0){
                             // bio_read fetched some extra bytes
@@ -3544,7 +3542,7 @@ bool lock_client::basic_read(){
                                 // test that all data was read in
                                 while(len < frame_data_len){
                                     
-                                    int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
+                                    int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                                     
                                     if(extra_bytes_read > 0){
                                     // bio_read fetched extra data
@@ -3638,7 +3636,7 @@ bool lock_client::basic_read(){
                         
                         // SIGPIPE signal is still blocked
 
-                        int64_t len = BIO_read(c_bio, cursor, frame_data_len);
+                        int64_t len = wolfSSL_read(c_ssl, cursor, frame_data_len);
 
                         if(len > 0){
                         // bio_read fetched some extra bytes
@@ -3648,7 +3646,7 @@ bool lock_client::basic_read(){
                             // test that all data was read in
                             while(len < frame_data_len){
                                 
-                                int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
+                                int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                                 
                                 if(extra_bytes_read > 0){
                                 // bio_read fetched extra data
@@ -3734,7 +3732,7 @@ bool lock_client::basic_read(){
                     while(total_read_bytes < bytes_to_read){
 
                         // we call BIO_read to attempt to read the bytes into the buffer
-                        read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
+                        read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
                         // if BIO_read returns a value <= 0 it indicates an error so we break out from the loop
                         if(read_bytes <= 0) break;
@@ -3787,7 +3785,7 @@ bool lock_client::basic_read(){
                     while(total_read_bytes < bytes_to_read){
 
                         // we call BIO_read to attempt to read the bytes into the buffer
-                        read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
+                        read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
                         // if BIO_read returns a value <= 0 it indicates an error so we break out from the loop
                         if(read_bytes <= 0) break;
@@ -3858,7 +3856,7 @@ bool lock_client::basic_read(){
                     
                     // SIGPIPE signal is still blocked
 
-                    int64_t len = BIO_read(c_bio, cursor, frame_data_len);
+                    int64_t len = wolfSSL_read(c_ssl, cursor, frame_data_len);
 
                     if(len > 0){
                     // bio_read fetched some extra bytes
@@ -3868,7 +3866,7 @@ bool lock_client::basic_read(){
                         // test that all data was read in
                         while(len < frame_data_len){
                             
-                            int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
+                            int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                             
                             if(extra_bytes_read > 0){
                             // bio_read fetched extra data
@@ -3944,7 +3942,7 @@ bool lock_client::basic_read(){
                     
                     // SIGPIPE signal is still blocked
 
-                    int64_t len = BIO_read(c_bio, cursor, frame_data_len);
+                    int64_t len = wolfSSL_read(c_ssl, cursor, frame_data_len);
 
                     if(len > 0){
                     // bio_read fetched some extra bytes
@@ -3954,7 +3952,7 @@ bool lock_client::basic_read(){
                         // test that all data was read in
                         while(len < frame_data_len){
                             
-                            int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
+                            int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                             
                             if(extra_bytes_read > 0){
                             // bio_read fetched extra data
@@ -4052,7 +4050,7 @@ bool lock_client::basic_read(){
                             
                             // SIGPIPE signal is still blocked
 
-                            int64_t len = BIO_read(c_bio, cursor, frame_data_len);
+                            int64_t len = wolfSSL_read(c_ssl, cursor, frame_data_len);
 
                             if(len > 0){
                             // bio_read fetched some extra bytes
@@ -4062,7 +4060,7 @@ bool lock_client::basic_read(){
                                 // test that all data was read in
                                 while(len < frame_data_len){
                                     
-                                    int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
+                                    int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                                     
                                     if(extra_bytes_read > 0){
                                     // bio_read fetched extra data
@@ -4162,7 +4160,7 @@ bool lock_client::basic_read(){
                             
                             // SIGPIPE signal is still blocked
 
-                            int64_t len = BIO_read(c_bio, cursor, frame_data_len);
+                            int64_t len = wolfSSL_read(c_ssl, cursor, frame_data_len);
 
                             if(len > 0){
                             // bio_read fetched some extra bytes
@@ -4172,7 +4170,7 @@ bool lock_client::basic_read(){
                                 // test that all data was read in
                                 while(len < frame_data_len){
                                     
-                                    int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
+                                    int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                                     
                                     if(extra_bytes_read > 0){
                                     // bio_read fetched extra data
@@ -4273,7 +4271,7 @@ bool lock_client::basic_read(){
                         
                         // SIGPIPE signal is still blocked
 
-                        int64_t len = BIO_read(c_bio, cursor, frame_data_len);
+                        int64_t len = wolfSSL_read(c_ssl, cursor, frame_data_len);
 
                         if(len > 0){
                         // bio_read fetched some extra bytes
@@ -4283,7 +4281,7 @@ bool lock_client::basic_read(){
                             // test that all data was read in
                             while(len < frame_data_len){
                                 
-                                int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
+                                int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                                 
                                 if(extra_bytes_read > 0){
                                 // bio_read fetched extra data
@@ -4394,7 +4392,7 @@ bool lock_client::basic_read(){
                         while(total_read_bytes < bytes_to_read){
 
                             // we call BIO_read to attempt to read the bytes into the buffer
-                            read_bytes = BIO_read(c_bio, &upgrade_request_static[total_read_bytes], bytes_to_read - total_read_bytes);
+                            read_bytes = wolfSSL_read(c_ssl, &upgrade_request_static[total_read_bytes], bytes_to_read - total_read_bytes);
 
                             // if BIO_read returns a value <= 0 it indicates an error so we break out from the loop
                             if(read_bytes <= 0) break;
@@ -4462,7 +4460,6 @@ bool lock_client::basic_read(){
                 data_array = data_array_static; // use the static array because it is always large enough to hold a close frame
                 cursor = data_array;
                 
-                
                 int i = 0; // variable for traversing the send array and building up the close data frame response
                 
                 // SIGPIPE signal is still blocked
@@ -4470,7 +4467,7 @@ bool lock_client::basic_read(){
                 // we only attempt reading extra bytes if frame data len is > 0
                 if(frame_data_len > 0){
 
-                    int64_t len = BIO_read(c_bio, cursor, frame_data_len);
+                    int64_t len = wolfSSL_read(c_ssl, cursor, frame_data_len);
 
                     if(len > 0){
                     // bio_read fetched some extra bytes
@@ -4480,7 +4477,7 @@ bool lock_client::basic_read(){
                         // test that all data was read in
                         while(len < frame_data_len){
                             
-                            int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
+                            int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                             
                             if(extra_bytes_read > 0){
                             // bio_read fetched extra data
@@ -4566,12 +4563,12 @@ bool lock_client::basic_read(){
                 }
                 
                 // send the close frame response - we do not test the return code of bio_read in this case
-                (void)BIO_write(c_bio, send_data, i);
+                (void)wolfSSL_write(c_ssl, send_data, i);
                 
                 // unblock SIGPIPE signal
                 unblock_sigpipe_signal();
                 
-                BIO_reset(c_bio); // close the existing connection and reset the bio
+                reset(); // close the existing connection and reset the lock client
                 
                 memset(data_array, '\0', frame_data_len); // zero out the data array
                 
@@ -4615,7 +4612,7 @@ bool lock_client::basic_read(){
                 // we only attempt to read extra bytes if frame data len is > 0
                 if(frame_data_len > 0){
 
-                    int64_t len = BIO_read(c_bio, loc_cursor, frame_data_len);
+                    int64_t len = wolfSSL_read(c_ssl, loc_cursor, frame_data_len);
 
                     if(len > 0){
                     // bio_read fetched some extra bytes
@@ -4625,7 +4622,7 @@ bool lock_client::basic_read(){
                         // test that all data was read in
                         while(len < frame_data_len){
                             
-                            int64_t extra_bytes_read = BIO_read(c_bio, loc_cursor, (frame_data_len - len) );
+                            int64_t extra_bytes_read = wolfSSL_read(c_ssl, loc_cursor, (frame_data_len - len) );
                             
                             if(extra_bytes_read > 0){
                             // bio_read fetched extra data
@@ -4748,228 +4745,107 @@ bool lock_client::connect(std::string_view url){ // this is used to connect to c
         // size of required memory in bytes to store the base url and the port number if it would be appended
         int req_mem = base_url_length + 5; // we add an extra 5 bytes to the base url length to accomodate for the chance that this url was supplied without a port number so we have enough room to append port :443 to the base url
 
-        // SSL members initialisations
-        c_bio = BIO_new_ssl_connect(ssl_ctx); // creates a new bio ssl object
-        BIO_get_ssl(c_bio, &c_ssl); // get the SSL structure component of the ssl bio for per instance SSL settings
-        if(c_ssl == NULL){
-            
-            strncpy(error_buffer, "Error fetching SSL structure pointer ", error_buffer_array_length);
-                    
-            error = true;
-            
-        }
-    
-        if(!error){ // the constructor continues only if there was no error fetching the ssl pointer
+        // we create our ssl object
+        c_ssl = wolfSSL_new(ssl_ctx);
 
-            // URL copy 
-            if(req_mem < url_static_array_length){ // static memory large enough
-            
-                url.copy(c_url_static, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
-            
-                c_url_static[base_url_length] = '\0'; // null-terminate the string
-            
-                c_url = c_url_static;
-            
-            }
-            else if(req_mem < size_of_allocated_url_memory){ // store in already allocated dynamic memory
-                
-                url.copy(c_url_new, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
-            
-                c_url_new[base_url_length] = '\0'; // null-terminate the string
-            
-                c_url = c_url_new;
-                
-            
-            }
-            else{ // neither static or dynamic memory is large enough, we test whether memory has already been allocated or not 
-                
-                if(c_url_new == NULL){ // memory has not yet been allocated
-                    
-                    c_url_new = new(std::nothrow) char[req_mem]; // the nothrow parameter prevents an exception from being thrown by the C++ runtime should the heap allocation fail
-                
-                
-                    if(c_url_new == NULL){
-                        
-                        strncpy(error_buffer, "Error allocating heap memory for lock_client url parameter ", error_buffer_array_length);
-                        
-                        error = true;
-                        
-                    }
-                    else{
-                        
-                        size_of_allocated_url_memory = req_mem;    
-                            
-                        url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
-            
-                        c_url_new[base_url_length] = '\0';
-            
-                        c_url = c_url_new;
-                    
-                    }
-            
-                }
-                else{ // memory has been allocated but still isn't large enough
-                    
-                    delete [] c_url_new; // delete the already allocated memory
-                    
-                    // heap memory allocation for urls larger than the static array length
-                    c_url_new = new(std::nothrow) char[req_mem]; // the nothrow parameter prevents an exception from being thrown by the C++ runtime should the heap allocation fail
-                
-                    
-                    if(c_url_new == NULL){
-                        
-                        strncpy(error_buffer, "Error allocating heap memory for lock_client url parameter ", error_buffer_array_length);
-                        
-                        error = true;
-                        
-                    }
-                    else{
-                        
-                        size_of_allocated_url_memory = req_mem;    
-                            
-                        url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
-                
-                        c_url_new[base_url_length] = '\0';
-
-                        c_url = c_url_new;
-                    
-                    }
-                
-                }
-
-            }
-            
-            if(!error){ // checks if there was any error allocating memory, that is if that part of the code was executed. The constructor only continues if there was no error 
-                
-                // we check if the supplied url has the port number appended if not we append it
-                if(strchr(c_url, ':') == NULL){
-                    strcat(c_url, ":443"); // we use strcat here because the array length check already checks that we have enough space in the array to accomodate for the port number
-                }
-
-                // set the websocket url(port included)
-                BIO_set_conn_hostname(c_bio, c_url);
-                
-                // set SSL mode to retry automatically should SSL connection fail
-                SSL_set_mode(c_ssl, SSL_MODE_AUTO_RETRY);
+        // URL copy
+        if(req_mem < url_static_array_length){ // static memory large enough
         
-            }
+            url.copy(c_url_static, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
         
-        }
-    
-    }
-    
-    else if( (url.compare(0, 5, "ws://") == 0) || (url.compare(0, 5, "Ws://") == 0) || (url.compare(0, 5, "wS://") == 0) || (url.compare(0, 5, "WS://") == 0)){ // ws:// endpoint, we test the 4 possible combinations of uppercase and lowercase lettering. The second parameter to the std::string_view compare function is the length of the protocol prefix which we test for the presence of
-    
-        int protocol_prefix_len = strlen("ws://");
-
-        // we fetch the url length without the ws:// prefix and any path appended to the url, we do this by finding the next '/' character after the initial ws://
-        size_t base_url_end_index = url.find('/', protocol_prefix_len);
-
-        int base_url_length = (base_url_end_index != std::string_view::npos) ? (int)base_url_end_index - protocol_prefix_len : url.size() - protocol_prefix_len; // saves the length of the url without the ws:// prefix and the path if any
-
-        // size of required memory in bytes to store the base url and the port number if it would be appended
-        int req_mem = base_url_length + 4; // we add an extra 4 bytes to the base url length to accomodate for the chance that this url was supplied without a port number so we have enough room to append port :80 to the base url
-    
-        // URL copy 
-        if(req_mem < url_static_array_length){ // static array is sufficient
-    
-            url.copy(c_url_static, base_url_length, protocol_prefix_len); // protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the static character array
-    
             c_url_static[base_url_length] = '\0'; // null-terminate the string
-    
+        
             c_url = c_url_static;
-    
+        
         }
         else if(req_mem < size_of_allocated_url_memory){ // store in already allocated dynamic memory
-        
+            
             url.copy(c_url_new, base_url_length, protocol_prefix_len); // protocol prefix len specifies the starting point where the copy should begin, the url.copy copies the string view object into the already allocated character array
-    
-            c_url_new[base_url_length] = '\0'; // null-terminate the string
-    
-            c_url = c_url_new;
         
-    
+            c_url_new[base_url_length] = '\0'; // null-terminate the string
+        
+            c_url = c_url_new;
+            
+        
         }
         else{ // neither static or dynamic memory is large enough, we test whether memory has already been allocated or not 
-        
-            if(c_url_new == NULL){ // memory has not yet been allocated
             
-                // heap memory allocation for urls larger than the static array length
+            if(c_url_new == NULL){ // memory has not yet been allocated
+                
                 c_url_new = new(std::nothrow) char[req_mem]; // the nothrow parameter prevents an exception from being thrown by the C++ runtime should the heap allocation fail
-        
-           
+            
+            
                 if(c_url_new == NULL){
-                
+                    
                     strncpy(error_buffer, "Error allocating heap memory for lock_client url parameter ", error_buffer_array_length);
-                
+                    
                     error = true;
-                
+                    
                 }
                 else{
-                
-                    size_of_allocated_url_memory = req_mem;    
                     
+                    size_of_allocated_url_memory = req_mem;    
+                        
                     url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
-       
+        
                     c_url_new[base_url_length] = '\0';
-    
+        
                     c_url = c_url_new;
-            
+                
                 }
-    
+        
             }
             else{ // memory has been allocated but still isn't large enough
-            
+                
                 delete [] c_url_new; // delete the already allocated memory
-            
+                
                 // heap memory allocation for urls larger than the static array length
                 c_url_new = new(std::nothrow) char[req_mem]; // the nothrow parameter prevents an exception from being thrown by the C++ runtime should the heap allocation fail
-        
-           
+            
+                
                 if(c_url_new == NULL){
-                
+                    
                     strncpy(error_buffer, "Error allocating heap memory for lock_client url parameter ", error_buffer_array_length);
-                
+                    
                     error = true;
-                
+                    
                 }
                 else{
-                
-                    size_of_allocated_url_memory = req_mem;    
                     
+                    size_of_allocated_url_memory = req_mem;    
+                        
                     url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
-       
-                    c_url_new[base_url_length] = '\0';
-    
-                    c_url = c_url_new;
             
+                    c_url_new[base_url_length] = '\0';
+
+                    c_url = c_url_new;
+                
                 }
             
             }
-    
+
         }
-    
-        if(!error){ // this only runs if the preceding code executed without the error flag being set, meaning all is good
+        
+        if(!error){ // checks if there was any error allocating memory, that is if that part of the code was executed. The constructor only continues if there was no error 
             
             // we check if the supplied url has the port number appended if not we append it
             if(strchr(c_url, ':') == NULL){
-                strcat(c_url, ":80"); // we use strcat here because the array length check already checks that we have enough space in the array to accomodate for the port number
+                strcat(c_url, ":443"); // we use strcat here because the array length check already checks that we have enough space in the array to accomodate for the port number
             }
-
-            //Non-ssl BIO structure creation
-            c_bio = BIO_new_connect(c_url); // creates the non-ssl bio object with the url supplied
-     
+            
+            // set SSL mode to retry automatically should SSL connection fail
+            wolfSSL_set_mode(c_ssl, WOLFSSL_MODE_AUTO_RETRY);
+    
         }
     
     }
-    else{ // not a valid websocket endpoint
+    else{ // unsupported websocket format
         
-        strncpy(error_buffer, "Supplied URL parameter is not a valid WebSocket endpoint", error_buffer_array_length);
+        strncpy(error_buffer, "Supplied URL parameter is not a valid/supported WebSocket endpoint", error_buffer_array_length);
                 
         error = true;
         
     }
-    // initialisation of BIO and SSL structures end
     
     if(!error){ // only continue if no error
         
@@ -4980,7 +4856,7 @@ bool lock_client::connect(std::string_view url){ // this is used to connect to c
         
         int host_name_len = (host_name_end_index == std::string_view::npos) ? url.size() - search_start_index : (int)host_name_end_index - search_start_index;
 
-        if( host_name_len < host_static_array_length ){ // static array is large enough
+        if(host_name_len < host_static_array_length){ // static array is large enough
         
             url.copy(c_host_static, host_name_len, search_start_index);
         
@@ -4989,7 +4865,7 @@ bool lock_client::connect(std::string_view url){ // this is used to connect to c
             c_host = c_host_static;
         
         }
-        else if( host_name_len < size_of_allocated_host_memory){ // dynamic memory is large enough
+        else if(host_name_len < size_of_allocated_host_memory){ // dynamic memory is large enough
             
             url.copy(c_host_new, host_name_len, search_start_index);
         
@@ -5060,9 +4936,9 @@ bool lock_client::connect(std::string_view url){ // this is used to connect to c
         
             // we set the host name we wish to connect to for server name identification(SNI) if the websocket address passed is a wss:// address. We test this by checking that the c_ssl pointer is non-null
             if(!(c_ssl == NULL)){
-                
-                if(!SSL_set_tlsext_host_name(c_ssl, c_host)){
-                // we test the return value. SSL_set_tlsext_host_name returns 0 on error and 1 on success
+
+                if(!wolfSSL_UseSNI(c_ssl, WOLFSSL_SNI_HOST_NAME, c_host, host_name_len)){
+                // we test the return value. wolfSSL_UseSNI returns 0 on error and 1 on success
                     
                     strncpy(error_buffer, "Error setting up Lock client for SNI TLS extension", error_buffer_array_length);
                         
@@ -5157,255 +5033,288 @@ bool lock_client::connect(std::string_view url){ // this is used to connect to c
 
                 if(!error){ // only continue if no error
 
-                    // make the connection
-                    if(BIO_do_connect(c_bio) <= 0){
-                        
-                        strncpy(error_buffer, "Error connecting to WebSocket host ", error_buffer_array_length);
-                        
-                        error = true;
+                    // we create a local char array to hold the port extracted from the url
+                    const int MAX_CHAR_FOR_PORT = 8; // a port number can have a maximum of 5 characters because port numbers are 16 bit integers
+                    char c_port[MAX_CHAR_FOR_PORT];
+
+                    // since the host_name_end_index already finds the first character out of : and / after the host name we use it to finc the port number location if any
+
+                    // we first check if the host name end index was either std::string_view::npos or / in which case we know the host wasn't supplied so we store 443 as the host, but if the : character was found then the host was supplied so we just create a sub string view from after the : character to either the / starting the path if supplied, but if not supplied till std::string_view::npos - host_name_end_index - 1 which would be a very large number the copy takes the rest of the url string_view
+                    std::string_view port = (host_name_end_index == std::string_view::npos || url[host_name_end_index] == '/') ? "443" : url.substr(host_name_end_index + 1, url.find('/', host_name_end_index) - host_name_end_index - 1);
+
+                    // we now copy the derived port into char array
+                    int num_of_chars_copied = port.copy(c_port, port.size());
+
+                    // we null terminate the c_port array
+                    c_port[num_of_chars_copied] = '\0';
+
+                    // we call our connect to server function with the interface parameters set to null
+                    int sockfd = connect_to_server(c_host, c_port, nullptr, nullptr);
                     
-                    }
-                    
-                    // upgrade the connection to websocket
                     if(!error){ // only continue if no error
-                        
-                        // fill the random bytes array with 16 random bytes between 0 and 255
-                        int upper_bound = 255;
-                        for(int i = 0; i < rand_byte_array_len; i++){
+
+                        // getting here the connect to server function returned successfully so now we bind the returned socket fd to our c_ssl object
+                        wolfSSL_set_fd(c_ssl, sockfd);
+
+                        // we perform our tls handshake
+                        if(wolfSSL_connect(c_ssl) != WOLFSSL_SUCCESS){
+
+                            strncpy(error_buffer, "Error performing tls handshake ", error_buffer_array_length);
                             
-                            rand_bytes[i] = (unsigned char)(rand() % upper_bound ); // we get a random byte between 0 and 255 and cast it into a one byte value
+                            error = true;
 
                         }
-                        
-                        // get the Base-64 encoding of the random number to give the value of the nonce
-                        BIO_write(c_base64, rand_bytes, rand_byte_array_len);
-                        BIO_flush(c_base64); 
-                        BIO_read(c_mem_base64, base64_encoded_nonce, nonce_array_len);
-                    
-                        // request connection upgrade
-                        int length_of_supplied_data = strlen(c_path) + strlen( (const char*)base64_encoded_nonce) + strlen(c_host);
-                        char char_remaining[] = "GET  HTTP/1.1\nHost: \nConnection: Upgrade\nPragma: no-cache\nUpgrade: websocket\nSec-WebSocket-Version: 13\nSec-WebSocket-Key: \n\n";
-                        int upgrade_request_len = strlen(char_remaining) + length_of_supplied_data;
-                        
-                        if( upgrade_request_len < upgrade_request_array_length ){ // static array is large enough
+
+                        // only continue if no error
+                        if(!error){ 
                             
-                            // build the upgrade request
-                            strcpy(upgrade_request_static, "GET ");
-                            strcat(upgrade_request_static, c_path);
-                            strcat(upgrade_request_static, " HTTP/1.1\n");
-                            strcat(upgrade_request_static, "Host: ");
-                            strcat(upgrade_request_static, c_host);
-                            strcat(upgrade_request_static, "\n");
-                            strcat(upgrade_request_static, "Connection: Upgrade\n");
-                            strcat(upgrade_request_static, "Pragma: no-cache\n");
-                            strcat(upgrade_request_static, "Upgrade: websocket\n");
-                            strcat(upgrade_request_static, "Sec-WebSocket-Version: 13\n");
-                            strcat(upgrade_request_static, "Sec-WebSocket-Key: ");
-                            strcat(upgrade_request_static, (const char*)base64_encoded_nonce);
-                            strcat(upgrade_request_static, "\n\n");
-                            // upgrade request build end 
+                            // upgrade the connection to websocket
                             
-                            upgrade_request = upgrade_request_static;
-                            
-                        }
-                        else if(upgrade_request_len < size_of_allocated_upgrade_request_memory){ // allocated memory large enough
-                            
-                            // build the upgrade request
-                            strcpy(upgrade_request_new, "GET ");
-                            strcat(upgrade_request_new, c_path);
-                            strcat(upgrade_request_new, " HTTP/1.1\n");
-                            strcat(upgrade_request_new, "Host: ");
-                            strcat(upgrade_request_new, c_host);
-                            strcat(upgrade_request_new, "\n");
-                            strcat(upgrade_request_new, "Connection: Upgrade\n");
-                            strcat(upgrade_request_new, "Pragma: no-cache\n");
-                            strcat(upgrade_request_new, "Upgrade: websocket\n");
-                            strcat(upgrade_request_new, "Sec-WebSocket-Version: 13\n");
-                            strcat(upgrade_request_new, "Sec-WebSocket-Key: ");
-                            strcat(upgrade_request_new, (const char*)base64_encoded_nonce);
-                            strcat(upgrade_request_new, "\n\n");
-                            // upgrade request build end 
-                            
-                            upgrade_request = upgrade_request_new;
-                            
-                        }
-                        else{ // neither static nor allocated memory is large enough, we test both cases
-                        
-                            if(upgrade_request_new == NULL){ // memory has not been allocated yet
-                            
-                                upgrade_request_new = new(std::nothrow) char[upgrade_request_len + 1]; // allocate memory for the upgrade request with the std::nothrow parameter stops the C++ runtime from throwing an error should the allocation request fail
-                            
-                                if(upgrade_request_new == NULL){
+                            // fill the random bytes array with 16 random bytes between 0 and 255
+                            int upper_bound = 255;
+                            for(int i = 0; i < rand_byte_array_len; i++){
                                 
-                                    strncpy(error_buffer, "Error allocating heap memory for upgrade request string, supplied URL or channel path too long  ", error_buffer_array_length);
-                                    
-                                    error = true;
-                                    
-                                    BIO_reset(c_bio); // disconnect the underlying bio
-                                    
-                                }
-                                else{ 
-                                    
-                                    size_of_allocated_upgrade_request_memory = upgrade_request_len + 1;
-                                    
-                                    // build the upgrade request
-                                    strcpy(upgrade_request_new, "GET ");
-                                    strcat(upgrade_request_new, c_path);
-                                    strcat(upgrade_request_new, " HTTP/1.1\n");
-                                    strcat(upgrade_request_new, "Host: ");
-                                    strcat(upgrade_request_new, c_host);
-                                    strcat(upgrade_request_new, "\n");
-                                    strcat(upgrade_request_new, "Connection: Upgrade\n");
-                                    strcat(upgrade_request_new, "Pragma: no-cache\n");
-                                    strcat(upgrade_request_new, "Upgrade: websocket\n");
-                                    strcat(upgrade_request_new, "Sec-WebSocket-Version: 13\n");
-                                    strcat(upgrade_request_new, "Sec-WebSocket-Key: ");
-                                    strcat(upgrade_request_new, (const char*)base64_encoded_nonce);
-                                    strcat(upgrade_request_new, "\n\n");
-                                    // upgrade request build end 
-                            
-                                    upgrade_request = upgrade_request_new;
-                                
-                                }
-                        
+                                rand_bytes[i] = (unsigned char)(rand() % upper_bound ); // we get a random byte between 0 and 255 and cast it into a one byte value
+
                             }
-                            else{ // memory has previously been allocated for an upgrade request but it still isn't sufficient
-                                
-                                delete [] upgrade_request_new; // delete the previously allocated memory
-                                
-                                upgrade_request_new = new(std::nothrow) char[upgrade_request_len + 1]; // allocate memory for the upgrade request with the std::nothrow parameter stops the C++ runtime from throwing an error should the allocation request fail
-                        
-                                if(upgrade_request_new == NULL){
                             
-                                    strncpy(error_buffer, "Error allocating heap memory for upgrade request string, supplied URL or channel path too long  ", error_buffer_array_length);
-                                
-                                    error = true;
-                                    
-                                    BIO_reset(c_bio); // disconnect the underlying bio
-                                
-                                }
-                                else{ 
-                                
-                                    size_of_allocated_upgrade_request_memory = upgrade_request_len + 1;
-                                
-                                    // build the upgrade request
-                                    strcpy(upgrade_request_new, "GET ");
-                                    strcat(upgrade_request_new, c_path);
-                                    strcat(upgrade_request_new, " HTTP/1.1\n");
-                                    strcat(upgrade_request_new, "Host: ");
-                                    strcat(upgrade_request_new, c_host);
-                                    strcat(upgrade_request_new, "\n");
-                                    strcat(upgrade_request_new, "Connection: Upgrade\n");
-                                    strcat(upgrade_request_new, "Pragma: no-cache\n");
-                                    strcat(upgrade_request_new, "Upgrade: websocket\n");
-                                    strcat(upgrade_request_new, "Sec-WebSocket-Version: 13\n");
-                                    strcat(upgrade_request_new, "Sec-WebSocket-Key: ");
-                                    strcat(upgrade_request_new, (const char*)base64_encoded_nonce);
-                                    strcat(upgrade_request_new, "\n\n");
-                                    // upgrade request build end 
+                            // get the Base-64 encoding of the random number to give the value of the nonce
+                            Base64_Encode_NoNl(rand_bytes, rand_byte_array_len, base64_encoded_nonce, nonce_array_len);
                         
-                                    upgrade_request = upgrade_request_new;
+                            // request connection upgrade
+                            int length_of_supplied_data = strlen(c_path) + strlen((const char*)base64_encoded_nonce) + strlen(c_host);
+                            char char_remaining[] = "GET  HTTP/1.1\nHost: \nConnection: Upgrade\nPragma: no-cache\nUpgrade: websocket\nSec-WebSocket-Version: 13\nSec-WebSocket-Key: \n\n";
+                            int upgrade_request_len = strlen(char_remaining) + length_of_supplied_data;
                             
-                                }
+                            if(upgrade_request_len < upgrade_request_array_length){ // static array is large enough
+                                
+                                // build the upgrade request
+                                strcpy(upgrade_request_static, "GET ");
+                                strcat(upgrade_request_static, c_path);
+                                strcat(upgrade_request_static, " HTTP/1.1\n");
+                                strcat(upgrade_request_static, "Host: ");
+                                strcat(upgrade_request_static, c_host);
+                                strcat(upgrade_request_static, "\n");
+                                strcat(upgrade_request_static, "Connection: Upgrade\n");
+                                strcat(upgrade_request_static, "Pragma: no-cache\n");
+                                strcat(upgrade_request_static, "Upgrade: websocket\n");
+                                strcat(upgrade_request_static, "Sec-WebSocket-Version: 13\n");
+                                strcat(upgrade_request_static, "Sec-WebSocket-Key: ");
+                                strcat(upgrade_request_static, (const char*)base64_encoded_nonce);
+                                strcat(upgrade_request_static, "\n\n");
+                                // upgrade request build end 
+                                
+                                upgrade_request = upgrade_request_static;
                                 
                             }
-                        
-                        }
-                    
-                        if(!error){ // only continue if no error
+                            else if(upgrade_request_len < size_of_allocated_upgrade_request_memory){ // allocated memory large enough
+                                
+                                // build the upgrade request
+                                strcpy(upgrade_request_new, "GET ");
+                                strcat(upgrade_request_new, c_path);
+                                strcat(upgrade_request_new, " HTTP/1.1\n");
+                                strcat(upgrade_request_new, "Host: ");
+                                strcat(upgrade_request_new, c_host);
+                                strcat(upgrade_request_new, "\n");
+                                strcat(upgrade_request_new, "Connection: Upgrade\n");
+                                strcat(upgrade_request_new, "Pragma: no-cache\n");
+                                strcat(upgrade_request_new, "Upgrade: websocket\n");
+                                strcat(upgrade_request_new, "Sec-WebSocket-Version: 13\n");
+                                strcat(upgrade_request_new, "Sec-WebSocket-Key: ");
+                                strcat(upgrade_request_new, (const char*)base64_encoded_nonce);
+                                strcat(upgrade_request_new, "\n\n");
+                                // upgrade request build end 
+                                
+                                upgrade_request = upgrade_request_new;
+                                
+                            }
+                            else{ // neither static nor allocated memory is large enough, we test both cases
                             
-                            data_array = data_array_static;
-                            BIO_puts(c_bio, upgrade_request);
-                            
-                            int len = BIO_read(c_bio, data_array, static_data_array_length); // this function call would block till there is data to read
-                            data_array[len] = '\0'; // null terminate the received bytes
-
-                            // test for the switching protocol header to confirm that the connection upgrade was successful
-                            char success_response[] = "HTTP/1.1 101 Switching Protocols";
-                            
-                            if(strncmp(success_response, strtok(data_array, "\n"), strlen(success_response)) == 0){ // upgrade successful
-
-                                // Authorise connection - confirm that the Sec-WebSocket-Accept is what it should be by calculating the key and comparing it with the server's
+                                if(upgrade_request_new == NULL){ // memory has not been allocated yet
                                 
-                                // build the SHA1 parameter
-                                strncpy(SHA1_parameter, (const char*)base64_encoded_nonce, SHA1_parameter_array_len);
-                                strncat(SHA1_parameter, string_to_append, SHA1_parameter_array_len - strlen(SHA1_parameter));
-                                // SHA1 parameter build end 
+                                    upgrade_request_new = new(std::nothrow) char[upgrade_request_len + 1]; // allocate memory for the upgrade request with the std::nothrow parameter stops the C++ runtime from throwing an error should the allocation request fail
                                 
-                                SHA1((const unsigned char*)SHA1_parameter, strlen(SHA1_parameter), SHA1_digest); // get the sha1 hash digest
-                                
-                                // base64 encode the SHA1_digest 
-                                BIO_write(c_base64, SHA1_digest, size_of_SHA1_digest);
-                                BIO_flush(c_base64); 
-                                BIO_read(c_mem_base64, local_sec_ws_accept_key, local_sec_ws_accept_key_array_len);
-                                // base64 encoding of SHA1 digest end 
-                                
-                                // loop through the rest of the response string to find the Sec-WebSocket-Accept header
-                                char key[] = "Sec";
-                                char* cursor = strtok(NULL, "\n");
-                                
-                                while(!(cursor == NULL)){
-                                // we keep looping through the HTTP upgrade request response till either cursor == NULL or we find our Sec-WebSocket-Key header
+                                    if(upgrade_request_new == NULL){
                                     
-                                    // we use sizeof so we can get the length of key as a compile time constan, we subtract 1 from the result of sizeof() to account for the null byte that terminates the string
-                                    if((strncmp(key, cursor, sizeof(key) - 1) == 0) || (strncmp("sec", cursor, sizeof(key) - 1) == 0) || (strncmp("SEC", cursor, sizeof(key) - 1) == 0) || (strncmp("sEc", cursor, sizeof(key) - 1) == 0) || (strncmp("seC", cursor, sizeof(key) - 1) == 0) || (strncmp("sEC", cursor, sizeof(key) - 1) == 0) || (strncmp("SEc", cursor, sizeof(key) - 1) == 0) || (strncmp("SeC", cursor, sizeof(key) - 1) == 0)){ // only the Sec-WebSocket-key response header would have "Sec" in it so we test all possible upper and lower case combinations of the key word "sec"
-                                            
-                                        cursor += strlen("Sec-WebSocket-Accept: "); //move cursor foward to point to accept key value
+                                        strncpy(error_buffer, "Error allocating heap memory for upgrade request string, supplied URL or channel path too long  ", error_buffer_array_length);
                                         
-                                        // compare server's response with our calculation
-                                        if(strncmp(local_sec_ws_accept_key, cursor, strlen(local_sec_ws_accept_key)) == 0){
-                                            
-                                            client_state = OPEN;
-                                            
-                                            break; // break if the server sec websocket key matches what we calculated. Connection authorised
+                                        error = true;
+                                        
+                                        reset(); // disconnect the underlying bio
+                                        
+                                    }
+                                    else{ 
+                                        
+                                        size_of_allocated_upgrade_request_memory = upgrade_request_len + 1;
+                                        
+                                        // build the upgrade request
+                                        strcpy(upgrade_request_new, "GET ");
+                                        strcat(upgrade_request_new, c_path);
+                                        strcat(upgrade_request_new, " HTTP/1.1\n");
+                                        strcat(upgrade_request_new, "Host: ");
+                                        strcat(upgrade_request_new, c_host);
+                                        strcat(upgrade_request_new, "\n");
+                                        strcat(upgrade_request_new, "Connection: Upgrade\n");
+                                        strcat(upgrade_request_new, "Pragma: no-cache\n");
+                                        strcat(upgrade_request_new, "Upgrade: websocket\n");
+                                        strcat(upgrade_request_new, "Sec-WebSocket-Version: 13\n");
+                                        strcat(upgrade_request_new, "Sec-WebSocket-Key: ");
+                                        strcat(upgrade_request_new, (const char*)base64_encoded_nonce);
+                                        strcat(upgrade_request_new, "\n\n");
+                                        // upgrade request build end 
+                                
+                                        upgrade_request = upgrade_request_new;
+                                    
+                                    }
+                            
+                                }
+                                else{ // memory has previously been allocated for an upgrade request but it still isn't sufficient
+                                    
+                                    delete [] upgrade_request_new; // delete the previously allocated memory
+                                    
+                                    upgrade_request_new = new(std::nothrow) char[upgrade_request_len + 1]; // allocate memory for the upgrade request with the std::nothrow parameter stops the C++ runtime from throwing an error should the allocation request fail
+                            
+                                    if(upgrade_request_new == NULL){
+                                
+                                        strncpy(error_buffer, "Error allocating heap memory for upgrade request string, supplied URL or channel path too long  ", error_buffer_array_length);
+                                    
+                                        error = true;
+                                        
+                                        reset(); // disconnect the underlying bio
+                                    
+                                    }
+                                    else{ 
+                                    
+                                        size_of_allocated_upgrade_request_memory = upgrade_request_len + 1;
+                                    
+                                        // build the upgrade request
+                                        strcpy(upgrade_request_new, "GET ");
+                                        strcat(upgrade_request_new, c_path);
+                                        strcat(upgrade_request_new, " HTTP/1.1\n");
+                                        strcat(upgrade_request_new, "Host: ");
+                                        strcat(upgrade_request_new, c_host);
+                                        strcat(upgrade_request_new, "\n");
+                                        strcat(upgrade_request_new, "Connection: Upgrade\n");
+                                        strcat(upgrade_request_new, "Pragma: no-cache\n");
+                                        strcat(upgrade_request_new, "Upgrade: websocket\n");
+                                        strcat(upgrade_request_new, "Sec-WebSocket-Version: 13\n");
+                                        strcat(upgrade_request_new, "Sec-WebSocket-Key: ");
+                                        strcat(upgrade_request_new, (const char*)base64_encoded_nonce);
+                                        strcat(upgrade_request_new, "\n\n");
+                                        // upgrade request build end 
+                            
+                                        upgrade_request = upgrade_request_new;
+                                
+                                    }
+                                    
+                                }
+                            
+                            }
+                        
+                            if(!error){ // only continue if no error
+                                
+                                data_array = data_array_static;
+
+                                // we send our upgrade request
+                                wolfSSL_write(c_ssl, reinterpret_cast<const void*>(upgrade_request), strlen(upgrade_request));
+                                
+                                int len = wolfSSL_read(c_ssl, data_array, static_data_array_length); // this function call would block till there is data to read
+                                data_array[len] = '\0'; // null terminate the received bytes
+
+                                // test for the switching protocol header to confirm that the connection upgrade was successful
+                                char success_response[] = "HTTP/1.1 101 Switching Protocols";
+                                
+                                if(strncmp(success_response, strtok(data_array, "\n"), strlen(success_response)) == 0){ // upgrade successful
+                                    
+                                    // Authorise connection - confirm that the Sec-WebSocket-Accept is what it should be by calculating the key and comparing it with the server's
+                                    
+                                    // build the SHA1 parameter
+                                    strcpy(SHA1_parameter, (const char*)base64_encoded_nonce);
+                                    strncat(SHA1_parameter, string_to_append, SHA1_parameter_array_len - strlen(SHA1_parameter));
+                                    // SHA1 parameter build end 
+                                    
+                                    // we create a sha context for computing our sha1 hash
+                                    wc_Sha sha_context;
+
+                                    // sha context init
+                                    wc_InitSha(&sha_context);
+
+                                    // we update our sha context with the data to be hashed
+                                    wc_ShaUpdate(&sha_context, SHA1_parameter, strlen(SHA1_parameter));
+
+                                    SHA1((const unsigned char*)SHA1_parameter, strlen(SHA1_parameter), SHA1_digest); // get the sha1 hash digest
+
+                                    wc_ShaFinal(&sha_context, SHA1_digest);
+
+                                    // base64 encode the SHA1 digest
+                                    Base64_Encode_NoNl(SHA1_digest, SHA1_digest_array_len, local_sec_ws_accept_key, local_sec_ws_accept_key_array_len);
+                                    
+                                    // loop through the rest of the response string to find the Sec-WebSocket-Accept header
+                                    char key[] = "Sec";
+                                    char* cursor = strtok(NULL, "\n");
+                                    
+                                    while(!(cursor == NULL)){
+                                    // we keep looping through the HTTP upgrade request response till either cursor == NULL or we find our Sec-WebSocket-Key header
+                                        
+                                        // we use sizeof so we can get the length of key as a compile time constan, we subtract 1 from the result of sizeof() to account for the null byte that terminates the string
+                                        if((strncmp(key, cursor, sizeof(key) - 1) == 0) || (strncmp("sec", cursor, sizeof(key) - 1) == 0) || (strncmp("SEC", cursor, sizeof(key) - 1) == 0) || (strncmp("sEc", cursor, sizeof(key) - 1) == 0) || (strncmp("seC", cursor, sizeof(key) - 1) == 0) || (strncmp("sEC", cursor, sizeof(key) - 1) == 0) || (strncmp("SEc", cursor, sizeof(key) - 1) == 0) || (strncmp("SeC", cursor, sizeof(key) - 1) == 0)){ // only the Sec-WebSocket-key response header would have "Sec" in it so we test all possible upper and lower case combinations of the key word "sec"
                                                 
+                                            cursor += strlen("Sec-WebSocket-Accept: "); //move cursor foward to point to accept key value
+                                            
+                                            // compare server's response with our calculation
+                                            if(strncmp(local_sec_ws_accept_key, cursor, strlen(local_sec_ws_accept_key)) == 0){
+                                                
+                                                client_state = OPEN;
+                                                
+                                                break; // break if the server sec websocket key matches what we calculated. Connection authorised
+                                                    
+                                            }
+                                            else{
+                                                
+                                                strncpy(error_buffer, "Connection authorisation Failed", error_buffer_array_length);
+                                                    
+                                                reset(); // reset session and disconnect the underlying connection
+                                                    
+                                                error = true;
+                                                    
+                                                break;
+                                                    
+                                            }
+                                            
                                         }
-                                        else{
-                                            
-                                            strncpy(error_buffer, "Connection authorisation Failed", error_buffer_array_length);
-                                                
-                                            BIO_reset(c_bio); // reset bio and disconnect the underlying connection
-                                                
-                                            error = true;
-                                                
-                                            break;
-                                                
-                                        }
+                                        
+                                        cursor = strtok(NULL, "\n");
                                         
                                     }
                                     
-                                    cursor = strtok(NULL, "\n");
+                                    if(cursor == NULL){
+                                        
+                                        // getting here means no Sec-Websocket-Key header was found before strtok returned a null value
+                                        strncpy(error_buffer, "Invalid Upgrade request response received", error_buffer_array_length);
+                                        
+                                        reset(); // reset session and disconnect the underlying connection
+                                        
+                                        error = true;
+                                    
+                                    }
                                     
                                 }
-                                
-                                if(cursor == NULL){
+                                else{ // upgrade unsuccessful
                                     
-                                    // getting here means no Sec-Websocket-Key header was found before strtok returned a null value
-                                    strncpy(error_buffer, "Invalid Upgrade request response received", error_buffer_array_length);
+                                    strncpy(error_buffer, "Connection upgrade failed. Invalid path supplied", error_buffer_array_length);
                                     
-                                    BIO_reset(c_bio); // reset bio and disconnect the underlying connection
+                                    reset(); // reset session and disconnect the underlying connection
                                     
                                     error = true;
-                                
+                                    
                                 }
-                                
-                            }
-                            else{ // upgrade unsuccessful
-                                
-                                std::cout<<data_array<<std::endl;
+                                                    
+                                memset(data_array, '\0', len); // zero out the data array
 
-                                strncpy(error_buffer, "Connection upgrade failed. Invalid path supplied", error_buffer_array_length);
-                                
-                                BIO_reset(c_bio); // reset bio and disconnect the underlying connection
-                                
-                                error = true;
-                                
+                                memset(upgrade_request, '\0', upgrade_request_len); // zero out the upgrade request array
+                        
                             }
-                                                
-                            memset(data_array, '\0', len); // zero out the data array
-
-                            memset(upgrade_request, '\0', upgrade_request_len); // zero out the upgrade request array
-                    
+                        
                         }
                     
                     }
@@ -5852,7 +5761,7 @@ bool lock_client::interface_connect(std::string_view url, in_addr* interface_add
                                             
                                             error = true;
                                             
-                                            BIO_reset(c_bio); // disconnect the underlying bio
+                                            reset(); // disconnect the underlying bio
                                             
                                         }
                                         else{ 
@@ -5892,7 +5801,7 @@ bool lock_client::interface_connect(std::string_view url, in_addr* interface_add
                                         
                                             error = true;
                                             
-                                            BIO_reset(c_bio); // disconnect the underlying bio
+                                            reset(); // disconnect the underlying bio
                                         
                                         }
                                         else{ 
@@ -5928,7 +5837,7 @@ bool lock_client::interface_connect(std::string_view url, in_addr* interface_add
                                     data_array = data_array_static;
                                     BIO_puts(c_bio, upgrade_request);
                                     
-                                    int len = BIO_read(c_bio, data_array, static_data_array_length); // this function call would block till there is data to read
+                                    int len = wolfSSL_read(c_ssl, data_array, static_data_array_length); // this function call would block till there is data to read
                                     data_array[len] = '\0'; // null terminate the received bytes
 
                                     // test for the switching protocol header to confirm that the connection upgrade was successful
@@ -5975,7 +5884,7 @@ bool lock_client::interface_connect(std::string_view url, in_addr* interface_add
                                                     
                                                     strncpy(error_buffer, "Connection authorisation Failed", error_buffer_array_length);
                                                         
-                                                    BIO_reset(c_bio); // reset bio and disconnect the underlying connection
+                                                    reset(); // reset bio and disconnect the underlying connection
                                                         
                                                     error = true;
                                                         
@@ -5994,7 +5903,7 @@ bool lock_client::interface_connect(std::string_view url, in_addr* interface_add
                                             // getting here means no Sec-Websocket-Key header was found before strtok returned a null value
                                             strncpy(error_buffer, "Invalid Upgrade request response received", error_buffer_array_length);
                                             
-                                            BIO_reset(c_bio); // reset bio and disconnect the underlying connection
+                                            reset(); // reset bio and disconnect the underlying connection
                                             
                                             error = true;
                                         
@@ -6005,7 +5914,7 @@ bool lock_client::interface_connect(std::string_view url, in_addr* interface_add
                                         
                                         strncpy(error_buffer, "Connection upgrade failed. Invalid path supplied", error_buffer_array_length);
                                         
-                                        BIO_reset(c_bio); // reset bio and disconnect the underlying connection
+                                        reset(); // reset bio and disconnect the underlying connection
                                         
                                         error = true;
                                         
@@ -6303,12 +6212,12 @@ void lock_client::fail_ws_connection(unsigned short status_code){
     block_sigpipe_signal();
             
     // send the close frame
-    (void)BIO_write(c_bio, send_data, i); // no need checking whether it was successfully sent through we close the connection nonetheless
+    (void)wolfSSL_write(c_ssl, send_data, i); // no need checking whether it was successfully sent through we close the connection nonetheless
             
     unblock_sigpipe_signal();
             
     // close the underlying connection, don't wait for server response
-    BIO_reset(c_bio);
+    reset();
             
     client_state = CLOSED; // sets the client state back to closed
 
@@ -6370,13 +6279,13 @@ bool lock_client::close(unsigned short status_code){ // this closes an establish
             block_sigpipe_signal();
                 
             // send the close frame
-            BIO_write(c_bio, send_data, i);
+            wolfSSL_write(c_ssl, send_data, i);
             
             // unblock SIGPIPE signal
             unblock_sigpipe_signal();
 
             // after sending the close frame we do not attempt to read any more data from the server we just disconnect the underlying network connection
-            BIO_reset(c_bio);
+            reset();
                 
             client_state = CLOSED;
      
@@ -6960,7 +6869,7 @@ lock_client_nb::lock_client_nb(std::string_view url){
                                     
                                     error = true;
                                     
-                                    BIO_reset(c_bio); // disconnect the underlying bio
+                                    reset(); // disconnect the underlying bio
                                     
                                 }
                                 else{ 
@@ -7000,7 +6909,7 @@ lock_client_nb::lock_client_nb(std::string_view url){
                                 
                                     error = true;
                                     
-                                    BIO_reset(c_bio); // disconnect the underlying bio
+                                    reset(); // disconnect the underlying bio
                                 
                                 }
                                 else{ 
@@ -7058,14 +6967,14 @@ lock_client_nb::lock_client_nb(std::string_view url){
                             
                             if(!error){
 
-                                int len = BIO_read(c_bio, data_array, static_data_array_length); // non blocking call to bio read
+                                int len = wolfSSL_read(c_ssl, data_array, static_data_array_length); // non blocking call to bio read
 
                                 while(len <= 0){
 
                                     if(BIO_should_retry(c_bio)){
                                     // getting here the read request would block so we keep looping
 
-                                        len = BIO_read(c_bio, data_array, static_data_array_length);
+                                        len = wolfSSL_read(c_ssl, data_array, static_data_array_length);
 
                                         continue;
 
@@ -7130,7 +7039,7 @@ lock_client_nb::lock_client_nb(std::string_view url){
                                                     
                                                     strncpy(error_buffer, "Connection authorisation Failed", error_buffer_array_length);
                                                         
-                                                    BIO_reset(c_bio); // reset bio and disconnect the underlying connection
+                                                    reset(); // reset bio and disconnect the underlying connection
                                                         
                                                     error = true;
                                                         
@@ -7149,7 +7058,7 @@ lock_client_nb::lock_client_nb(std::string_view url){
                                             // getting here means no Sec-Websocket-Key header was found before strtok returned a null value
                                             strncpy(error_buffer, "Invalid Upgrade request response received", error_buffer_array_length);
                                             
-                                            BIO_reset(c_bio); // reset bio and disconnect the underlying connection
+                                            reset(); // reset bio and disconnect the underlying connection
                                             
                                             error = true;
                                         
@@ -7160,7 +7069,7 @@ lock_client_nb::lock_client_nb(std::string_view url){
                                         
                                         strncpy(error_buffer, "Connection upgrade failed. Invalid path or url supplied", error_buffer_array_length);
                                         
-                                        BIO_reset(c_bio); // reset bio and disconnect the underlying connection
+                                        reset(); // reset bio and disconnect the underlying connection
                                         
                                         error = true;
                                         
@@ -7634,7 +7543,7 @@ lock_client_nb::lock_client_nb(std::string_view url, in_addr* interface_address,
                                             
                                             error = true;
                                             
-                                            BIO_reset(c_bio); // disconnect the underlying bio
+                                            reset(); // disconnect the underlying bio
                                             
                                         }
                                         else{ 
@@ -7674,7 +7583,7 @@ lock_client_nb::lock_client_nb(std::string_view url, in_addr* interface_address,
                                         
                                             error = true;
                                             
-                                            BIO_reset(c_bio); // disconnect the underlying bio
+                                            reset(); // disconnect the underlying bio
                                         
                                         }
                                         else{ 
@@ -7710,7 +7619,7 @@ lock_client_nb::lock_client_nb(std::string_view url, in_addr* interface_address,
                                     data_array = data_array_static;
                                     BIO_puts(c_bio, upgrade_request);
                                     
-                                    int len = BIO_read(c_bio, data_array, static_data_array_length); // this function call would block till there is data to read
+                                    int len = wolfSSL_read(c_ssl, data_array, static_data_array_length); // this function call would block till there is data to read
                                     data_array[len] = '\0'; // null terminate the received bytes
 
                                     // test for the switching protocol header to confirm that the connection upgrade was successful
@@ -7757,7 +7666,7 @@ lock_client_nb::lock_client_nb(std::string_view url, in_addr* interface_address,
                                                     
                                                     strncpy(error_buffer, "Connection authorisation Failed", error_buffer_array_length);
                                                         
-                                                    BIO_reset(c_bio); // reset bio and disconnect the underlying connection
+                                                    reset(); // reset bio and disconnect the underlying connection
                                                         
                                                     error = true;
                                                         
@@ -7776,7 +7685,7 @@ lock_client_nb::lock_client_nb(std::string_view url, in_addr* interface_address,
                                             // getting here means no Sec-Websocket-Key header was found before strtok returned a null value
                                             strncpy(error_buffer, "Invalid Upgrade request response received", error_buffer_array_length);
                                             
-                                            BIO_reset(c_bio); // reset bio and disconnect the underlying connection
+                                            reset(); // reset bio and disconnect the underlying connection
                                             
                                             error = true;
                                         
@@ -7787,7 +7696,7 @@ lock_client_nb::lock_client_nb(std::string_view url, in_addr* interface_address,
                                         
                                         strncpy(error_buffer, "Connection upgrade failed. Invalid path supplied", error_buffer_array_length);
                                         
-                                        BIO_reset(c_bio); // reset bio and disconnect the underlying connection
+                                        reset(); // reset bio and disconnect the underlying connection
                                         
                                         error = true;
                                         
@@ -8078,7 +7987,7 @@ bool lock_client_nb::ping(){ // sends a ping on an established websocket connect
             // keep polling till we have sent the entire frame
             while(len < i){
 
-                int64_t local_len = BIO_write(c_bio, send_data, i - len);
+                int64_t local_len = wolfSSL_write(c_ssl, send_data, i - len);
 
                 if(local_len > 0){
 
@@ -8177,7 +8086,7 @@ bool lock_client_nb::pong(int ping_data_len){ // sends out a pong frame unsolici
             // keep polling till we have sent the entire frame
             while(len < i){
 
-                int64_t local_len = BIO_write(c_bio, send_data, i - len);
+                int64_t local_len = wolfSSL_write(c_ssl, send_data, i - len);
 
                 if(local_len > 0){
 
@@ -8375,7 +8284,7 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
                     // keep polling till we have sent the entire frame
                     while(len < i){
 
-                        int64_t local_len = BIO_write(c_bio, send_data, i - len);
+                        int64_t local_len = wolfSSL_write(c_ssl, send_data, i - len);
 
                         if(local_len > 0){
 
@@ -8519,7 +8428,7 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
                 // keep polling till we have sent the entire frame
                 while(len < i){
 
-                    int64_t local_len = BIO_write(c_bio, send_data, i - len);
+                    int64_t local_len = wolfSSL_write(c_ssl, send_data, i - len);
 
                     if(local_len > 0){
 
@@ -8662,7 +8571,7 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
                         // keep polling till we have sent the entire frame
                         while(len < i){
 
-                            int64_t local_len = BIO_write(c_bio, send_data, i - len);
+                            int64_t local_len = wolfSSL_write(c_ssl, send_data, i - len);
 
                             if(local_len > 0){
 
@@ -8799,7 +8708,7 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
                         // keep polling till we have sent the entire frame
                         while(len < i){
 
-                            int64_t local_len = BIO_write(c_bio, send_data, i - len);
+                            int64_t local_len = wolfSSL_write(c_ssl, send_data, i - len);
 
                             if(local_len > 0){
 
@@ -8918,7 +8827,7 @@ bool lock_client_nb::basic_read(){
             while(total_read_bytes < bytes_to_read){
 
                 // we call BIO_read to attempt to read the bytes into the buffer
-                read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
+                read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
                 // if BIO_read returns a value <= 0 we check if there is data available to be read
                 if(read_bytes <= 0){
@@ -9000,7 +8909,7 @@ bool lock_client_nb::basic_read(){
                     while(total_read_bytes < bytes_to_read){
 
                         // we call BIO_read to attempt to read the bytes into the buffer
-                        read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
+                        read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
                         // if BIO_read returns a value <= 0 we check if there is data available to be read
                         if(read_bytes <= 0){
@@ -9076,7 +8985,7 @@ bool lock_client_nb::basic_read(){
                     while(total_read_bytes < bytes_to_read){
 
                         // we call BIO_read to attempt to read the bytes into the buffer
-                        read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
+                        read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
                         // if BIO_read returns a value <= 0 we check if there is data available to be read
                         if(read_bytes <= 0){
@@ -9186,7 +9095,7 @@ bool lock_client_nb::basic_read(){
                     // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                     while(len < frame_data_len){
                     
-                        int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
+                        int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                             
                         if(extra_bytes_read > 0){
                         // bio_read fetched extra data
@@ -9250,7 +9159,7 @@ bool lock_client_nb::basic_read(){
                     // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                     while(len < frame_data_len){
                         
-                        int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
+                        int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                             
                         if(extra_bytes_read > 0){
                         // bio_read fetched extra data
@@ -9334,7 +9243,7 @@ bool lock_client_nb::basic_read(){
                             // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                             while(len < frame_data_len){
                                 
-                                int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
+                                int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                                     
                                 if(extra_bytes_read > 0){
                                 // bio_read fetched extra data
@@ -9420,7 +9329,7 @@ bool lock_client_nb::basic_read(){
                             // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                             while(len < frame_data_len){
                                 
-                                int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
+                                int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                                     
                                 if(extra_bytes_read > 0){
                                 // bio_read fetched extra data
@@ -9503,7 +9412,7 @@ bool lock_client_nb::basic_read(){
                     while(total_read_bytes < bytes_to_read){
 
                         // we call BIO_read to attempt to read the bytes into the buffer
-                        read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
+                        read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
                         // if BIO_read returns a value <= 0 we check if there is data available to be read
                         if(read_bytes <= 0){
@@ -9579,7 +9488,7 @@ bool lock_client_nb::basic_read(){
                     while(total_read_bytes < bytes_to_read){
 
                         // we call BIO_read to attempt to read the bytes into the buffer
-                        read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
+                        read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
                         // if BIO_read returns a value <= 0 we check if there is data available to be read
                         if(read_bytes <= 0){
@@ -9686,7 +9595,7 @@ bool lock_client_nb::basic_read(){
                     // we keep polling till we have read the entire frame
                     while(len < frame_data_len){
                     
-                        int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
+                        int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                             
                         if(extra_bytes_read > 0){
                         // bio_read fetched extra data
@@ -9747,7 +9656,7 @@ bool lock_client_nb::basic_read(){
                     // we keep polling till we have read the entire frame
                     while(len < frame_data_len){
                         
-                        int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
+                        int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                             
                         if(extra_bytes_read > 0){
                         // bio_read fetched extra data
@@ -9828,7 +9737,7 @@ bool lock_client_nb::basic_read(){
                             // we keep polling till we have read the entire frame
                             while(len < frame_data_len){
                                 
-                                int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
+                                int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                                     
                                 if(extra_bytes_read > 0){
                                 // bio_read fetched extra data
@@ -9911,7 +9820,7 @@ bool lock_client_nb::basic_read(){
                             // we keep polling till we have read the entire frame
                             while(len < frame_data_len){
                                 
-                                int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
+                                int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                                     
                                 if(extra_bytes_read > 0){
                                 // bio_read fetched extra data
@@ -9992,7 +9901,7 @@ bool lock_client_nb::basic_read(){
                     while(total_read_bytes < bytes_to_read){
 
                         // we call BIO_read to attempt to read the bytes into the buffer
-                        read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
+                        read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
                         // if BIO_read returns a value <= 0 we check if there is data available to be read
                         if(read_bytes <= 0){
@@ -10068,7 +9977,7 @@ bool lock_client_nb::basic_read(){
                     while(total_read_bytes < bytes_to_read){
 
                         // we call BIO_read to attempt to read the bytes into the buffer
-                        read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
+                        read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
                         // if BIO_read returns a value <= 0 we check if there is data available to be read
                         if(read_bytes <= 0){
@@ -10172,7 +10081,7 @@ bool lock_client_nb::basic_read(){
                     // we keep polling till we have read the entire frame
                     while(len < frame_data_len){
                     
-                        int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
+                        int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                             
                         if(extra_bytes_read > 0){
                         // bio_read fetched extra data
@@ -10240,7 +10149,7 @@ bool lock_client_nb::basic_read(){
                     // we keep polling till we have read the entire frame
                     while(len < frame_data_len){
                     
-                        int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
+                        int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                             
                         if(extra_bytes_read > 0){
                         // bio_read fetched extra data
@@ -10329,7 +10238,7 @@ bool lock_client_nb::basic_read(){
                             // we keep polling till we have read the entire frame
                             while(len < frame_data_len){
                             
-                                int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
+                                int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                                     
                                 if(extra_bytes_read > 0){
                                 // bio_read fetched extra data
@@ -10420,7 +10329,7 @@ bool lock_client_nb::basic_read(){
                             // we keep polling till we have read the entire frame
                             while(len < frame_data_len){
                             
-                                int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
+                                int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                                     
                                 if(extra_bytes_read > 0){
                                 // bio_read fetched extra data
@@ -10512,7 +10421,7 @@ bool lock_client_nb::basic_read(){
                         // we keep polling till we have read the entire frame
                         while(len < frame_data_len){
                         
-                            int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
+                            int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                                 
                             if(extra_bytes_read > 0){
                             // bio_read fetched extra data
@@ -10591,7 +10500,7 @@ bool lock_client_nb::basic_read(){
                     while(total_read_bytes < bytes_to_read){
 
                         // we call BIO_read to attempt to read the bytes into the buffer
-                        read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
+                        read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
                         // if BIO_read returns a value <= 0 we check if there is data available to be read
                         if(read_bytes <= 0){
@@ -10667,7 +10576,7 @@ bool lock_client_nb::basic_read(){
                     while(total_read_bytes < bytes_to_read){
 
                         // we call BIO_read to attempt to read the bytes into the buffer
-                        read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
+                        read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
                         // if BIO_read returns a value <= 0 we check if there is data available to be read
                         if(read_bytes <= 0){
@@ -10769,7 +10678,7 @@ bool lock_client_nb::basic_read(){
                     // we keep polling till we have read the entire frame
                     while(len < frame_data_len){
                     
-                        int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
+                        int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                             
                         if(extra_bytes_read > 0){
                         // bio_read fetched extra data
@@ -10843,7 +10752,7 @@ bool lock_client_nb::basic_read(){
                     // we keep polling till we have read the entire frame
                     while(len < frame_data_len){
                     
-                        int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
+                        int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                             
                         if(extra_bytes_read > 0){
                         // bio_read fetched extra data
@@ -10939,7 +10848,7 @@ bool lock_client_nb::basic_read(){
                             // we keep polling till we have read the entire frame
                             while(len < frame_data_len){
                             
-                                int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
+                                int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                                     
                                 if(extra_bytes_read > 0){
                                 // bio_read fetched extra data
@@ -11037,7 +10946,7 @@ bool lock_client_nb::basic_read(){
                             // we keep polling till we have read the entire frame
                             while(len < frame_data_len){
                             
-                                int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
+                                int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                                     
                                 if(extra_bytes_read > 0){
                                 // bio_read fetched extra data
@@ -11135,7 +11044,7 @@ bool lock_client_nb::basic_read(){
                         // we keep polling till we have read the entire frame
                         while(len < frame_data_len){
                         
-                            int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
+                            int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                                 
                             if(extra_bytes_read > 0){
                             // bio_read fetched extra data
@@ -11231,7 +11140,7 @@ bool lock_client_nb::basic_read(){
                     // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                     while(len < frame_data_len){
                     
-                        int64_t extra_bytes_read = BIO_read(c_bio, upgrade_request, frame_data_len - len);
+                        int64_t extra_bytes_read = wolfSSL_read(c_ssl, upgrade_request, frame_data_len - len);
                             
                         if(extra_bytes_read > 0){
                         // bio_read fetched extra data
@@ -11321,7 +11230,7 @@ bool lock_client_nb::basic_read(){
                 // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                 while(len < frame_data_len){
                 
-                    int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
+                    int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                         
                     if(extra_bytes_read > 0){
                     // bio_read fetched extra data
@@ -11396,12 +11305,12 @@ bool lock_client_nb::basic_read(){
                 }
                 
                 // send the close frame response - we do not test the return code of bio_read in this case neither do we poll to ensure it sends
-                (void)BIO_write(c_bio, send_data, i);
+                (void)wolfSSL_write(c_ssl, send_data, i);
                 
                 // unblock SIGPIPE signal
                 unblock_sigpipe_signal();
                 
-                BIO_reset(c_bio); // close the existing connection and reset the bio
+                reset(); // close the existing connection and reset the bio
                 
                 memset(data_array, '\0', frame_data_len); // zero out the data array
                 
@@ -11447,7 +11356,7 @@ bool lock_client_nb::basic_read(){
                 // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                 while(len < frame_data_len){
                 
-                    int64_t extra_bytes_read = BIO_read(c_bio, upgrade_request, frame_data_len - len);
+                    int64_t extra_bytes_read = wolfSSL_read(c_ssl, upgrade_request, frame_data_len - len);
                         
                     if(extra_bytes_read > 0){
                     // bio_read fetched extra data
@@ -12071,7 +11980,7 @@ bool lock_client_nb::connect(std::string_view url){ // this is used to connect t
                                     
                                     error = true;
                                     
-                                    BIO_reset(c_bio); // disconnect the underlying bio
+                                    reset(); // disconnect the underlying bio
                                     
                                 }
                                 else{ 
@@ -12111,7 +12020,7 @@ bool lock_client_nb::connect(std::string_view url){ // this is used to connect t
                                 
                                     error = true;
                                     
-                                    BIO_reset(c_bio); // disconnect the underlying bio
+                                    reset(); // disconnect the underlying bio
                                 
                                 }
                                 else{ 
@@ -12169,14 +12078,14 @@ bool lock_client_nb::connect(std::string_view url){ // this is used to connect t
                             
                             if(!error){
 
-                                int len = BIO_read(c_bio, data_array, static_data_array_length); // non blocking call to bio read
+                                int len = wolfSSL_read(c_ssl, data_array, static_data_array_length); // non blocking call to bio read
 
                                 while(len <= 0){
 
                                     if(BIO_should_retry(c_bio)){
                                     // getting here the read request would block so we keep looping
 
-                                        len = BIO_read(c_bio, data_array, static_data_array_length);
+                                        len = wolfSSL_read(c_ssl, data_array, static_data_array_length);
 
                                         continue;
 
@@ -12241,7 +12150,7 @@ bool lock_client_nb::connect(std::string_view url){ // this is used to connect t
                                                     
                                                     strncpy(error_buffer, "Connection authorisation Failed", error_buffer_array_length);
                                                         
-                                                    BIO_reset(c_bio); // reset bio and disconnect the underlying connection
+                                                    reset(); // reset bio and disconnect the underlying connection
                                                         
                                                     error = true;
                                                         
@@ -12260,7 +12169,7 @@ bool lock_client_nb::connect(std::string_view url){ // this is used to connect t
                                             // getting here means no Sec-Websocket-Key header was found before strtok returned a null value
                                             strncpy(error_buffer, "Invalid Upgrade request response received", error_buffer_array_length);
                                             
-                                            BIO_reset(c_bio); // reset bio and disconnect the underlying connection
+                                            reset(); // reset bio and disconnect the underlying connection
                                             
                                             error = true;
                                         
@@ -12271,7 +12180,7 @@ bool lock_client_nb::connect(std::string_view url){ // this is used to connect t
                                         
                                         strncpy(error_buffer, "Connection upgrade failed. Invalid path or url supplied", error_buffer_array_length);
                                         
-                                        BIO_reset(c_bio); // reset bio and disconnect the underlying connection
+                                        reset(); // reset bio and disconnect the underlying connection
                                         
                                         error = true;
                                         
@@ -12731,7 +12640,7 @@ bool lock_client_nb::interface_connect(std::string_view url, in_addr* interface_
                                             
                                             error = true;
                                             
-                                            BIO_reset(c_bio); // disconnect the underlying bio
+                                            reset(); // disconnect the underlying bio
                                             
                                         }
                                         else{ 
@@ -12771,7 +12680,7 @@ bool lock_client_nb::interface_connect(std::string_view url, in_addr* interface_
                                         
                                             error = true;
                                             
-                                            BIO_reset(c_bio); // disconnect the underlying bio
+                                            reset(); // disconnect the underlying bio
                                         
                                         }
                                         else{ 
@@ -12807,7 +12716,7 @@ bool lock_client_nb::interface_connect(std::string_view url, in_addr* interface_
                                     data_array = data_array_static;
                                     BIO_puts(c_bio, upgrade_request);
                                     
-                                    int len = BIO_read(c_bio, data_array, static_data_array_length); // this function call would block till there is data to read
+                                    int len = wolfSSL_read(c_ssl, data_array, static_data_array_length); // this function call would block till there is data to read
                                     data_array[len] = '\0'; // null terminate the received bytes
 
                                     // test for the switching protocol header to confirm that the connection upgrade was successful
@@ -12854,7 +12763,7 @@ bool lock_client_nb::interface_connect(std::string_view url, in_addr* interface_
                                                     
                                                     strncpy(error_buffer, "Connection authorisation Failed", error_buffer_array_length);
                                                         
-                                                    BIO_reset(c_bio); // reset bio and disconnect the underlying connection
+                                                    reset(); // reset bio and disconnect the underlying connection
                                                         
                                                     error = true;
                                                         
@@ -12873,7 +12782,7 @@ bool lock_client_nb::interface_connect(std::string_view url, in_addr* interface_
                                             // getting here means no Sec-Websocket-Key header was found before strtok returned a null value
                                             strncpy(error_buffer, "Invalid Upgrade request response received", error_buffer_array_length);
                                             
-                                            BIO_reset(c_bio); // reset bio and disconnect the underlying connection
+                                            reset(); // reset bio and disconnect the underlying connection
                                             
                                             error = true;
                                         
@@ -12884,7 +12793,7 @@ bool lock_client_nb::interface_connect(std::string_view url, in_addr* interface_
                                         
                                         strncpy(error_buffer, "Connection upgrade failed. Invalid path supplied", error_buffer_array_length);
                                         
-                                        BIO_reset(c_bio); // reset bio and disconnect the underlying connection
+                                        reset(); // reset bio and disconnect the underlying connection
                                         
                                         error = true;
                                         
@@ -13157,12 +13066,12 @@ void lock_client_nb::fail_ws_connection(unsigned short status_code){
     block_sigpipe_signal();
             
     // send the close frame
-    (void)BIO_write(c_bio, send_data, i); // no need checking whether it was successfully sent through we close the connection nonetheless
+    (void)wolfSSL_write(c_ssl, send_data, i); // no need checking whether it was successfully sent through we close the connection nonetheless
             
     unblock_sigpipe_signal();
             
     // close the underlying connection, don't wait for server response
-    BIO_reset(c_bio);
+    reset();
             
     client_state = CLOSED; // sets the client state back to closed
 
@@ -13224,13 +13133,13 @@ bool lock_client_nb::close(unsigned short status_code){ // this closes an establ
             block_sigpipe_signal();
                 
             // send the close frame
-            (void)BIO_write(c_bio, send_data, i); // no need checking whether it was successfully sent through we close the connection nonetheless
+            (void)wolfSSL_write(c_ssl, send_data, i); // no need checking whether it was successfully sent through we close the connection nonetheless
             
             // unblock SIGPIPE signal
             unblock_sigpipe_signal();
 
             // after sending the close frame we do not attempt to read any more data from the server we just disconnect the underlying network connection
-            BIO_reset(c_bio);
+            reset();
                 
             client_state = CLOSED;
      
