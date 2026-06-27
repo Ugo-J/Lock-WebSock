@@ -1,6 +1,6 @@
 #include <iostream>
-#include <openssl/bio.h>
-#include <openssl/ssl.h>
+#include <wolfssl/options.h>
+#include <wolfssl/ssl.h>
 #include <signal.h>
 #include <cstring>
 #include <chrono>

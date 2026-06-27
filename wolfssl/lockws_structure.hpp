@@ -60,10 +60,14 @@ private:
 // class wide variables    
 private:    
     
-    inline static bool openssl_init = false; // bool variable to test if openssl initialisations have been done
-    inline static SSL_CTX* ssl_ctx = NULL;
+    inline static bool wolfssl_init = false; // bool variable to test if wolfssl initialisations have been done
+    inline static WOLFSSL_CTX* ssl_ctx = NULL;
     inline static const char string_to_append[] = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"; // this string is appended to the base64 encoded nonce to calculate the Sec-WebSocket-Accept header value and compare with the server's
     inline static const int size_of_SHA1_digest = 20;
+
+    // static memory for wolfssl because we disabled dynamil allocation
+    constexpr size_t CRYPTO_ARENA_SIZE = 64 * 1024;
+    alignas(16) static uint8_t crypto_memory_pool[CRYPTO_ARENA_SIZE];
     
 // instance connection data variables     
 private:
@@ -95,12 +99,8 @@ private:
     
 // Openssl Library instance variables    
 private:
-        
-   BIO* c_bio = NULL; // sets the lock_client instance connection handle
-   BIO* out_bio = NULL; // sets the bio instance used for screen output
-   BIO* c_base64 = NULL; //  BIO structure for Base64 encoding
-   BIO* c_mem_base64 = NULL; // mem bio that is chained to the base64 filter bio 
-   SSL* c_ssl = NULL; // defines the ssl object that is used to set instance-specific openssl options  
+
+   WOLFSSL* c_ssl = NULL; // defines the ssl object that is used to set instance-specific openssl options  
 
 // variables for upgrading to and maintaining WebSocket connection    
 private:
