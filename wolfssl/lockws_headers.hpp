@@ -1,6 +1,8 @@
 #include <iostream>
 #include <wolfssl/options.h>
 #include <wolfssl/ssl.h>
+#include <wolfssl/wolfcrypt/coding.h>
+#include <wolfssl/wolfcrypt/sha.h>
 #include <signal.h>
 #include <cstring>
 #include <chrono>

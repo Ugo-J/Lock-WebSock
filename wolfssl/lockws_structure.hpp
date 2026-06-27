@@ -61,13 +61,13 @@ private:
 private:    
     
     inline static bool wolfssl_init = false; // bool variable to test if wolfssl initialisations have been done
-    inline static WOLFSSL_CTX* ssl_ctx = NULL;
+    thread_local inline static WOLFSSL_CTX* ssl_ctx = NULL;
     inline static const char string_to_append[] = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"; // this string is appended to the base64 encoded nonce to calculate the Sec-WebSocket-Accept header value and compare with the server's
     inline static const int size_of_SHA1_digest = 20;
 
     // static memory for wolfssl because we disabled dynamil allocation
     constexpr size_t CRYPTO_ARENA_SIZE = 64 * 1024;
-    alignas(16) static uint8_t crypto_memory_pool[CRYPTO_ARENA_SIZE];
+    alignas(16) thread_local static uint8_t crypto_memory_pool[CRYPTO_ARENA_SIZE];
     
 // instance connection data variables     
 private:
@@ -273,10 +273,14 @@ private:
 // class wide variables    
 private:    
     
-    inline static bool openssl_init = false; // bool variable to test if openssl initialisations have been done
-    inline static SSL_CTX* ssl_ctx = NULL;
+    inline static bool wolfssl_init = false; // bool variable to test if wolfssl initialisations have been done
+    thread_local inline static WOLFSSL_CTX* ssl_ctx = NULL;
     inline static const char string_to_append[] = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"; // this string is appended to the base64 encoded nonce to calculate the Sec-WebSocket-Accept header value and compare with the server's
     inline static const int size_of_SHA1_digest = 20;
+
+    // static memory for wolfssl because we disabled dynamil allocation
+    constexpr size_t CRYPTO_ARENA_SIZE = 64 * 1024;
+    alignas(16) thread_local static uint8_t crypto_memory_pool[CRYPTO_ARENA_SIZE];
     
 // instance connection data variables     
 private:

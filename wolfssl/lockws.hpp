@@ -486,12 +486,10 @@ lock_client::lock_client(std::string_view url){
                             }
                             
                             // get the Base-64 encoding of the random number to give the value of the nonce
-                            BIO_write(c_base64, rand_bytes, rand_byte_array_len);
-                            BIO_flush(c_base64); 
-                            BIO_read(c_mem_base64, base64_encoded_nonce, nonce_array_len);
+                            Base64_Encode_NoNl(rand_bytes, rand_byte_array_len, base64_encoded_nonce, nonce_array_len);
                         
                             // request connection upgrade
-                            int length_of_supplied_data = strlen(c_path) + strlen( (const char*)base64_encoded_nonce) + strlen(c_host);
+                            int length_of_supplied_data = strlen(c_path) + strlen((const char*)base64_encoded_nonce) + strlen(c_host);
                             char char_remaining[] = "GET  HTTP/1.1\nHost: \nConnection: Upgrade\nPragma: no-cache\nUpgrade: websocket\nSec-WebSocket-Version: 13\nSec-WebSocket-Key: \n\n";
                             int upgrade_request_len = strlen(char_remaining) + length_of_supplied_data;
                             
@@ -623,9 +621,11 @@ lock_client::lock_client(std::string_view url){
                             if(!error){ // only continue if no error
                                 
                                 data_array = data_array_static;
-                                BIO_puts(c_bio, upgrade_request);
+
+                                // we send our upgrade request
+                                wolfSSL_write(c_ssl, reinterpret_cast<const void*>(upgrade_request), strlen(upgrade_request));
                                 
-                                int len = BIO_read(c_bio, data_array, static_data_array_length); // this function call would block till there is data to read
+                                int len = wolfSSL_read(c_ssl, data_array, static_data_array_length); // this function call would block till there is data to read
                                 data_array[len] = '\0'; // null terminate the received bytes
 
                                 // test for the switching protocol header to confirm that the connection upgrade was successful
@@ -636,17 +636,25 @@ lock_client::lock_client(std::string_view url){
                                     // Authorise connection - confirm that the Sec-WebSocket-Accept is what it should be by calculating the key and comparing it with the server's
                                     
                                     // build the SHA1 parameter
-                                    strncpy(SHA1_parameter, (const char*)base64_encoded_nonce, SHA1_parameter_array_len);
+                                    strcpy(SHA1_parameter, (const char*)base64_encoded_nonce);
                                     strncat(SHA1_parameter, string_to_append, SHA1_parameter_array_len - strlen(SHA1_parameter));
                                     // SHA1 parameter build end 
                                     
+                                    // we create a sha context for computing our sha1 hash
+                                    wc_Sha sha_context;
+
+                                    // sha context init
+                                    wc_InitSha(&sha_context);
+
+                                    // we update our sha context with the data to be hashed
+                                    wc_ShaUpdate(&sha_context, SHA1_parameter, strlen(SHA1_parameter));
+
                                     SHA1((const unsigned char*)SHA1_parameter, strlen(SHA1_parameter), SHA1_digest); // get the sha1 hash digest
-                                    
-                                    // base64 encode the SHA1_digest 
-                                    BIO_write(c_base64, SHA1_digest, size_of_SHA1_digest);
-                                    BIO_flush(c_base64); 
-                                    BIO_read(c_mem_base64, local_sec_ws_accept_key, local_sec_ws_accept_key_array_len);
-                                    // base64 encoding of SHA1 digest end 
+
+                                    wc_ShaFinal(&sha_context, SHA1_digest);
+
+                                    // base64 encode the SHA1 digest
+                                    Base64_Encode_NoNl(SHA1_digest, SHA1_digest_array_len, local_sec_ws_accept_key, local_sec_ws_accept_key_array_len);
                                     
                                     // loop through the rest of the response string to find the Sec-WebSocket-Accept header
                                     char key[] = "Sec";
@@ -672,7 +680,7 @@ lock_client::lock_client(std::string_view url){
                                                 
                                                 strncpy(error_buffer, "Connection authorisation Failed", error_buffer_array_length);
                                                     
-                                                BIO_reset(c_bio); // reset bio and disconnect the underlying connection
+                                                reset(); // reset session and disconnect the underlying connection
                                                     
                                                 error = true;
                                                     
@@ -691,7 +699,7 @@ lock_client::lock_client(std::string_view url){
                                         // getting here means no Sec-Websocket-Key header was found before strtok returned a null value
                                         strncpy(error_buffer, "Invalid Upgrade request response received", error_buffer_array_length);
                                         
-                                        BIO_reset(c_bio); // reset bio and disconnect the underlying connection
+                                        reset(); // reset session and disconnect the underlying connection
                                         
                                         error = true;
                                     
@@ -702,7 +710,7 @@ lock_client::lock_client(std::string_view url){
                                     
                                     strncpy(error_buffer, "Connection upgrade failed. Invalid path supplied", error_buffer_array_length);
                                     
-                                    BIO_reset(c_bio); // reset bio and disconnect the underlying connection
+                                    reset(); // reset session and disconnect the underlying connection
                                     
                                     error = true;
                                     
@@ -731,7 +739,7 @@ lock_client::lock_client(std::string_view url){
 lock_client::lock_client(std::string_view url, in_addr* interface_address, char* interface_name){
 
     // initialisation of class wide variables
-    if(!openssl_init){
+    if(!wolfssl_init){
         
         ssl_ctx = SSL_CTX_new(TLS_client_method()); // initialises the SSL_CTX pointer with method TLS, this SSL_CTX structure is shared among all lock_client instance
         
@@ -747,7 +755,7 @@ lock_client::lock_client(std::string_view url, in_addr* interface_address, char*
 
         }
         
-        openssl_init = true;
+        wolfssl_init = true;
         
     }
     
@@ -1451,9 +1459,14 @@ lock_client::lock_client(std::string_view url, in_addr* interface_address, char*
 lock_client::lock_client(){
     
     // initialisation of class wide variables
-    if(!openssl_init){
+    if(!wolfssl_init){
+
+        if(wolfSSL_Init() != WOLFSSL_SUCCESS) std::cout<<"Failed to initialize wolfSSL core runtime.\n";
         
-        ssl_ctx = SSL_CTX_new(TLS_client_method()); // initialises the SSL_CTX pointer with method TLS, this SSL_CTX structure is shared among all lock_client instance
+        // we create our ssl ctx and register our static memory poll to prevent runtime memory allocation - the 'WOLFSSL_STATIC_MALLOC' flag enforces strict, non-growing bounds.
+        ssl_ctx = wolfSSL_CTX_new_ex(wolfTLSv1_3_client_method(), reinterpret_cast<byte*>(crypto_memory_pool), CRYPTO_ARENA_SIZE, WOLFSSL_STATIC_MALLOC);
+
+        if(!ssl_ctx) std::cout<<"Context creation failed. Memory pool may be too small or misaligned.\n";
         
         // seed the random number generator
         srand(std::chrono::duration_cast< std::chrono::milliseconds >(std::chrono::system_clock::now().time_since_epoch()).count());
@@ -1467,25 +1480,9 @@ lock_client::lock_client(){
 
         }
         
-        openssl_init = true;
+        wolfssl_init = true;
         
     }
-    
-    // set the screen output bio
-    out_bio = BIO_new_fp(stdout, BIO_NOCLOSE); // sets the out bio to print to stdout
-    
-    // sets the mem bio 
-    c_mem_base64 = BIO_new(BIO_s_mem());
-    
-    // sets the base64 bio 
-    c_base64 = BIO_new(BIO_f_base64()); // initialise the base64 BIO structure
-    
-    // set the no newline option on the base64 bio to prevent it from adding superfluous newlines to output
-    BIO_set_flags(c_base64, BIO_FLAGS_BASE64_NO_NL);
-    
-    // chain base64 and mem bio 
-    BIO_push(c_base64, c_mem_base64);
-    
     
 }
 
@@ -1496,7 +1493,7 @@ lock_client::~lock_client(){
     if(client_state == OPEN){
         
         close();
-        
+
     }
     
     // free url heap memory - this only runs if dynamic memory allocation is used to store the url
@@ -1527,25 +1524,9 @@ lock_client::~lock_client(){
         
     }
     
-    if(c_ssl == NULL && c_url != NULL){// this would mean that this object is not an ssl BIO hence a regular free is sufficient
+    if(c_ssl != NULL && c_url != NULL){
         
-        BIO_free(c_bio);
-    }
-    else if(c_ssl != NULL && c_url != NULL){// this would mean that the object is an ssl bio
-        
-        BIO_free_all(c_bio); // frees the ssl bio chain
-    }
-    
-    if(c_base64 != NULL){
-        
-        BIO_free(c_base64); // free the base64 bio chain
-        
-    }
-    
-    if(c_mem_base64 != NULL){
-        
-        BIO_free(c_mem_base64); // free the mem bio structure
-        
+        wolfSSL_free(c_ssl); // frees the wolfssl object
     }
     
     if(send_data_new != NULL){
@@ -1559,8 +1540,6 @@ lock_client::~lock_client(){
         delete [] data_array_new; // free the memory used to receive data
         
     }
-    
-    BIO_free(out_bio); // frees the output printing bio
     
 }
 
@@ -6451,6 +6430,24 @@ int lock_client::connect_to_server(const char *hostname, const char *port, in_ad
     return sock; // Return the connected socket
 }
 
+int lock_client::reset(){
+
+    if(!c_ssl) return 0;
+
+    // we fetch the active socket fd
+    int sockfd = wolfSSL_get_fd(c_ssl);
+
+    // if a valid socket is bound, we first close it effectively disconnecting it
+    if(sockfd >= 0) close(sockfd);
+
+    // we now clear our wolfssl session
+    wolfSSL_set_fd(c_ssl, -1);
+    wolfSSL_clear(c_ssl);
+
+    return 0;
+
+}
+
 void lock_client::block_sigpipe_signal(){
 
     sigemptyset(&newset);
@@ -6621,7 +6618,7 @@ bool lock_client::close(unsigned short status_code){ // this closes an establish
 lock_client_nb::lock_client_nb(std::string_view url){
 
     // initialisation of class wide variables
-    if(!openssl_init){
+    if(!wolfssl_init){
         
         ssl_ctx = SSL_CTX_new(TLS_client_method()); // initialises the SSL_CTX pointer with method TLS, this SSL_CTX structure is shared among all lock_client instance
         
@@ -6637,7 +6634,7 @@ lock_client_nb::lock_client_nb(std::string_view url){
 
         }
         
-        openssl_init = true;
+        wolfssl_init = true;
         
     }
     
@@ -7411,7 +7408,7 @@ lock_client_nb::lock_client_nb(std::string_view url){
 lock_client_nb::lock_client_nb(std::string_view url, in_addr* interface_address, char* interface_name){
 
     // initialisation of class wide variables
-    if(!openssl_init){
+    if(!wolfssl_init){
         
         ssl_ctx = SSL_CTX_new(TLS_client_method()); // initialises the SSL_CTX pointer with method TLS, this SSL_CTX structure is shared among all lock_client instance
         
@@ -7427,7 +7424,7 @@ lock_client_nb::lock_client_nb(std::string_view url, in_addr* interface_address,
 
         }
         
-        openssl_init = true;
+        wolfssl_init = true;
         
     }
     
@@ -8130,7 +8127,7 @@ lock_client_nb::lock_client_nb(std::string_view url, in_addr* interface_address,
 lock_client_nb::lock_client_nb(){
     
     // initialisation of class wide variables
-    if(!openssl_init){
+    if(!wolfssl_init){
         
         ssl_ctx = SSL_CTX_new(TLS_client_method()); // initialises the SSL_CTX pointer with method TLS, this SSL_CTX structure is shared among all lock_client instance
         
@@ -8146,7 +8143,7 @@ lock_client_nb::lock_client_nb(){
 
         }
         
-        openssl_init = true;
+        wolfssl_init = true;
         
     }
     
