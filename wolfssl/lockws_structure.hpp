@@ -48,6 +48,7 @@ private:
     inline void block_sigpipe_signal(); // function to block sigpipe signals before any write or read
     void unblock_sigpipe_signal(); // function to unblock sigpipe signals after any write or read
     int connect_to_server(const char *hostname, const char *port, in_addr* interface_address, const char *interface_name); // function to connect to server when we manually configure the socket
+    int reset(); // function to reset a wolfssl session and disconnect the underlying connection
 
 // private signal handling variables
 private: 
