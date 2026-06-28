@@ -6558,18 +6558,15 @@ lock_client_nb::lock_client_nb(std::string_view url){
                         wolfSSL_set_fd(c_ssl, sockfd);
 
                         // we perform our tls handshake - since this is a non blocking socket we loop till our handshake is complete
-                        int ret = wolfSSL_connect(c_ssl);
+                        int ret;
 
-                        while(ret != WOLFSSL_SUCCESS){
+                        while((ret = wolfSSL_connect(c_ssl)) != WOLFSSL_SUCCESS){
                             
                             // we get the error message
                             int err = wolfSSL_get_error(c_ssl, ret);
 
                             // we check if the wolfssl handle is still expecting a read or a write
                             if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
-                            
-                                // we call wolfssl connect again before continuing this loop
-                                ret = wolfSSL_connect(c_ssl);
 
                                 continue;
 
@@ -6736,18 +6733,13 @@ lock_client_nb::lock_client_nb(std::string_view url){
                             data_array = data_array_static;
 
                             // we send our upgrade request
-                            ret = wolfSSL_write(c_ssl, reinterpret_cast<const void*>(upgrade_request), strlen(upgrade_request));
-
-                            while(ret != WOLFSSL_SUCCESS){
+                            while((ret = wolfSSL_write(c_ssl, reinterpret_cast<const void*>(upgrade_request), strlen(upgrade_request))) != WOLFSSL_SUCCESS){
                             
                                 // we get the error message
                                 int err = wolfSSL_get_error(c_ssl, ret);
 
-                                // we check if the wolfssl handle is still expecting a read or a write
-                                if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
-                                
-                                    // we call wolfssl again before continuing this loop
-                                    ret = wolfSSL_write(c_ssl, reinterpret_cast<const void*>(upgrade_request), strlen(upgrade_request));
+                                // we check if the wolfssl handle is still expecting a write
+                                if(err == WOLFSSL_ERROR_WANT_WRITE){
 
                                     continue;
 
@@ -6768,18 +6760,14 @@ lock_client_nb::lock_client_nb(std::string_view url){
                             
                             if(!error){
 
-                                ret = wolfSSL_read(c_ssl, data_array, static_data_array_length); // non blocking call to wolfssl read
-
-                                while(ret != WOLFSSL_SUCCESS){
+                                // non blocking call to wolfssl read
+                                while((ret = wolfSSL_read(c_ssl, data_array, static_data_array_length)) != WOLFSSL_SUCCESS){
                             
                                     // we get the error message
                                     int err = wolfSSL_get_error(c_ssl, ret);
 
-                                    // we check if the wolfssl handle is still expecting a read or a write
-                                    if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
-                                    
-                                        // we call wolfssl again before continuing this loop
-                                        ret = wolfSSL_read(c_ssl, data_array, static_data_array_length);
+                                    // we check if the wolfssl handle is still expecting a read
+                                    if(err == WOLFSSL_ERROR_WANT_READ){
 
                                         continue;
 
