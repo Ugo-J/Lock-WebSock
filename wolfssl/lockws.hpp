@@ -566,7 +566,7 @@ lock_client::lock_client(std::string_view url){
                                         wc_InitSha(&sha_context);
 
                                         // we update our sha context with the data to be hashed
-                                        wc_ShaUpdate(&sha_context, reinterpret_cast<const byte*>(SHA1_parameter), strlen(SHA1_parameter));;
+                                        wc_ShaUpdate(&sha_context, reinterpret_cast<const byte*>(SHA1_parameter), strlen(SHA1_parameter));
 
                                         wc_ShaFinal(&sha_context, SHA1_digest);
 
@@ -1192,7 +1192,7 @@ lock_client::lock_client(std::string_view url, in_addr* interface_address, char*
                                         wc_InitSha(&sha_context);
 
                                         // we update our sha context with the data to be hashed
-                                        wc_ShaUpdate(&sha_context, reinterpret_cast<const byte*>(SHA1_parameter), strlen(SHA1_parameter));;
+                                        wc_ShaUpdate(&sha_context, reinterpret_cast<const byte*>(SHA1_parameter), strlen(SHA1_parameter));
 
                                         wc_ShaFinal(&sha_context, SHA1_digest);
 
@@ -1289,7 +1289,7 @@ lock_client::lock_client(std::string_view url, in_addr* interface_address, char*
 
 // lock client parameterless constructor
 lock_client::lock_client(){
-    
+
     // initialisation of class wide variables
     if(!wolfssl_init){
 
@@ -1303,15 +1303,25 @@ lock_client::lock_client(){
         
         if(!error){
 
-            // we create our ssl ctx and register our static memory poll to prevent runtime memory allocation 
-            ssl_ctx = wolfSSL_CTX_new_ex(wolfTLSv1_3_client_method(), reinterpret_cast<void*>(crypto_memory_pool));
+            // we initialise our ssl ctx
+            ssl_ctx = wolfSSL_CTX_new(wolfTLSv1_3_client_method());
 
             if(!ssl_ctx){
 
-                strncpy(error_buffer, "Context creation failed. Memory pool may be too small or misaligned.", error_buffer_array_length);
+                strncpy(error_buffer, "Context creation failed.", error_buffer_array_length);
                     
                 error = true;
 
+            }
+
+            // we load our system certificates
+            int ca_ret = wolfSSL_CTX_load_system_CA_certs(ssl_ctx);
+
+            if(ca_ret != WOLFSSL_SUCCESS){
+
+                strncpy(error_buffer, "Failed to load system CA bundle.", error_buffer_array_length);
+
+                error = true;
             }
             
             // seed the random number generator
@@ -1331,7 +1341,7 @@ lock_client::lock_client(){
         wolfssl_init = true;
         
     }
-    
+
 }
 
 // lock client destructor
@@ -4774,6 +4784,8 @@ bool lock_client::basic_read(){
        
 bool lock_client::connect(std::string_view url){ // this is used to connect to connect to the url passed as a parameter, it can be used when a lock client object was created without establishing a websocket connection by using the parameterless constructor, or to connect an already established websocket connection and lock client instance to a different websocket server, it can also be used to retry connecting an instance that encountered an error during connection
     
+    std::cout<<"Entering Connect"<<std::endl;
+
     if(client_state == CLOSED){
         
         memset(error_buffer, '\0', strlen(error_buffer)); // erase previous error message
@@ -5120,10 +5132,21 @@ bool lock_client::connect(std::string_view url){ // this is used to connect to c
                         // getting here the connect to server function returned successfully so now we bind the returned socket fd to our c_ssl object
                         wolfSSL_set_fd(c_ssl, sockfd);
 
-                        // we perform our tls handshake
-                        if(wolfSSL_connect(c_ssl) != WOLFSSL_SUCCESS){
+                        int ret;
 
-                            strncpy(error_buffer, "Error performing tls handshake ", error_buffer_array_length);
+                        // we perform our tls handshake
+                        if((ret = wolfSSL_connect(c_ssl)) != WOLFSSL_SUCCESS){
+
+                            int err = wolfSSL_get_error(c_ssl, ret);
+    
+                            // Convert the error code into a human-readable string
+                            char error_string[80];
+                            wolfSSL_ERR_error_string_n(err, error_string, sizeof(error_string));
+
+                            // Copy both the description and the raw wolfSSL error code into your buffer
+                            snprintf(error_buffer, error_buffer_array_length, "TLS Handshake Failed: %s (Raw Code: %d)", error_string, err);
+
+                            // strncpy(error_buffer, "Error performing tls handshake ", error_buffer_array_length);
                             
                             error = true;
 
@@ -5132,6 +5155,8 @@ bool lock_client::connect(std::string_view url){ // this is used to connect to c
                         // only continue if no error
                         if(!error){
                             
+                            std::cout<<"SSL Handshake Succeeds"<<std::endl;
+
                             // upgrade the connection to websocket
                             
                             // fill the random bytes array with 16 random bytes between 0 and 255
@@ -5282,17 +5307,23 @@ bool lock_client::connect(std::string_view url){ // this is used to connect to c
                                 
                                 data_array = data_array_static;
 
+                                std::cout<<"Sending Upgrade Request: "<<upgrade_request<<std::endl;
+
                                 // we send our upgrade request
                                 wolfSSL_write(c_ssl, reinterpret_cast<const void*>(upgrade_request), strlen(upgrade_request));
                                 
                                 int len = wolfSSL_read(c_ssl, data_array, static_data_array_length); // this function call would block till there is data to read
                                 data_array[len] = '\0'; // null terminate the received bytes
 
+                                std::cout<<"Upgrade Response: "<<data_array<<std::endl;
+
                                 // test for the switching protocol header to confirm that the connection upgrade was successful
                                 char success_response[] = "HTTP/1.1 101 Switching Protocols";
                                 
                                 if(strncmp(success_response, strtok(data_array, "\n"), strlen(success_response)) == 0){ // upgrade successful
                                     
+                                    std::cout<<"Upgrade Successful"<<std::endl;
+
                                     // Authorise connection - confirm that the Sec-WebSocket-Accept is what it should be by calculating the key and comparing it with the server's
                                     
                                     // build the SHA1 parameter
@@ -5307,7 +5338,7 @@ bool lock_client::connect(std::string_view url){ // this is used to connect to c
                                     wc_InitSha(&sha_context);
 
                                     // we update our sha context with the data to be hashed
-                                    wc_ShaUpdate(&sha_context, reinterpret_cast<const byte*>(SHA1_parameter), strlen(SHA1_parameter));;
+                                    wc_ShaUpdate(&sha_context, reinterpret_cast<const byte*>(SHA1_parameter), strlen(SHA1_parameter));
 
                                     wc_ShaFinal(&sha_context, SHA1_digest);
 
@@ -5326,11 +5357,13 @@ bool lock_client::connect(std::string_view url){ // this is used to connect to c
                                         
                                         // we use sizeof so we can get the length of key as a compile time constan, we subtract 1 from the result of sizeof() to account for the null byte that terminates the string
                                         if((strncmp(key, cursor, sizeof(key) - 1) == 0) || (strncmp("sec", cursor, sizeof(key) - 1) == 0) || (strncmp("SEC", cursor, sizeof(key) - 1) == 0) || (strncmp("sEc", cursor, sizeof(key) - 1) == 0) || (strncmp("seC", cursor, sizeof(key) - 1) == 0) || (strncmp("sEC", cursor, sizeof(key) - 1) == 0) || (strncmp("SEc", cursor, sizeof(key) - 1) == 0) || (strncmp("SeC", cursor, sizeof(key) - 1) == 0)){ // only the Sec-WebSocket-key response header would have "Sec" in it so we test all possible upper and lower case combinations of the key word "sec"
-                                                
+
                                             cursor += strlen("Sec-WebSocket-Accept: "); //move cursor foward to point to accept key value
                                             
                                             // compare server's response with our calculation
                                             if(strncmp(local_sec_ws_accept_key, cursor, strlen(local_sec_ws_accept_key)) == 0){
+
+                                                std::cout<<"Upgrade Authorisation Successful"<<std::endl;
                                                 
                                                 client_state = OPEN;
                                                 
@@ -5338,6 +5371,8 @@ bool lock_client::connect(std::string_view url){ // this is used to connect to c
                                                     
                                             }
                                             else{
+
+                                                std::cout<<"Upgrade Authorisation Unsuccessful"<<std::endl;
                                                 
                                                 strncpy(error_buffer, "Connection authorisation Failed", error_buffer_array_length);
                                                     
@@ -5369,6 +5404,8 @@ bool lock_client::connect(std::string_view url){ // this is used to connect to c
                                 }
                                 else{ // upgrade unsuccessful
                                     
+                                    std::cout<<"Upgrade Unsuccessful"<<std::endl;
+
                                     strncpy(error_buffer, "Connection upgrade failed. Invalid path supplied", error_buffer_array_length);
                                     
                                     reset(); // reset session and disconnect the underlying connection
@@ -5910,7 +5947,7 @@ bool lock_client::interface_connect(std::string_view url, in_addr* interface_add
                                     wc_InitSha(&sha_context);
 
                                     // we update our sha context with the data to be hashed
-                                    wc_ShaUpdate(&sha_context, reinterpret_cast<const byte*>(SHA1_parameter), strlen(SHA1_parameter));;
+                                    wc_ShaUpdate(&sha_context, reinterpret_cast<const byte*>(SHA1_parameter), strlen(SHA1_parameter));
 
                                     wc_ShaFinal(&sha_context, SHA1_digest);
 
@@ -6907,7 +6944,7 @@ lock_client_nb::lock_client_nb(std::string_view url){
                                             wc_InitSha(&sha_context);
 
                                             // we update our sha context with the data to be hashed
-                                            wc_ShaUpdate(&sha_context, reinterpret_cast<const byte*>(SHA1_parameter), strlen(SHA1_parameter));;
+                                            wc_ShaUpdate(&sha_context, reinterpret_cast<const byte*>(SHA1_parameter), strlen(SHA1_parameter));
 
                                             wc_ShaFinal(&sha_context, SHA1_digest);
 
@@ -7505,7 +7542,7 @@ lock_client_nb::lock_client_nb(std::string_view url, in_addr* interface_address,
                                     wc_InitSha(&sha_context);
 
                                     // we update our sha context with the data to be hashed
-                                    wc_ShaUpdate(&sha_context, reinterpret_cast<const byte*>(SHA1_parameter), strlen(SHA1_parameter));;
+                                    wc_ShaUpdate(&sha_context, reinterpret_cast<const byte*>(SHA1_parameter), strlen(SHA1_parameter));
 
                                     wc_ShaFinal(&sha_context, SHA1_digest);
 
@@ -11940,7 +11977,7 @@ bool lock_client_nb::connect(std::string_view url){ // this is used to connect t
                                         wc_InitSha(&sha_context);
 
                                         // we update our sha context with the data to be hashed
-                                        wc_ShaUpdate(&sha_context, reinterpret_cast<const byte*>(SHA1_parameter), strlen(SHA1_parameter));;
+                                        wc_ShaUpdate(&sha_context, reinterpret_cast<const byte*>(SHA1_parameter), strlen(SHA1_parameter));
 
                                         wc_ShaFinal(&sha_context, SHA1_digest);
 
@@ -12514,7 +12551,7 @@ bool lock_client_nb::interface_connect(std::string_view url, in_addr* interface_
                                 wc_InitSha(&sha_context);
 
                                 // we update our sha context with the data to be hashed
-                                wc_ShaUpdate(&sha_context, reinterpret_cast<const byte*>(SHA1_parameter), strlen(SHA1_parameter));;
+                                wc_ShaUpdate(&sha_context, reinterpret_cast<const byte*>(SHA1_parameter), strlen(SHA1_parameter));
 
                                 wc_ShaFinal(&sha_context, SHA1_digest);
 
