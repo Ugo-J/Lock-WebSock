@@ -23,8 +23,8 @@ lock_client::lock_client(std::string_view url){
         
         if(!error){
 
-            // we create our ssl ctx and register our static memory poll to prevent runtime memory allocation - the 'WOLFSSL_STATIC_MALLOC' flag enforces strict, non-growing bounds.
-            ssl_ctx = wolfSSL_CTX_new_ex(wolfTLSv1_3_client_method(), reinterpret_cast<byte*>(crypto_memory_pool), CRYPTO_ARENA_SIZE, WOLFSSL_STATIC_MALLOC);
+            // we create our ssl ctx and register our static memory poll to prevent runtime memory allocation 
+            ssl_ctx = wolfSSL_CTX_new_ex(wolfTLSv1_3_client_method(), reinterpret_cast<void*>(crypto_memory_pool));
 
             if(!ssl_ctx){
 
@@ -157,7 +157,7 @@ lock_client::lock_client(std::string_view url){
                 }
                 
                 // set SSL mode to retry automatically should SSL connection fail
-                wolfSSL_set_mode(c_ssl, WOLFSSL_MODE_AUTO_RETRY);
+                // wolfSSL_set_mode(c_ssl, WOLFSSL_MODE_AUTO_RETRY);
         
             }
         
@@ -400,9 +400,12 @@ lock_client::lock_client(std::string_view url){
                                     rand_bytes[i] = (unsigned char)(rand() % upper_bound ); // we get a random byte between 0 and 255 and cast it into a one byte value
 
                                 }
+
+                                // we store our nonce array len in a local variable because we pass it to base 64 encode as a pointer and the function updates it
+                                unsigned int tmp_array_len = nonce_array_len;
                                 
                                 // get the Base-64 encoding of the random number to give the value of the nonce
-                                Base64_Encode_NoNl(rand_bytes, rand_byte_array_len, base64_encoded_nonce, nonce_array_len);
+                                Base64_Encode_NoNl(rand_bytes, rand_byte_array_len, base64_encoded_nonce, &tmp_array_len);
                             
                                 // request connection upgrade
                                 int length_of_supplied_data = strlen(c_path) + strlen((const char*)base64_encoded_nonce) + strlen(c_host);
@@ -563,12 +566,15 @@ lock_client::lock_client(std::string_view url){
                                         wc_InitSha(&sha_context);
 
                                         // we update our sha context with the data to be hashed
-                                        wc_ShaUpdate(&sha_context, SHA1_parameter, strlen(SHA1_parameter));
+                                        wc_ShaUpdate(&sha_context, reinterpret_cast<const byte*>(SHA1_parameter), strlen(SHA1_parameter));;
 
                                         wc_ShaFinal(&sha_context, SHA1_digest);
 
+                                        // we store a copy of our local sec key array len
+                                        tmp_array_len = local_sec_ws_accept_key_array_len;
+
                                         // base64 encode the SHA1 digest
-                                        Base64_Encode_NoNl(SHA1_digest, SHA1_digest_array_len, local_sec_ws_accept_key, local_sec_ws_accept_key_array_len);
+                                        Base64_Encode_NoNl(SHA1_digest, SHA1_digest_array_len, reinterpret_cast<byte*>(local_sec_ws_accept_key), &tmp_array_len);
                                         
                                         // loop through the rest of the response string to find the Sec-WebSocket-Accept header
                                         char key[] = "Sec";
@@ -667,13 +673,13 @@ lock_client::lock_client(std::string_view url, in_addr* interface_address, char*
         
         if(!error){
 
-            // we create our ssl ctx and register our static memory poll to prevent runtime memory allocation - the 'WOLFSSL_STATIC_MALLOC' flag enforces strict, non-growing bounds.
-            ssl_ctx = wolfSSL_CTX_new_ex(wolfTLSv1_3_client_method(), reinterpret_cast<byte*>(crypto_memory_pool), CRYPTO_ARENA_SIZE, WOLFSSL_STATIC_MALLOC);
+            // we create our ssl ctx and register our static memory poll to prevent runtime memory allocation 
+            ssl_ctx = wolfSSL_CTX_new_ex(wolfTLSv1_3_client_method(), reinterpret_cast<void*>(crypto_memory_pool));
 
             if(!ssl_ctx){
 
                 strncpy(error_buffer, "Context creation failed. Memory pool may be too small or misaligned.", error_buffer_array_length);
-                    
+
                 error = true;
 
             }
@@ -914,7 +920,7 @@ lock_client::lock_client(std::string_view url, in_addr* interface_address, char*
                         wolfSSL_UseSNI(c_ssl, WOLFSSL_SNI_HOST_NAME, c_host, host_name_len);
 
                         // set SSL mode to retry automatically should SSL connection fail
-                        wolfSSL_set_mode(c_ssl, WOLFSSL_MODE_AUTO_RETRY);
+                        // wolfSSL_set_mode(c_ssl, WOLFSSL_MODE_AUTO_RETRY);
 
                         // getting here the connect to server function returned successfully and oue ssl structure was allocated successfully, so now we bind the returned socket fd to our c_ssl object
                         wolfSSL_set_fd(c_ssl, sockfd);
@@ -1021,8 +1027,11 @@ lock_client::lock_client(std::string_view url, in_addr* interface_address, char*
 
                                 }
                                 
+                                // we store our nonce array len in a local variable because we pass it to base 64 encode as a pointer and the function updates it
+                                unsigned int tmp_array_len = nonce_array_len;
+                                
                                 // get the Base-64 encoding of the random number to give the value of the nonce
-                                Base64_Encode_NoNl(rand_bytes, rand_byte_array_len, base64_encoded_nonce, nonce_array_len);
+                                Base64_Encode_NoNl(rand_bytes, rand_byte_array_len, base64_encoded_nonce, &tmp_array_len);
                             
                                 // request connection upgrade
                                 int length_of_supplied_data = strlen(c_path) + strlen( (const char*)base64_encoded_nonce) + strlen(c_host);
@@ -1183,12 +1192,15 @@ lock_client::lock_client(std::string_view url, in_addr* interface_address, char*
                                         wc_InitSha(&sha_context);
 
                                         // we update our sha context with the data to be hashed
-                                        wc_ShaUpdate(&sha_context, SHA1_parameter, strlen(SHA1_parameter));
+                                        wc_ShaUpdate(&sha_context, reinterpret_cast<const byte*>(SHA1_parameter), strlen(SHA1_parameter));;
 
                                         wc_ShaFinal(&sha_context, SHA1_digest);
 
+                                        // we store a copy of our local sec key array len
+                                        tmp_array_len = local_sec_ws_accept_key_array_len;
+
                                         // base64 encode the SHA1 digest
-                                        Base64_Encode_NoNl(SHA1_digest, SHA1_digest_array_len, local_sec_ws_accept_key, local_sec_ws_accept_key_array_len);
+                                        Base64_Encode_NoNl(SHA1_digest, SHA1_digest_array_len, reinterpret_cast<byte*>(local_sec_ws_accept_key), &tmp_array_len);
                                         
                                         // loop through the rest of the response string to find the Sec-WebSocket-Accept header
                                         char key[] = "Sec";
@@ -1291,8 +1303,8 @@ lock_client::lock_client(){
         
         if(!error){
 
-            // we create our ssl ctx and register our static memory poll to prevent runtime memory allocation - the 'WOLFSSL_STATIC_MALLOC' flag enforces strict, non-growing bounds.
-            ssl_ctx = wolfSSL_CTX_new_ex(wolfTLSv1_3_client_method(), reinterpret_cast<byte*>(crypto_memory_pool), CRYPTO_ARENA_SIZE, WOLFSSL_STATIC_MALLOC);
+            // we create our ssl ctx and register our static memory poll to prevent runtime memory allocation 
+            ssl_ctx = wolfSSL_CTX_new_ex(wolfTLSv1_3_client_method(), reinterpret_cast<void*>(crypto_memory_pool));
 
             if(!ssl_ctx){
 
@@ -4784,7 +4796,7 @@ bool lock_client::connect(std::string_view url){ // this is used to connect to c
     }
   
     // check if url is a wss:// endpoint, check case insensitively
-    
+
     if( (url.compare(0, 6, "wss://") == 0) || (url.compare(0, 6, "Wss://") == 0) || (url.compare(0, 6, "WSs://") == 0) || (url.compare(0, 6, "WSS://") == 0) || (url.compare(0, 6, "WsS://") == 0) || (url.compare(0, 6, "wSS://") == 0) || (url.compare(0, 6, "wsS://") == 0) || (url.compare(0, 6, "wSs://") == 0) ){ // endpoint is a wss:// endpoint, the second parameter to the std::string_view compare function is 6 which is the length of the string "wss://" which we are testing for the presence of, we list out and compare the 8 possible combinations of uppercase and lowercase lettering that are valid
     
         int protocol_prefix_len = strlen("wss://");
@@ -4886,7 +4898,7 @@ bool lock_client::connect(std::string_view url){ // this is used to connect to c
             }
             
             // set SSL mode to retry automatically should SSL connection fail
-            wolfSSL_set_mode(c_ssl, WOLFSSL_MODE_AUTO_RETRY);
+            // wolfSSL_set_mode(c_ssl, WOLFSSL_MODE_AUTO_RETRY);
     
         }
     
@@ -4996,7 +5008,7 @@ bool lock_client::connect(std::string_view url){ // this is used to connect to c
                         
                     error = true;
                 
-                }    
+                } 
                 
             }
             
@@ -5118,7 +5130,7 @@ bool lock_client::connect(std::string_view url){ // this is used to connect to c
                         }
 
                         // only continue if no error
-                        if(!error){ 
+                        if(!error){
                             
                             // upgrade the connection to websocket
                             
@@ -5129,9 +5141,12 @@ bool lock_client::connect(std::string_view url){ // this is used to connect to c
                                 rand_bytes[i] = (unsigned char)(rand() % upper_bound ); // we get a random byte between 0 and 255 and cast it into a one byte value
 
                             }
+
+                            // we store our nonce array len in a local variable because we pass it to base 64 encode as a pointer and the function updates it
+                            unsigned int tmp_array_len = nonce_array_len;
                             
                             // get the Base-64 encoding of the random number to give the value of the nonce
-                            Base64_Encode_NoNl(rand_bytes, rand_byte_array_len, base64_encoded_nonce, nonce_array_len);
+                            Base64_Encode_NoNl(rand_bytes, rand_byte_array_len, base64_encoded_nonce, &tmp_array_len);
                         
                             // request connection upgrade
                             int length_of_supplied_data = strlen(c_path) + strlen((const char*)base64_encoded_nonce) + strlen(c_host);
@@ -5292,12 +5307,15 @@ bool lock_client::connect(std::string_view url){ // this is used to connect to c
                                     wc_InitSha(&sha_context);
 
                                     // we update our sha context with the data to be hashed
-                                    wc_ShaUpdate(&sha_context, SHA1_parameter, strlen(SHA1_parameter));
+                                    wc_ShaUpdate(&sha_context, reinterpret_cast<const byte*>(SHA1_parameter), strlen(SHA1_parameter));;
 
                                     wc_ShaFinal(&sha_context, SHA1_digest);
 
+                                    // we store a copy of our local sec key array len
+                                    tmp_array_len = local_sec_ws_accept_key_array_len;
+
                                     // base64 encode the SHA1 digest
-                                    Base64_Encode_NoNl(SHA1_digest, SHA1_digest_array_len, local_sec_ws_accept_key, local_sec_ws_accept_key_array_len);
+                                    Base64_Encode_NoNl(SHA1_digest, SHA1_digest_array_len, reinterpret_cast<byte*>(local_sec_ws_accept_key), &tmp_array_len);
                                     
                                     // loop through the rest of the response string to find the Sec-WebSocket-Accept header
                                     char key[] = "Sec";
@@ -5620,7 +5638,7 @@ bool lock_client::interface_connect(std::string_view url, in_addr* interface_add
                     wolfSSL_UseSNI(c_ssl, WOLFSSL_SNI_HOST_NAME, c_host, host_name_len);
 
                     // set SSL mode to retry automatically should SSL connection fail
-                    wolfSSL_set_mode(c_ssl, WOLFSSL_MODE_AUTO_RETRY);
+                    // wolfSSL_set_mode(c_ssl, WOLFSSL_MODE_AUTO_RETRY);
 
                     // getting here the connect to server function returned successfully and oue ssl structure was allocated successfully, so now we bind the returned socket fd to our c_ssl object
                     wolfSSL_set_fd(c_ssl, sockfd);
@@ -5727,15 +5745,18 @@ bool lock_client::interface_connect(std::string_view url, in_addr* interface_add
 
                             }
                             
+                            // we store our nonce array len in a local variable because we pass it to base 64 encode as a pointer and the function updates it
+                            unsigned int tmp_array_len = nonce_array_len;
+                            
                             // get the Base-64 encoding of the random number to give the value of the nonce
-                            Base64_Encode_NoNl(rand_bytes, rand_byte_array_len, base64_encoded_nonce, nonce_array_len);
+                            Base64_Encode_NoNl(rand_bytes, rand_byte_array_len, base64_encoded_nonce, &tmp_array_len);
                         
                             // request connection upgrade
                             int length_of_supplied_data = strlen(c_path) + strlen( (const char*)base64_encoded_nonce) + strlen(c_host);
                             char char_remaining[] = "GET  HTTP/1.1\nHost: \nConnection: Upgrade\nPragma: no-cache\nUpgrade: websocket\nSec-WebSocket-Version: 13\nSec-WebSocket-Key: \n\n";
                             int upgrade_request_len = strlen(char_remaining) + length_of_supplied_data;
                             
-                            if(upgrade_request_len < upgrade_request_array_length){ // static array is large enough
+                            if( upgrade_request_len < upgrade_request_array_length ){ // static array is large enough
                                 
                                 // build the upgrade request
                                 strcpy(upgrade_request_static, "GET ");
@@ -5889,12 +5910,15 @@ bool lock_client::interface_connect(std::string_view url, in_addr* interface_add
                                     wc_InitSha(&sha_context);
 
                                     // we update our sha context with the data to be hashed
-                                    wc_ShaUpdate(&sha_context, SHA1_parameter, strlen(SHA1_parameter));
+                                    wc_ShaUpdate(&sha_context, reinterpret_cast<const byte*>(SHA1_parameter), strlen(SHA1_parameter));;
 
                                     wc_ShaFinal(&sha_context, SHA1_digest);
 
+                                    // we store a copy of our local sec key array len
+                                    tmp_array_len = local_sec_ws_accept_key_array_len;
+
                                     // base64 encode the SHA1 digest
-                                    Base64_Encode_NoNl(SHA1_digest, SHA1_digest_array_len, local_sec_ws_accept_key, local_sec_ws_accept_key_array_len);
+                                    Base64_Encode_NoNl(SHA1_digest, SHA1_digest_array_len, reinterpret_cast<byte*>(local_sec_ws_accept_key), &tmp_array_len);
                                     
                                     // loop through the rest of the response string to find the Sec-WebSocket-Accept header
                                     char key[] = "Sec";
@@ -6268,8 +6292,8 @@ lock_client_nb::lock_client_nb(std::string_view url){
         
         if(!error){
 
-            // we create our ssl ctx and register our static memory poll to prevent runtime memory allocation - the 'WOLFSSL_STATIC_MALLOC' flag enforces strict, non-growing bounds.
-            ssl_ctx = wolfSSL_CTX_new_ex(wolfTLSv1_3_client_method(), reinterpret_cast<byte*>(crypto_memory_pool), CRYPTO_ARENA_SIZE, WOLFSSL_STATIC_MALLOC);
+            // we create our ssl ctx and register our static memory poll to prevent runtime memory allocation 
+            ssl_ctx = wolfSSL_CTX_new_ex(wolfTLSv1_3_client_method(), reinterpret_cast<void*>(crypto_memory_pool));
 
             if(!ssl_ctx){
 
@@ -6404,7 +6428,7 @@ lock_client_nb::lock_client_nb(std::string_view url){
                     }
 
                     // set SSL mode to retry automatically should SSL connection fail
-                    wolfSSL_set_mode(c_ssl, WOLFSSL_MODE_AUTO_RETRY);
+                    // wolfSSL_set_mode(c_ssl, WOLFSSL_MODE_AUTO_RETRY);
             
                 }
             
@@ -6629,12 +6653,12 @@ lock_client_nb::lock_client_nb(std::string_view url){
                             wolfSSL_set_fd(c_ssl, sockfd);
 
                             // we perform our tls handshake - since this is a non blocking socket we loop till our handshake is complete
-                            int ret;
+                            int len;
 
-                            while((ret = wolfSSL_connect(c_ssl)) != WOLFSSL_SUCCESS){
+                            while((len = wolfSSL_connect(c_ssl)) != WOLFSSL_SUCCESS){
                                 
                                 // we get the error message
-                                int err = wolfSSL_get_error(c_ssl, ret);
+                                int err = wolfSSL_get_error(c_ssl, len);
 
                                 // we check if the wolfssl handle is still expecting a read or a write
                                 if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
@@ -6666,8 +6690,11 @@ lock_client_nb::lock_client_nb(std::string_view url){
 
                             }
                             
+                            // we store our nonce array len in a local variable because we pass it to base 64 encode as a pointer and the function updates it
+                            unsigned int tmp_array_len = nonce_array_len;
+                            
                             // get the Base-64 encoding of the random number to give the value of the nonce
-                            Base64_Encode_NoNl(rand_bytes, rand_byte_array_len, base64_encoded_nonce, nonce_array_len);
+                            Base64_Encode_NoNl(rand_bytes, rand_byte_array_len, base64_encoded_nonce, &tmp_array_len);
                         
                             // request connection upgrade
                             int length_of_supplied_data = strlen(c_path) + strlen( (const char*)base64_encoded_nonce) + strlen(c_host);
@@ -6804,10 +6831,10 @@ lock_client_nb::lock_client_nb(std::string_view url){
                                 data_array = data_array_static;
 
                                 // we send our upgrade request
-                                while((ret = wolfSSL_write(c_ssl, reinterpret_cast<const void*>(upgrade_request), strlen(upgrade_request))) <= 0){
+                                while((len = wolfSSL_write(c_ssl, reinterpret_cast<const void*>(upgrade_request), strlen(upgrade_request))) <= 0){
                                 
                                     // we get the error message
-                                    int err = wolfSSL_get_error(c_ssl, ret);
+                                    int err = wolfSSL_get_error(c_ssl, len);
 
                                     // we check if the wolfssl handle is still expecting a write
                                     if(err == WOLFSSL_ERROR_WANT_WRITE){
@@ -6832,10 +6859,10 @@ lock_client_nb::lock_client_nb(std::string_view url){
                                 if(!error){
 
                                     // non blocking call to wolfssl read
-                                    while((ret = wolfSSL_read(c_ssl, data_array, static_data_array_length)) <= 0){
+                                    while((len = wolfSSL_read(c_ssl, data_array, static_data_array_length)) <= 0){
                                 
                                         // we get the error message
-                                        int err = wolfSSL_get_error(c_ssl, ret);
+                                        int err = wolfSSL_get_error(c_ssl, len);
 
                                         // we check if the wolfssl handle is still expecting a read
                                         if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
@@ -6880,12 +6907,15 @@ lock_client_nb::lock_client_nb(std::string_view url){
                                             wc_InitSha(&sha_context);
 
                                             // we update our sha context with the data to be hashed
-                                            wc_ShaUpdate(&sha_context, SHA1_parameter, strlen(SHA1_parameter));
+                                            wc_ShaUpdate(&sha_context, reinterpret_cast<const byte*>(SHA1_parameter), strlen(SHA1_parameter));;
 
                                             wc_ShaFinal(&sha_context, SHA1_digest);
 
+                                            // we store a copy of our local sec key array len
+                                            tmp_array_len = local_sec_ws_accept_key_array_len;
+
                                             // base64 encode the SHA1 digest
-                                            Base64_Encode_NoNl(SHA1_digest, SHA1_digest_array_len, local_sec_ws_accept_key, local_sec_ws_accept_key_array_len);
+                                            Base64_Encode_NoNl(SHA1_digest, SHA1_digest_array_len, reinterpret_cast<byte*>(local_sec_ws_accept_key), &tmp_array_len);
                                             
                                             // loop through the rest of the response string to find the Sec-WebSocket-Accept header
                                             char key[] = "Sec";
@@ -6987,8 +7017,8 @@ lock_client_nb::lock_client_nb(std::string_view url, in_addr* interface_address,
         
         if(!error){
 
-            // we create our ssl ctx and register our static memory poll to prevent runtime memory allocation - the 'WOLFSSL_STATIC_MALLOC' flag enforces strict, non-growing bounds.
-            ssl_ctx = wolfSSL_CTX_new_ex(wolfTLSv1_3_client_method(), reinterpret_cast<byte*>(crypto_memory_pool), CRYPTO_ARENA_SIZE, WOLFSSL_STATIC_MALLOC);
+            // we create our ssl ctx and register our static memory poll to prevent runtime memory allocation 
+            ssl_ctx = wolfSSL_CTX_new_ex(wolfTLSv1_3_client_method(), reinterpret_cast<void*>(crypto_memory_pool));
 
             if(!ssl_ctx){
 
@@ -7221,12 +7251,12 @@ lock_client_nb::lock_client_nb(std::string_view url, in_addr* interface_address,
                     wolfSSL_set_fd(c_ssl, sockfd);
 
                     // we perform our tls handshake - since this is a non blocking socket we loop till our handshake is complete
-                    int ret;
+                    int len;
 
-                    while((ret = wolfSSL_connect(c_ssl)) != WOLFSSL_SUCCESS){
+                    while((len = wolfSSL_connect(c_ssl)) != WOLFSSL_SUCCESS){
                         
                         // we get the error message
-                        int err = wolfSSL_get_error(c_ssl, ret);
+                        int err = wolfSSL_get_error(c_ssl, len);
 
                         // we check if the wolfssl handle is still expecting a read or a write
                         if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
@@ -7258,8 +7288,11 @@ lock_client_nb::lock_client_nb(std::string_view url, in_addr* interface_address,
 
                     }
                     
+                    // we store our nonce array len in a local variable because we pass it to base 64 encode as a pointer and the function updates it
+                    unsigned int tmp_array_len = nonce_array_len;
+                    
                     // get the Base-64 encoding of the random number to give the value of the nonce
-                    Base64_Encode_NoNl(rand_bytes, rand_byte_array_len, base64_encoded_nonce, nonce_array_len);
+                    Base64_Encode_NoNl(rand_bytes, rand_byte_array_len, base64_encoded_nonce, &tmp_array_len);
                 
                     // request connection upgrade
                     int length_of_supplied_data = strlen(c_path) + strlen( (const char*)base64_encoded_nonce) + strlen(c_host);
@@ -7396,10 +7429,10 @@ lock_client_nb::lock_client_nb(std::string_view url, in_addr* interface_address,
                         data_array = data_array_static;
 
                         // we send our upgrade request
-                        while((ret = wolfSSL_write(c_ssl, reinterpret_cast<const void*>(upgrade_request), strlen(upgrade_request))) <= 0){
+                        while((len = wolfSSL_write(c_ssl, reinterpret_cast<const void*>(upgrade_request), strlen(upgrade_request))) <= 0){
                         
                             // we get the error message
-                            int err = wolfSSL_get_error(c_ssl, ret);
+                            int err = wolfSSL_get_error(c_ssl, len);
 
                             // we check if the wolfssl handle is still expecting a write
                             if(err == WOLFSSL_ERROR_WANT_WRITE){
@@ -7424,10 +7457,10 @@ lock_client_nb::lock_client_nb(std::string_view url, in_addr* interface_address,
                         if(!error){
 
                             // non blocking call to wolfssl read
-                            while((ret = wolfSSL_read(c_ssl, data_array, static_data_array_length)) <= 0){
+                            while((len = wolfSSL_read(c_ssl, data_array, static_data_array_length)) <= 0){
                         
                                 // we get the error message
-                                int err = wolfSSL_get_error(c_ssl, ret);
+                                int err = wolfSSL_get_error(c_ssl, len);
 
                                 // we check if the wolfssl handle is still expecting a read
                                 if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
@@ -7472,12 +7505,15 @@ lock_client_nb::lock_client_nb(std::string_view url, in_addr* interface_address,
                                     wc_InitSha(&sha_context);
 
                                     // we update our sha context with the data to be hashed
-                                    wc_ShaUpdate(&sha_context, SHA1_parameter, strlen(SHA1_parameter));
+                                    wc_ShaUpdate(&sha_context, reinterpret_cast<const byte*>(SHA1_parameter), strlen(SHA1_parameter));;
 
                                     wc_ShaFinal(&sha_context, SHA1_digest);
 
+                                    // we store a copy of our local sec key array len
+                                    tmp_array_len = local_sec_ws_accept_key_array_len;
+
                                     // base64 encode the SHA1 digest
-                                    Base64_Encode_NoNl(SHA1_digest, SHA1_digest_array_len, local_sec_ws_accept_key, local_sec_ws_accept_key_array_len);
+                                    Base64_Encode_NoNl(SHA1_digest, SHA1_digest_array_len, reinterpret_cast<byte*>(local_sec_ws_accept_key), &tmp_array_len);
                                     
                                     // loop through the rest of the response string to find the Sec-WebSocket-Accept header
                                     char key[] = "Sec";
@@ -7580,8 +7616,8 @@ lock_client_nb::lock_client_nb(){
         
         if(!error){
 
-            // we create our ssl ctx and register our static memory poll to prevent runtime memory allocation - the 'WOLFSSL_STATIC_MALLOC' flag enforces strict, non-growing bounds.
-            ssl_ctx = wolfSSL_CTX_new_ex(wolfTLSv1_3_client_method(), reinterpret_cast<byte*>(crypto_memory_pool), CRYPTO_ARENA_SIZE, WOLFSSL_STATIC_MALLOC);
+            // we create our ssl ctx and register our static memory poll to prevent runtime memory allocation 
+            ssl_ctx = wolfSSL_CTX_new_ex(wolfTLSv1_3_client_method(), reinterpret_cast<void*>(crypto_memory_pool));
 
             if(!ssl_ctx){
 
@@ -11425,7 +11461,7 @@ bool lock_client_nb::connect(std::string_view url){ // this is used to connect t
                 }
 
                 // set SSL mode to retry automatically should SSL connection fail
-                wolfSSL_set_mode(c_ssl, WOLFSSL_MODE_AUTO_RETRY);
+                // wolfSSL_set_mode(c_ssl, WOLFSSL_MODE_AUTO_RETRY);
         
             }
         
@@ -11650,12 +11686,12 @@ bool lock_client_nb::connect(std::string_view url){ // this is used to connect t
                         wolfSSL_set_fd(c_ssl, sockfd);
 
                         // we perform our tls handshake - since this is a non blocking socket we loop till our handshake is complete
-                        int ret;
+                        int len;
 
-                        while((ret = wolfSSL_connect(c_ssl)) != WOLFSSL_SUCCESS){
+                        while((len = wolfSSL_connect(c_ssl)) != WOLFSSL_SUCCESS){
                             
                             // we get the error message
-                            int err = wolfSSL_get_error(c_ssl, ret);
+                            int err = wolfSSL_get_error(c_ssl, len);
 
                             // we check if the wolfssl handle is still expecting a read or a write
                             if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
@@ -11687,8 +11723,11 @@ bool lock_client_nb::connect(std::string_view url){ // this is used to connect t
 
                         }
                         
+                        // we store our nonce array len in a local variable because we pass it to base 64 encode as a pointer and the function updates it
+                        unsigned int tmp_array_len = nonce_array_len;
+                        
                         // get the Base-64 encoding of the random number to give the value of the nonce
-                        Base64_Encode_NoNl(rand_bytes, rand_byte_array_len, base64_encoded_nonce, nonce_array_len);
+                        Base64_Encode_NoNl(rand_bytes, rand_byte_array_len, base64_encoded_nonce, &tmp_array_len);
                     
                         // request connection upgrade
                         int length_of_supplied_data = strlen(c_path) + strlen( (const char*)base64_encoded_nonce) + strlen(c_host);
@@ -11825,10 +11864,10 @@ bool lock_client_nb::connect(std::string_view url){ // this is used to connect t
                             data_array = data_array_static;
 
                             // we send our upgrade request
-                            while((ret = wolfSSL_write(c_ssl, reinterpret_cast<const void*>(upgrade_request), strlen(upgrade_request))) <= 0){
+                            while((len = wolfSSL_write(c_ssl, reinterpret_cast<const void*>(upgrade_request), strlen(upgrade_request))) <= 0){
                             
                                 // we get the error message
-                                int err = wolfSSL_get_error(c_ssl, ret);
+                                int err = wolfSSL_get_error(c_ssl, len);
 
                                 // we check if the wolfssl handle is still expecting a write
                                 if(err == WOLFSSL_ERROR_WANT_WRITE){
@@ -11853,10 +11892,10 @@ bool lock_client_nb::connect(std::string_view url){ // this is used to connect t
                             if(!error){
 
                                 // non blocking call to wolfssl read
-                                while((ret = wolfSSL_read(c_ssl, data_array, static_data_array_length)) <= 0){
+                                while((len = wolfSSL_read(c_ssl, data_array, static_data_array_length)) <= 0){
                             
                                     // we get the error message
-                                    int err = wolfSSL_get_error(c_ssl, ret);
+                                    int err = wolfSSL_get_error(c_ssl, len);
 
                                     // we check if the wolfssl handle is still expecting a read
                                     if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
@@ -11901,12 +11940,15 @@ bool lock_client_nb::connect(std::string_view url){ // this is used to connect t
                                         wc_InitSha(&sha_context);
 
                                         // we update our sha context with the data to be hashed
-                                        wc_ShaUpdate(&sha_context, SHA1_parameter, strlen(SHA1_parameter));
+                                        wc_ShaUpdate(&sha_context, reinterpret_cast<const byte*>(SHA1_parameter), strlen(SHA1_parameter));;
 
                                         wc_ShaFinal(&sha_context, SHA1_digest);
 
+                                        // we store a copy of our local sec key array len
+                                        tmp_array_len = local_sec_ws_accept_key_array_len;
+
                                         // base64 encode the SHA1 digest
-                                        Base64_Encode_NoNl(SHA1_digest, SHA1_digest_array_len, local_sec_ws_accept_key, local_sec_ws_accept_key_array_len);
+                                        Base64_Encode_NoNl(SHA1_digest, SHA1_digest_array_len, reinterpret_cast<byte*>(local_sec_ws_accept_key), &tmp_array_len);
                                         
                                         // loop through the rest of the response string to find the Sec-WebSocket-Accept header
                                         char key[] = "Sec";
@@ -12218,12 +12260,12 @@ bool lock_client_nb::interface_connect(std::string_view url, in_addr* interface_
                 wolfSSL_set_fd(c_ssl, sockfd);
 
                 // we perform our tls handshake - since this is a non blocking socket we loop till our handshake is complete
-                int ret;
+                int len;
 
-                while((ret = wolfSSL_connect(c_ssl)) != WOLFSSL_SUCCESS){
+                while((len = wolfSSL_connect(c_ssl)) != WOLFSSL_SUCCESS){
                     
                     // we get the error message
-                    int err = wolfSSL_get_error(c_ssl, ret);
+                    int err = wolfSSL_get_error(c_ssl, len);
 
                     // we check if the wolfssl handle is still expecting a read or a write
                     if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
@@ -12255,8 +12297,11 @@ bool lock_client_nb::interface_connect(std::string_view url, in_addr* interface_
 
                 }
                 
+                // we store our nonce array len in a local variable because we pass it to base 64 encode as a pointer and the function updates it
+                unsigned int tmp_array_len = nonce_array_len;
+                
                 // get the Base-64 encoding of the random number to give the value of the nonce
-                Base64_Encode_NoNl(rand_bytes, rand_byte_array_len, base64_encoded_nonce, nonce_array_len);
+                Base64_Encode_NoNl(rand_bytes, rand_byte_array_len, base64_encoded_nonce, &tmp_array_len);
             
                 // request connection upgrade
                 int length_of_supplied_data = strlen(c_path) + strlen( (const char*)base64_encoded_nonce) + strlen(c_host);
@@ -12393,10 +12438,10 @@ bool lock_client_nb::interface_connect(std::string_view url, in_addr* interface_
                     data_array = data_array_static;
 
                     // we send our upgrade request
-                    while((ret = wolfSSL_write(c_ssl, reinterpret_cast<const void*>(upgrade_request), strlen(upgrade_request))) <= 0){
+                    while((len = wolfSSL_write(c_ssl, reinterpret_cast<const void*>(upgrade_request), strlen(upgrade_request))) <= 0){
                     
                         // we get the error message
-                        int err = wolfSSL_get_error(c_ssl, ret);
+                        int err = wolfSSL_get_error(c_ssl, len);
 
                         // we check if the wolfssl handle is still expecting a write
                         if(err == WOLFSSL_ERROR_WANT_WRITE){
@@ -12421,10 +12466,10 @@ bool lock_client_nb::interface_connect(std::string_view url, in_addr* interface_
                     if(!error){
 
                         // non blocking call to wolfssl read
-                        while((ret = wolfSSL_read(c_ssl, data_array, static_data_array_length)) <= 0){
+                        while((len = wolfSSL_read(c_ssl, data_array, static_data_array_length)) <= 0){
                     
                             // we get the error message
-                            int err = wolfSSL_get_error(c_ssl, ret);
+                            int err = wolfSSL_get_error(c_ssl, len);
 
                             // we check if the wolfssl handle is still expecting a read
                             if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
@@ -12469,12 +12514,15 @@ bool lock_client_nb::interface_connect(std::string_view url, in_addr* interface_
                                 wc_InitSha(&sha_context);
 
                                 // we update our sha context with the data to be hashed
-                                wc_ShaUpdate(&sha_context, SHA1_parameter, strlen(SHA1_parameter));
+                                wc_ShaUpdate(&sha_context, reinterpret_cast<const byte*>(SHA1_parameter), strlen(SHA1_parameter));;
 
                                 wc_ShaFinal(&sha_context, SHA1_digest);
 
+                                // we store a copy of our local sec key array len
+                                tmp_array_len = local_sec_ws_accept_key_array_len;
+
                                 // base64 encode the SHA1 digest
-                                Base64_Encode_NoNl(SHA1_digest, SHA1_digest_array_len, local_sec_ws_accept_key, local_sec_ws_accept_key_array_len);
+                                Base64_Encode_NoNl(SHA1_digest, SHA1_digest_array_len, reinterpret_cast<byte*>(local_sec_ws_accept_key), &tmp_array_len);
                                 
                                 // loop through the rest of the response string to find the Sec-WebSocket-Accept header
                                 char key[] = "Sec";

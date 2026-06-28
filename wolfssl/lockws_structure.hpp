@@ -67,8 +67,8 @@ private:
     inline static const int size_of_SHA1_digest = 20;
 
     // static memory for wolfssl because we disabled dynamil allocation
-    constexpr size_t CRYPTO_ARENA_SIZE = 64 * 1024;
-    alignas(16) thread_local static uint8_t crypto_memory_pool[CRYPTO_ARENA_SIZE];
+    static constexpr size_t CRYPTO_ARENA_SIZE = 64 * 1024;
+    alignas(16) thread_local static inline uint8_t crypto_memory_pool[CRYPTO_ARENA_SIZE];
     
 // instance connection data variables     
 private:
@@ -281,8 +281,8 @@ private:
     inline static const int size_of_SHA1_digest = 20;
 
     // static memory for wolfssl because we disabled dynamil allocation
-    constexpr size_t CRYPTO_ARENA_SIZE = 64 * 1024;
-    alignas(16) thread_local static uint8_t crypto_memory_pool[CRYPTO_ARENA_SIZE];
+    static constexpr size_t CRYPTO_ARENA_SIZE = 64 * 1024;
+    alignas(16) thread_local static inline uint8_t crypto_memory_pool[CRYPTO_ARENA_SIZE];
     
 // instance connection data variables     
 private:
