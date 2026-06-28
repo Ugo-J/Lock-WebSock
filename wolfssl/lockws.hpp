@@ -23,15 +23,25 @@ lock_client::lock_client(std::string_view url){
         
         if(!error){
 
-            // we create our ssl ctx and register our static memory poll to prevent runtime memory allocation 
-            ssl_ctx = wolfSSL_CTX_new_ex(wolfTLSv1_3_client_method(), reinterpret_cast<void*>(crypto_memory_pool));
+            // we initialise our ssl ctx
+            ssl_ctx = wolfSSL_CTX_new(wolfSSLv23_client_method());
 
             if(!ssl_ctx){
 
-                strncpy(error_buffer, "Context creation failed. Memory pool may be too small or misaligned.", error_buffer_array_length);
+                strncpy(error_buffer, "Context creation failed.", error_buffer_array_length);
                     
                 error = true;
 
+            }
+
+            // we load our system certificates
+            int ca_ret = wolfSSL_CTX_load_system_CA_certs(ssl_ctx);
+
+            if(ca_ret != WOLFSSL_SUCCESS){
+
+                strncpy(error_buffer, "Failed to load system CA bundle.", error_buffer_array_length);
+
+                error = true;
             }
             
             // seed the random number generator
@@ -574,7 +584,7 @@ lock_client::lock_client(std::string_view url){
                                         tmp_array_len = local_sec_ws_accept_key_array_len;
 
                                         // base64 encode the SHA1 digest
-                                        Base64_Encode_NoNl(SHA1_digest, SHA1_digest_array_len, reinterpret_cast<byte*>(local_sec_ws_accept_key), &tmp_array_len);
+                                        Base64_Encode_NoNl(SHA1_digest, size_of_SHA1_digest, reinterpret_cast<byte*>(local_sec_ws_accept_key), &tmp_array_len);
                                         
                                         // loop through the rest of the response string to find the Sec-WebSocket-Accept header
                                         char key[] = "Sec";
@@ -673,15 +683,25 @@ lock_client::lock_client(std::string_view url, in_addr* interface_address, char*
         
         if(!error){
 
-            // we create our ssl ctx and register our static memory poll to prevent runtime memory allocation 
-            ssl_ctx = wolfSSL_CTX_new_ex(wolfTLSv1_3_client_method(), reinterpret_cast<void*>(crypto_memory_pool));
+            // we initialise our ssl ctx
+            ssl_ctx = wolfSSL_CTX_new(wolfSSLv23_client_method());
 
             if(!ssl_ctx){
 
-                strncpy(error_buffer, "Context creation failed. Memory pool may be too small or misaligned.", error_buffer_array_length);
-
+                strncpy(error_buffer, "Context creation failed.", error_buffer_array_length);
+                    
                 error = true;
 
+            }
+
+            // we load our system certificates
+            int ca_ret = wolfSSL_CTX_load_system_CA_certs(ssl_ctx);
+
+            if(ca_ret != WOLFSSL_SUCCESS){
+
+                strncpy(error_buffer, "Failed to load system CA bundle.", error_buffer_array_length);
+
+                error = true;
             }
             
             // seed the random number generator
@@ -1200,7 +1220,7 @@ lock_client::lock_client(std::string_view url, in_addr* interface_address, char*
                                         tmp_array_len = local_sec_ws_accept_key_array_len;
 
                                         // base64 encode the SHA1 digest
-                                        Base64_Encode_NoNl(SHA1_digest, SHA1_digest_array_len, reinterpret_cast<byte*>(local_sec_ws_accept_key), &tmp_array_len);
+                                        Base64_Encode_NoNl(SHA1_digest, size_of_SHA1_digest, reinterpret_cast<byte*>(local_sec_ws_accept_key), &tmp_array_len);
                                         
                                         // loop through the rest of the response string to find the Sec-WebSocket-Accept header
                                         char key[] = "Sec";
@@ -1304,7 +1324,7 @@ lock_client::lock_client(){
         if(!error){
 
             // we initialise our ssl ctx
-            ssl_ctx = wolfSSL_CTX_new(wolfTLSv1_3_client_method());
+            ssl_ctx = wolfSSL_CTX_new(wolfSSLv23_client_method());
 
             if(!ssl_ctx){
 
@@ -1346,7 +1366,7 @@ lock_client::lock_client(){
 
 // lock client destructor
 lock_client::~lock_client(){
-    
+
     // close the websocket connection if any
     if(client_state == OPEN){
         
@@ -4783,8 +4803,6 @@ bool lock_client::basic_read(){
 }
        
 bool lock_client::connect(std::string_view url){ // this is used to connect to connect to the url passed as a parameter, it can be used when a lock client object was created without establishing a websocket connection by using the parameterless constructor, or to connect an already established websocket connection and lock client instance to a different websocket server, it can also be used to retry connecting an instance that encountered an error during connection
-    
-    std::cout<<"Entering Connect"<<std::endl;
 
     if(client_state == CLOSED){
         
@@ -5143,7 +5161,7 @@ bool lock_client::connect(std::string_view url){ // this is used to connect to c
                             char error_string[80];
                             wolfSSL_ERR_error_string_n(err, error_string, sizeof(error_string));
 
-                            // Copy both the description and the raw wolfSSL error code into your buffer
+                            // Copy both the description and the raw wolfSSL error code into our buffer
                             snprintf(error_buffer, error_buffer_array_length, "TLS Handshake Failed: %s (Raw Code: %d)", error_string, err);
 
                             // strncpy(error_buffer, "Error performing tls handshake ", error_buffer_array_length);
@@ -5154,8 +5172,6 @@ bool lock_client::connect(std::string_view url){ // this is used to connect to c
 
                         // only continue if no error
                         if(!error){
-                            
-                            std::cout<<"SSL Handshake Succeeds"<<std::endl;
 
                             // upgrade the connection to websocket
                             
@@ -5307,22 +5323,16 @@ bool lock_client::connect(std::string_view url){ // this is used to connect to c
                                 
                                 data_array = data_array_static;
 
-                                std::cout<<"Sending Upgrade Request: "<<upgrade_request<<std::endl;
-
                                 // we send our upgrade request
                                 wolfSSL_write(c_ssl, reinterpret_cast<const void*>(upgrade_request), strlen(upgrade_request));
                                 
                                 int len = wolfSSL_read(c_ssl, data_array, static_data_array_length); // this function call would block till there is data to read
                                 data_array[len] = '\0'; // null terminate the received bytes
 
-                                std::cout<<"Upgrade Response: "<<data_array<<std::endl;
-
                                 // test for the switching protocol header to confirm that the connection upgrade was successful
                                 char success_response[] = "HTTP/1.1 101 Switching Protocols";
                                 
                                 if(strncmp(success_response, strtok(data_array, "\n"), strlen(success_response)) == 0){ // upgrade successful
-                                    
-                                    std::cout<<"Upgrade Successful"<<std::endl;
 
                                     // Authorise connection - confirm that the Sec-WebSocket-Accept is what it should be by calculating the key and comparing it with the server's
                                     
@@ -5346,7 +5356,7 @@ bool lock_client::connect(std::string_view url){ // this is used to connect to c
                                     tmp_array_len = local_sec_ws_accept_key_array_len;
 
                                     // base64 encode the SHA1 digest
-                                    Base64_Encode_NoNl(SHA1_digest, SHA1_digest_array_len, reinterpret_cast<byte*>(local_sec_ws_accept_key), &tmp_array_len);
+                                    Base64_Encode_NoNl(SHA1_digest, size_of_SHA1_digest, reinterpret_cast<byte*>(local_sec_ws_accept_key), &tmp_array_len);
                                     
                                     // loop through the rest of the response string to find the Sec-WebSocket-Accept header
                                     char key[] = "Sec";
@@ -5362,8 +5372,6 @@ bool lock_client::connect(std::string_view url){ // this is used to connect to c
                                             
                                             // compare server's response with our calculation
                                             if(strncmp(local_sec_ws_accept_key, cursor, strlen(local_sec_ws_accept_key)) == 0){
-
-                                                std::cout<<"Upgrade Authorisation Successful"<<std::endl;
                                                 
                                                 client_state = OPEN;
                                                 
@@ -5371,8 +5379,6 @@ bool lock_client::connect(std::string_view url){ // this is used to connect to c
                                                     
                                             }
                                             else{
-
-                                                std::cout<<"Upgrade Authorisation Unsuccessful"<<std::endl;
                                                 
                                                 strncpy(error_buffer, "Connection authorisation Failed", error_buffer_array_length);
                                                     
@@ -5403,8 +5409,6 @@ bool lock_client::connect(std::string_view url){ // this is used to connect to c
                                     
                                 }
                                 else{ // upgrade unsuccessful
-                                    
-                                    std::cout<<"Upgrade Unsuccessful"<<std::endl;
 
                                     strncpy(error_buffer, "Connection upgrade failed. Invalid path supplied", error_buffer_array_length);
                                     
@@ -5955,7 +5959,7 @@ bool lock_client::interface_connect(std::string_view url, in_addr* interface_add
                                     tmp_array_len = local_sec_ws_accept_key_array_len;
 
                                     // base64 encode the SHA1 digest
-                                    Base64_Encode_NoNl(SHA1_digest, SHA1_digest_array_len, reinterpret_cast<byte*>(local_sec_ws_accept_key), &tmp_array_len);
+                                    Base64_Encode_NoNl(SHA1_digest, size_of_SHA1_digest, reinterpret_cast<byte*>(local_sec_ws_accept_key), &tmp_array_len);
                                     
                                     // loop through the rest of the response string to find the Sec-WebSocket-Accept header
                                     char key[] = "Sec";
@@ -6137,7 +6141,7 @@ int lock_client::reset(){
     int sockfd = wolfSSL_get_fd(c_ssl);
 
     // if a valid socket is bound, we first close it effectively disconnecting it
-    if(sockfd >= 0) close(sockfd);
+    if(sockfd >= 0) ::close(sockfd);
 
     // we now clear our wolfssl session
     wolfSSL_set_fd(c_ssl, -1);
@@ -6329,15 +6333,25 @@ lock_client_nb::lock_client_nb(std::string_view url){
         
         if(!error){
 
-            // we create our ssl ctx and register our static memory poll to prevent runtime memory allocation 
-            ssl_ctx = wolfSSL_CTX_new_ex(wolfTLSv1_3_client_method(), reinterpret_cast<void*>(crypto_memory_pool));
+            // we initialise our ssl ctx
+            ssl_ctx = wolfSSL_CTX_new(wolfSSLv23_client_method());
 
             if(!ssl_ctx){
 
-                strncpy(error_buffer, "Context creation failed. Memory pool may be too small or misaligned.", error_buffer_array_length);
+                strncpy(error_buffer, "Context creation failed.", error_buffer_array_length);
                     
                 error = true;
 
+            }
+
+            // we load our system certificates
+            int ca_ret = wolfSSL_CTX_load_system_CA_certs(ssl_ctx);
+
+            if(ca_ret != WOLFSSL_SUCCESS){
+
+                strncpy(error_buffer, "Failed to load system CA bundle.", error_buffer_array_length);
+
+                error = true;
             }
             
             // seed the random number generator
@@ -6952,7 +6966,7 @@ lock_client_nb::lock_client_nb(std::string_view url){
                                             tmp_array_len = local_sec_ws_accept_key_array_len;
 
                                             // base64 encode the SHA1 digest
-                                            Base64_Encode_NoNl(SHA1_digest, SHA1_digest_array_len, reinterpret_cast<byte*>(local_sec_ws_accept_key), &tmp_array_len);
+                                            Base64_Encode_NoNl(SHA1_digest, size_of_SHA1_digest, reinterpret_cast<byte*>(local_sec_ws_accept_key), &tmp_array_len);
                                             
                                             // loop through the rest of the response string to find the Sec-WebSocket-Accept header
                                             char key[] = "Sec";
@@ -7054,15 +7068,25 @@ lock_client_nb::lock_client_nb(std::string_view url, in_addr* interface_address,
         
         if(!error){
 
-            // we create our ssl ctx and register our static memory poll to prevent runtime memory allocation 
-            ssl_ctx = wolfSSL_CTX_new_ex(wolfTLSv1_3_client_method(), reinterpret_cast<void*>(crypto_memory_pool));
+            // we initialise our ssl ctx
+            ssl_ctx = wolfSSL_CTX_new(wolfSSLv23_client_method());
 
             if(!ssl_ctx){
 
-                strncpy(error_buffer, "Context creation failed. Memory pool may be too small or misaligned.", error_buffer_array_length);
+                strncpy(error_buffer, "Context creation failed.", error_buffer_array_length);
                     
                 error = true;
 
+            }
+
+            // we load our system certificates
+            int ca_ret = wolfSSL_CTX_load_system_CA_certs(ssl_ctx);
+
+            if(ca_ret != WOLFSSL_SUCCESS){
+
+                strncpy(error_buffer, "Failed to load system CA bundle.", error_buffer_array_length);
+
+                error = true;
             }
             
             // seed the random number generator
@@ -7550,7 +7574,7 @@ lock_client_nb::lock_client_nb(std::string_view url, in_addr* interface_address,
                                     tmp_array_len = local_sec_ws_accept_key_array_len;
 
                                     // base64 encode the SHA1 digest
-                                    Base64_Encode_NoNl(SHA1_digest, SHA1_digest_array_len, reinterpret_cast<byte*>(local_sec_ws_accept_key), &tmp_array_len);
+                                    Base64_Encode_NoNl(SHA1_digest, size_of_SHA1_digest, reinterpret_cast<byte*>(local_sec_ws_accept_key), &tmp_array_len);
                                     
                                     // loop through the rest of the response string to find the Sec-WebSocket-Accept header
                                     char key[] = "Sec";
@@ -7653,15 +7677,25 @@ lock_client_nb::lock_client_nb(){
         
         if(!error){
 
-            // we create our ssl ctx and register our static memory poll to prevent runtime memory allocation 
-            ssl_ctx = wolfSSL_CTX_new_ex(wolfTLSv1_3_client_method(), reinterpret_cast<void*>(crypto_memory_pool));
+            // we initialise our ssl ctx
+            ssl_ctx = wolfSSL_CTX_new(wolfSSLv23_client_method());
 
             if(!ssl_ctx){
 
-                strncpy(error_buffer, "Context creation failed. Memory pool may be too small or misaligned.", error_buffer_array_length);
+                strncpy(error_buffer, "Context creation failed.", error_buffer_array_length);
                     
                 error = true;
 
+            }
+
+            // we load our system certificates
+            int ca_ret = wolfSSL_CTX_load_system_CA_certs(ssl_ctx);
+
+            if(ca_ret != WOLFSSL_SUCCESS){
+
+                strncpy(error_buffer, "Failed to load system CA bundle.", error_buffer_array_length);
+
+                error = true;
             }
             
             // seed the random number generator
@@ -11985,7 +12019,7 @@ bool lock_client_nb::connect(std::string_view url){ // this is used to connect t
                                         tmp_array_len = local_sec_ws_accept_key_array_len;
 
                                         // base64 encode the SHA1 digest
-                                        Base64_Encode_NoNl(SHA1_digest, SHA1_digest_array_len, reinterpret_cast<byte*>(local_sec_ws_accept_key), &tmp_array_len);
+                                        Base64_Encode_NoNl(SHA1_digest, size_of_SHA1_digest, reinterpret_cast<byte*>(local_sec_ws_accept_key), &tmp_array_len);
                                         
                                         // loop through the rest of the response string to find the Sec-WebSocket-Accept header
                                         char key[] = "Sec";
@@ -12559,7 +12593,7 @@ bool lock_client_nb::interface_connect(std::string_view url, in_addr* interface_
                                 tmp_array_len = local_sec_ws_accept_key_array_len;
 
                                 // base64 encode the SHA1 digest
-                                Base64_Encode_NoNl(SHA1_digest, SHA1_digest_array_len, reinterpret_cast<byte*>(local_sec_ws_accept_key), &tmp_array_len);
+                                Base64_Encode_NoNl(SHA1_digest, size_of_SHA1_digest, reinterpret_cast<byte*>(local_sec_ws_accept_key), &tmp_array_len);
                                 
                                 // loop through the rest of the response string to find the Sec-WebSocket-Accept header
                                 char key[] = "Sec";
@@ -12747,7 +12781,7 @@ int lock_client_nb::reset(){
     int sockfd = wolfSSL_get_fd(c_ssl);
 
     // if a valid socket is bound, we first close it effectively disconnecting it
-    if(sockfd >= 0) close(sockfd);
+    if(sockfd >= 0) ::close(sockfd);
 
     // we now clear our wolfssl session
     wolfSSL_set_fd(c_ssl, -1);
@@ -12881,7 +12915,7 @@ bool lock_client_nb::close(unsigned short status_code){ // this closes an establ
             int k = 0; // variable used to store the mask index of the exact byte in the mask array to mask with
                 
             for(int j = 0; j<frame_len; j++){
-                    
+
                 k = j % 4;
                     
                 send_data[i] = close_payload[j] ^ mask[k];  

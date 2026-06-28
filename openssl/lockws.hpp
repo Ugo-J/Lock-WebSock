@@ -6367,6 +6367,7 @@ bool lock_client::interface_connect(std::string_view url, in_addr* interface_add
 }
 
 int lock_client::connect_to_server(const char *hostname, const char *port, in_addr* interface_address, const char *interface_name){
+    
     struct addrinfo hints, *res = NULL, *p = NULL;
 
     // we create the socket the BIO structure would use
