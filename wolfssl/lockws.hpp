@@ -21,26 +21,30 @@ lock_client::lock_client(std::string_view url){
 
         }
         
-        // we create our ssl ctx and register our static memory poll to prevent runtime memory allocation - the 'WOLFSSL_STATIC_MALLOC' flag enforces strict, non-growing bounds.
-        ssl_ctx = wolfSSL_CTX_new_ex(wolfTLSv1_3_client_method(), reinterpret_cast<byte*>(crypto_memory_pool), CRYPTO_ARENA_SIZE, WOLFSSL_STATIC_MALLOC);
+        if(!error){
 
-        if(!ssl_ctx){
+            // we create our ssl ctx and register our static memory poll to prevent runtime memory allocation - the 'WOLFSSL_STATIC_MALLOC' flag enforces strict, non-growing bounds.
+            ssl_ctx = wolfSSL_CTX_new_ex(wolfTLSv1_3_client_method(), reinterpret_cast<byte*>(crypto_memory_pool), CRYPTO_ARENA_SIZE, WOLFSSL_STATIC_MALLOC);
 
-            strncpy(error_buffer, "Context creation failed. Memory pool may be too small or misaligned.", error_buffer_array_length);
-                
-            error = true;
+            if(!ssl_ctx){
 
-        }
-        
-        // seed the random number generator
-        srand(std::chrono::duration_cast< std::chrono::milliseconds >(std::chrono::system_clock::now().time_since_epoch()).count());
+                strncpy(error_buffer, "Context creation failed. Memory pool may be too small or misaligned.", error_buffer_array_length);
+                    
+                error = true;
 
-        // we generate the static mask the library uses
-        int upper_bound = 255;
+            }
             
-        for(int j = 0; j<mask_array_len; j++){
+            // seed the random number generator
+            srand(std::chrono::duration_cast< std::chrono::milliseconds >(std::chrono::system_clock::now().time_since_epoch()).count());
+
+            // we generate the static mask the library uses
+            int upper_bound = 255;
                 
-            mask[j] = (unsigned char)(rand() % upper_bound);
+            for(int j = 0; j<mask_array_len; j++){
+            
+                mask[j] = (unsigned char)(rand() % upper_bound);
+
+            }
 
         }
         
@@ -661,26 +665,30 @@ lock_client::lock_client(std::string_view url, in_addr* interface_address, char*
 
         }
         
-        // we create our ssl ctx and register our static memory poll to prevent runtime memory allocation - the 'WOLFSSL_STATIC_MALLOC' flag enforces strict, non-growing bounds.
-        ssl_ctx = wolfSSL_CTX_new_ex(wolfTLSv1_3_client_method(), reinterpret_cast<byte*>(crypto_memory_pool), CRYPTO_ARENA_SIZE, WOLFSSL_STATIC_MALLOC);
+        if(!error){
 
-        if(!ssl_ctx){
+            // we create our ssl ctx and register our static memory poll to prevent runtime memory allocation - the 'WOLFSSL_STATIC_MALLOC' flag enforces strict, non-growing bounds.
+            ssl_ctx = wolfSSL_CTX_new_ex(wolfTLSv1_3_client_method(), reinterpret_cast<byte*>(crypto_memory_pool), CRYPTO_ARENA_SIZE, WOLFSSL_STATIC_MALLOC);
 
-            strncpy(error_buffer, "Context creation failed. Memory pool may be too small or misaligned.", error_buffer_array_length);
-                
-            error = true;
+            if(!ssl_ctx){
 
-        }
-        
-        // seed the random number generator
-        srand(std::chrono::duration_cast< std::chrono::milliseconds >(std::chrono::system_clock::now().time_since_epoch()).count());
+                strncpy(error_buffer, "Context creation failed. Memory pool may be too small or misaligned.", error_buffer_array_length);
+                    
+                error = true;
 
-        // we generate the static mask the library uses
-        int upper_bound = 255;
+            }
             
-        for(int j = 0; j<mask_array_len; j++){
-        
-            mask[j] = (unsigned char)(rand() % upper_bound);
+            // seed the random number generator
+            srand(std::chrono::duration_cast< std::chrono::milliseconds >(std::chrono::system_clock::now().time_since_epoch()).count());
+
+            // we generate the static mask the library uses
+            int upper_bound = 255;
+                
+            for(int j = 0; j<mask_array_len; j++){
+            
+                mask[j] = (unsigned char)(rand() % upper_bound);
+
+            }
 
         }
         
@@ -1273,22 +1281,38 @@ lock_client::lock_client(){
     // initialisation of class wide variables
     if(!wolfssl_init){
 
-        if(wolfSSL_Init() != WOLFSSL_SUCCESS) std::cout<<"Failed to initialize wolfSSL core runtime.\n";
-        
-        // we create our ssl ctx and register our static memory poll to prevent runtime memory allocation - the 'WOLFSSL_STATIC_MALLOC' flag enforces strict, non-growing bounds.
-        ssl_ctx = wolfSSL_CTX_new_ex(wolfTLSv1_3_client_method(), reinterpret_cast<byte*>(crypto_memory_pool), CRYPTO_ARENA_SIZE, WOLFSSL_STATIC_MALLOC);
+        if(wolfSSL_Init() != WOLFSSL_SUCCESS){
 
-        if(!ssl_ctx) std::cout<<"Context creation failed. Memory pool may be too small or misaligned.\n";
-        
-        // seed the random number generator
-        srand(std::chrono::duration_cast< std::chrono::milliseconds >(std::chrono::system_clock::now().time_since_epoch()).count());
-
-        // we generate the static mask the library uses
-        int upper_bound = 255;
-            
-        for(int j = 0; j<mask_array_len; j++){
+            strncpy(error_buffer, "Failed to initialize wolfSSL core runtime.", error_buffer_array_length);
                 
-            mask[j] = (unsigned char)(rand() % upper_bound);
+            error = true;
+
+        }
+        
+        if(!error){
+
+            // we create our ssl ctx and register our static memory poll to prevent runtime memory allocation - the 'WOLFSSL_STATIC_MALLOC' flag enforces strict, non-growing bounds.
+            ssl_ctx = wolfSSL_CTX_new_ex(wolfTLSv1_3_client_method(), reinterpret_cast<byte*>(crypto_memory_pool), CRYPTO_ARENA_SIZE, WOLFSSL_STATIC_MALLOC);
+
+            if(!ssl_ctx){
+
+                strncpy(error_buffer, "Context creation failed. Memory pool may be too small or misaligned.", error_buffer_array_length);
+                    
+                error = true;
+
+            }
+            
+            // seed the random number generator
+            srand(std::chrono::duration_cast< std::chrono::milliseconds >(std::chrono::system_clock::now().time_since_epoch()).count());
+
+            // we generate the static mask the library uses
+            int upper_bound = 255;
+                
+            for(int j = 0; j<mask_array_len; j++){
+            
+                mask[j] = (unsigned char)(rand() % upper_bound);
+
+            }
 
         }
         
@@ -6242,26 +6266,30 @@ lock_client_nb::lock_client_nb(std::string_view url){
 
         }
         
-        // we create our ssl ctx and register our static memory poll to prevent runtime memory allocation - the 'WOLFSSL_STATIC_MALLOC' flag enforces strict, non-growing bounds.
-        ssl_ctx = wolfSSL_CTX_new_ex(wolfTLSv1_3_client_method(), reinterpret_cast<byte*>(crypto_memory_pool), CRYPTO_ARENA_SIZE, WOLFSSL_STATIC_MALLOC);
+        if(!error){
 
-        if(!ssl_ctx){
+            // we create our ssl ctx and register our static memory poll to prevent runtime memory allocation - the 'WOLFSSL_STATIC_MALLOC' flag enforces strict, non-growing bounds.
+            ssl_ctx = wolfSSL_CTX_new_ex(wolfTLSv1_3_client_method(), reinterpret_cast<byte*>(crypto_memory_pool), CRYPTO_ARENA_SIZE, WOLFSSL_STATIC_MALLOC);
 
-            strncpy(error_buffer, "Context creation failed. Memory pool may be too small or misaligned.", error_buffer_array_length);
-                
-            error = true;
+            if(!ssl_ctx){
 
-        }
-        
-        // seed the random number generator
-        srand(std::chrono::duration_cast< std::chrono::milliseconds >(std::chrono::system_clock::now().time_since_epoch()).count());
+                strncpy(error_buffer, "Context creation failed. Memory pool may be too small or misaligned.", error_buffer_array_length);
+                    
+                error = true;
 
-        // we generate the static mask the library uses
-        int upper_bound = 255;
+            }
             
-        for(int j = 0; j<mask_array_len; j++){
+            // seed the random number generator
+            srand(std::chrono::duration_cast< std::chrono::milliseconds >(std::chrono::system_clock::now().time_since_epoch()).count());
+
+            // we generate the static mask the library uses
+            int upper_bound = 255;
                 
-            mask[j] = (unsigned char)(rand() % upper_bound);
+            for(int j = 0; j<mask_array_len; j++){
+            
+                mask[j] = (unsigned char)(rand() % upper_bound);
+
+            }
 
         }
         
@@ -6957,26 +6985,30 @@ lock_client_nb::lock_client_nb(std::string_view url, in_addr* interface_address,
 
         }
         
-        // we create our ssl ctx and register our static memory poll to prevent runtime memory allocation - the 'WOLFSSL_STATIC_MALLOC' flag enforces strict, non-growing bounds.
-        ssl_ctx = wolfSSL_CTX_new_ex(wolfTLSv1_3_client_method(), reinterpret_cast<byte*>(crypto_memory_pool), CRYPTO_ARENA_SIZE, WOLFSSL_STATIC_MALLOC);
+        if(!error){
 
-        if(!ssl_ctx){
+            // we create our ssl ctx and register our static memory poll to prevent runtime memory allocation - the 'WOLFSSL_STATIC_MALLOC' flag enforces strict, non-growing bounds.
+            ssl_ctx = wolfSSL_CTX_new_ex(wolfTLSv1_3_client_method(), reinterpret_cast<byte*>(crypto_memory_pool), CRYPTO_ARENA_SIZE, WOLFSSL_STATIC_MALLOC);
 
-            strncpy(error_buffer, "Context creation failed. Memory pool may be too small or misaligned.", error_buffer_array_length);
-                
-            error = true;
+            if(!ssl_ctx){
 
-        }
-        
-        // seed the random number generator
-        srand(std::chrono::duration_cast< std::chrono::milliseconds >(std::chrono::system_clock::now().time_since_epoch()).count());
+                strncpy(error_buffer, "Context creation failed. Memory pool may be too small or misaligned.", error_buffer_array_length);
+                    
+                error = true;
 
-        // we generate the static mask the library uses
-        int upper_bound = 255;
+            }
             
-        for(int j = 0; j<mask_array_len; j++){
+            // seed the random number generator
+            srand(std::chrono::duration_cast< std::chrono::milliseconds >(std::chrono::system_clock::now().time_since_epoch()).count());
+
+            // we generate the static mask the library uses
+            int upper_bound = 255;
                 
-            mask[j] = (unsigned char)(rand() % upper_bound);
+            for(int j = 0; j<mask_array_len; j++){
+            
+                mask[j] = (unsigned char)(rand() % upper_bound);
+
+            }
 
         }
         
@@ -7582,40 +7614,45 @@ lock_client_nb::lock_client_nb(){
     
     // initialisation of class wide variables
     if(!wolfssl_init){
-        
-        ssl_ctx = SSL_CTX_new(TLS_client_method()); // initialises the SSL_CTX pointer with method TLS, this SSL_CTX structure is shared among all lock_client instance
-        
-        // seed the random number generator
-        srand(std::chrono::duration_cast< std::chrono::milliseconds >(std::chrono::system_clock::now().time_since_epoch()).count());
 
-        // we generate the static mask the library uses
-        int upper_bound = 255;
-            
-        for(int j = 0; j<mask_array_len; j++){
+        if(wolfSSL_Init() != WOLFSSL_SUCCESS){
+
+            strncpy(error_buffer, "Failed to initialize wolfSSL core runtime.", error_buffer_array_length);
                 
-            mask[j] = (unsigned char)(rand() % upper_bound);
+            error = true;
+
+        }
+        
+        if(!error){
+
+            // we create our ssl ctx and register our static memory poll to prevent runtime memory allocation - the 'WOLFSSL_STATIC_MALLOC' flag enforces strict, non-growing bounds.
+            ssl_ctx = wolfSSL_CTX_new_ex(wolfTLSv1_3_client_method(), reinterpret_cast<byte*>(crypto_memory_pool), CRYPTO_ARENA_SIZE, WOLFSSL_STATIC_MALLOC);
+
+            if(!ssl_ctx){
+
+                strncpy(error_buffer, "Context creation failed. Memory pool may be too small or misaligned.", error_buffer_array_length);
+                    
+                error = true;
+
+            }
+            
+            // seed the random number generator
+            srand(std::chrono::duration_cast< std::chrono::milliseconds >(std::chrono::system_clock::now().time_since_epoch()).count());
+
+            // we generate the static mask the library uses
+            int upper_bound = 255;
+                
+            for(int j = 0; j<mask_array_len; j++){
+            
+                mask[j] = (unsigned char)(rand() % upper_bound);
+
+            }
 
         }
         
         wolfssl_init = true;
         
     }
-    
-    // set the screen output bio
-    out_bio = BIO_new_fp(stdout, BIO_NOCLOSE); // sets the out bio to print to stdout
-    
-    // sets the mem bio 
-    c_mem_base64 = BIO_new(BIO_s_mem());
-    
-    // sets the base64 bio 
-    c_base64 = BIO_new(BIO_f_base64()); // initialise the base64 BIO structure
-    
-    // set the no newline option on the base64 bio to prevent it from adding superfluous newlines to output
-    BIO_set_flags(c_base64, BIO_FLAGS_BASE64_NO_NL);
-    
-    // chain base64 and mem bio 
-    BIO_push(c_base64, c_mem_base64);
-    
     
 }
 
@@ -7626,7 +7663,7 @@ lock_client_nb::~lock_client_nb(){
     if(client_state == OPEN){
         
         close();
-        
+
     }
     
     // free url heap memory - this only runs if dynamic memory allocation is used to store the url
@@ -7657,25 +7694,9 @@ lock_client_nb::~lock_client_nb(){
         
     }
     
-    if(c_ssl == NULL && c_url != NULL){// this would mean that this object is not an ssl BIO hence a regular free is sufficient
+    if(c_ssl != NULL && c_url != NULL){
         
-        BIO_free(c_bio);
-    }
-    else if(c_ssl != NULL && c_url != NULL){// this would mean that the object is an ssl bio
-        
-        BIO_free_all(c_bio); // frees the ssl bio chain
-    }
-    
-    if(c_base64 != NULL){
-        
-        BIO_free(c_base64); // free the base64 bio chain
-        
-    }
-    
-    if(c_mem_base64 != NULL){
-        
-        BIO_free(c_mem_base64); // free the mem bio structure
-        
+        wolfSSL_free(c_ssl); // frees the wolfssl object
     }
     
     if(send_data_new != NULL){
@@ -7689,8 +7710,6 @@ lock_client_nb::~lock_client_nb(){
         delete [] data_array_new; // free the memory used to receive data
         
     }
-    
-    BIO_free(out_bio); // frees the output printing bio
     
 }
 
@@ -12673,7 +12692,7 @@ bool lock_client_nb::interface_connect(std::string_view url, in_addr* interface_
     return error;
 }
 
-int lock_client_nb::connect_to_server(const char *hostname, const char *port, in_addr* interface_address, const char *interface_name{
+int lock_client_nb::connect_to_server(const char *hostname, const char *port, in_addr* interface_address, const char *interface_name){
 
     struct addrinfo hints, *res = NULL, *p = NULL;
 
@@ -12764,6 +12783,24 @@ int lock_client_nb::connect_to_server(const char *hostname, const char *port, in
     fcntl(sock, F_SETFL, flags | O_NONBLOCK);
 
     return sock; // Return the connected socket
+}
+
+int lock_client_nb::reset(){
+
+    if(!c_ssl) return 0;
+
+    // we fetch the active socket fd
+    int sockfd = wolfSSL_get_fd(c_ssl);
+
+    // if a valid socket is bound, we first close it effectively disconnecting it
+    if(sockfd >= 0) close(sockfd);
+
+    // we now clear our wolfssl session
+    wolfSSL_set_fd(c_ssl, -1);
+    wolfSSL_clear(c_ssl);
+
+    return 0;
+
 }
 
 void lock_client_nb::block_sigpipe_signal(){
