@@ -6804,7 +6804,7 @@ lock_client_nb::lock_client_nb(std::string_view url){
                                 data_array = data_array_static;
 
                                 // we send our upgrade request
-                                while((ret = wolfSSL_write(c_ssl, reinterpret_cast<const void*>(upgrade_request), strlen(upgrade_request))) != WOLFSSL_SUCCESS){
+                                while((ret = wolfSSL_write(c_ssl, reinterpret_cast<const void*>(upgrade_request), strlen(upgrade_request))) <= 0){
                                 
                                     // we get the error message
                                     int err = wolfSSL_get_error(c_ssl, ret);
@@ -6832,7 +6832,7 @@ lock_client_nb::lock_client_nb(std::string_view url){
                                 if(!error){
 
                                     // non blocking call to wolfssl read
-                                    while((ret = wolfSSL_read(c_ssl, data_array, static_data_array_length)) != WOLFSSL_SUCCESS){
+                                    while((ret = wolfSSL_read(c_ssl, data_array, static_data_array_length)) <= 0){
                                 
                                         // we get the error message
                                         int err = wolfSSL_get_error(c_ssl, ret);
@@ -7360,7 +7360,7 @@ lock_client_nb::lock_client_nb(std::string_view url, in_addr* interface_address,
                             
                                 error = true;
                                 
-                                reset(); // disconnect the underlying connection
+                                reset(); // disconnect the underlying bio
                             
                             }
                             else{ 
@@ -7396,7 +7396,7 @@ lock_client_nb::lock_client_nb(std::string_view url, in_addr* interface_address,
                         data_array = data_array_static;
 
                         // we send our upgrade request
-                        while((ret = wolfSSL_write(c_ssl, reinterpret_cast<const void*>(upgrade_request), strlen(upgrade_request))) != WOLFSSL_SUCCESS){
+                        while((ret = wolfSSL_write(c_ssl, reinterpret_cast<const void*>(upgrade_request), strlen(upgrade_request))) <= 0){
                         
                             // we get the error message
                             int err = wolfSSL_get_error(c_ssl, ret);
@@ -7424,7 +7424,7 @@ lock_client_nb::lock_client_nb(std::string_view url, in_addr* interface_address,
                         if(!error){
 
                             // non blocking call to wolfssl read
-                            while((ret = wolfSSL_read(c_ssl, data_array, static_data_array_length)) != WOLFSSL_SUCCESS){
+                            while((ret = wolfSSL_read(c_ssl, data_array, static_data_array_length)) <= 0){
                         
                                 // we get the error message
                                 int err = wolfSSL_get_error(c_ssl, ret);
@@ -7691,7 +7691,7 @@ bool lock_client_nb::ping(){ // sends a ping on an established websocket connect
     
     if(!error){ // only continue if no error
         
-        if(client_state == OPEN){ // continue if client is in open state 
+        if(client_state == OPEN){ // continue if client is in open state
             
             int i = 0; // variable for traversing the send data array
             
@@ -7730,8 +7730,14 @@ bool lock_client_nb::ping(){ // sends a ping on an established websocket connect
 
                 }
                 else{
-                    if(BIO_should_retry(c_bio)){
+
+                    // we get the error message
+                    int err = wolfSSL_get_error(c_ssl, local_len);
+
+                    if(err == WOLFSSL_ERROR_WANT_WRITE){
+
                         continue;
+
                     }
                     else{
 
@@ -7750,6 +7756,7 @@ bool lock_client_nb::ping(){ // sends a ping on an established websocket connect
                         return error;
                         
                     }
+
                 }
 
             }
@@ -7829,8 +7836,12 @@ bool lock_client_nb::pong(int ping_data_len){ // sends out a pong frame unsolici
 
                 }
                 else{
-                    if(BIO_should_retry(c_bio)){
-                    
+
+                    // we get the error message
+                    int err = wolfSSL_get_error(c_ssl, local_len);
+
+                    if(err == WOLFSSL_ERROR_WANT_WRITE){
+
                         continue;
 
                     }
@@ -7841,16 +7852,17 @@ bool lock_client_nb::pong(int ping_data_len){ // sends out a pong frame unsolici
 
                         error = true;
                         
-                        // we unblock the sigpipe signal because fail_ws_connection internally blocks it
                         unblock_sigpipe_signal();
 
                         fail_ws_connection(GOING_AWAY);
                         
                         // the connection getting lost isn't in itself an error it just puts the lock client in a closed state
 
+                        // we return from this function
                         return error;
-
+                        
                     }
+
                 }
 
             }
@@ -8011,7 +8023,6 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
                     // block SIGPIPE signal before attempting to send data, just incase the connection is closed
                     block_sigpipe_signal();
                     
-                    // send the data
                     int64_t len = 0;
 
                     // keep polling till we have sent the entire frame
@@ -8027,8 +8038,12 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
 
                         }
                         else{
-                            if(BIO_should_retry(c_bio)){
-                            
+
+                            // we get the error message
+                            int err = wolfSSL_get_error(c_ssl, local_len);
+
+                            if(err == WOLFSSL_ERROR_WANT_WRITE){
+
                                 continue;
 
                             }
@@ -8039,16 +8054,17 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
 
                                 error = true;
                                 
-                                // we unblock the sigpipe signal because fail_ws_connection internally blocks it
                                 unblock_sigpipe_signal();
 
                                 fail_ws_connection(GOING_AWAY);
                                 
                                 // the connection getting lost isn't in itself an error it just puts the lock client in a closed state
 
+                                // we return from this function
                                 return error;
-
+                                
                             }
+
                         }
 
                     }
@@ -8171,8 +8187,12 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
 
                     }
                     else{
-                        if(BIO_should_retry(c_bio)){
-                        
+
+                        // we get the error message
+                        int err = wolfSSL_get_error(c_ssl, local_len);
+
+                        if(err == WOLFSSL_ERROR_WANT_WRITE){
+
                             continue;
 
                         }
@@ -8183,16 +8203,17 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
 
                             error = true;
                             
-                            // we unblock the sigpipe signal because fail_ws_connection internally blocks it
                             unblock_sigpipe_signal();
 
                             fail_ws_connection(GOING_AWAY);
                             
                             // the connection getting lost isn't in itself an error it just puts the lock client in a closed state
 
+                            // we return from this function
                             return error;
-
+                            
                         }
+
                     }
 
                 }
@@ -8314,8 +8335,12 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
 
                             }
                             else{
-                                if(BIO_should_retry(c_bio)){
-                                
+
+                                // we get the error message
+                                int err = wolfSSL_get_error(c_ssl, local_len);
+
+                                if(err == WOLFSSL_ERROR_WANT_WRITE){
+
                                     continue;
 
                                 }
@@ -8326,16 +8351,17 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
 
                                     error = true;
                                     
-                                    // we unblock the sigpipe signal because fail_ws_connection internally blocks it
                                     unblock_sigpipe_signal();
 
                                     fail_ws_connection(GOING_AWAY);
                                     
                                     // the connection getting lost isn't in itself an error it just puts the lock client in a closed state
 
+                                    // we return from this function
                                     return error;
-
+                                    
                                 }
+
                             }
 
                         }
@@ -8451,8 +8477,12 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
 
                             }
                             else{
-                                if(BIO_should_retry(c_bio)){
-                                
+
+                                // we get the error message
+                                int err = wolfSSL_get_error(c_ssl, local_len);
+
+                                if(err == WOLFSSL_ERROR_WANT_WRITE){
+
                                     continue;
 
                                 }
@@ -8463,16 +8493,17 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
 
                                     error = true;
                                     
-                                    // we unblock the sigpipe signal because fail_ws_connection internally blocks it
                                     unblock_sigpipe_signal();
 
                                     fail_ws_connection(GOING_AWAY);
                                     
                                     // the connection getting lost isn't in itself an error it just puts the lock client in a closed state
 
+                                    // we return from this function
                                     return error;
-
+                                    
                                 }
+
                             }
 
                         }
