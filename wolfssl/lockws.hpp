@@ -463,7 +463,7 @@ lock_client::lock_client(std::string_view url){
                                             
                                             error = true;
                                             
-                                            reset(); // disconnect the underlying bio
+                                            reset(); // disconnect the underlying wolfssl object
                                             
                                         }
                                         else{ 
@@ -503,7 +503,7 @@ lock_client::lock_client(std::string_view url){
                                         
                                             error = true;
                                             
-                                            reset(); // disconnect the underlying bio
+                                            reset(); // disconnect the underlying wolfssl object
                                         
                                         }
                                         else{ 
@@ -1083,7 +1083,7 @@ lock_client::lock_client(std::string_view url, in_addr* interface_address, char*
                                             
                                             error = true;
                                             
-                                            reset(); // disconnect the underlying bio
+                                            reset(); // disconnect the underlying wolfssl object
                                             
                                         }
                                         else{ 
@@ -1123,7 +1123,7 @@ lock_client::lock_client(std::string_view url, in_addr* interface_address, char*
                                         
                                             error = true;
                                             
-                                            reset(); // disconnect the underlying bio
+                                            reset(); // disconnect the underlying wolfssl object
                                         
                                         }
                                         else{ 
@@ -1433,7 +1433,7 @@ bool lock_client::ping(){ // sends a ping on an established websocket connection
                 // we unblock the sigpipe signal because the fail_ws_connection function blocks it internally
                 unblock_sigpipe_signal();
 
-                // here bio_read couldn't fetch any extra data
+                // here wolfssl_read couldn't fetch any extra data
                 strncpy(error_buffer, "Websocket Connection Lost", error_buffer_array_length);
 
                 error = true;
@@ -1511,7 +1511,7 @@ bool lock_client::pong(int ping_data_len){ // sends out a pong frame unsolicited
                 // we unblock the sigpipe signal because the fail_ws_connection function blocks it internally
                 unblock_sigpipe_signal();
 
-                // here bio_read couldn't fetch any extra data
+                // here wolfssl_read couldn't fetch any extra data
                 strncpy(error_buffer, "Websocket Connection Lost", error_buffer_array_length);
 
                 error = true;
@@ -1686,7 +1686,7 @@ bool lock_client::send(std::string_view payload_data){ // sends data passed as p
                         // we unblock the sigpipe signal because the fail_ws_connection function blocks it internally
                         unblock_sigpipe_signal();
 
-                        // here bio_read couldn't fetch any extra data
+                        // here wolfssl_read couldn't fetch any extra data
                         strncpy(error_buffer, "Websocket Connection Lost", error_buffer_array_length);
 
                         error = true;
@@ -1804,7 +1804,7 @@ bool lock_client::send(std::string_view payload_data){ // sends data passed as p
                     // we unblock the sigpipe signal because the fail_ws_connection function blocks it internally
                     unblock_sigpipe_signal();
 
-                    // here bio_read couldn't fetch any extra data
+                    // here wolfssl_read couldn't fetch any extra data
                     strncpy(error_buffer, "Websocket Connection Lost", error_buffer_array_length);
 
                     error = true;
@@ -1920,7 +1920,7 @@ bool lock_client::send(std::string_view payload_data){ // sends data passed as p
                             // we unblock the sigpipe signal because the fail_ws_connection function blocks it internally
                             unblock_sigpipe_signal();
 
-                            // here bio_read couldn't fetch any extra data
+                            // here wolfssl_read couldn't fetch any extra data
                             strncpy(error_buffer, "Websocket Connection Lost", error_buffer_array_length);
 
                             error = true;
@@ -2030,7 +2030,7 @@ bool lock_client::send(std::string_view payload_data){ // sends data passed as p
                             // we unblock the sigpipe signal because the fail_ws_connection function blocks it internally
                             unblock_sigpipe_signal();
 
-                            // here bio_read couldn't fetch any extra data
+                            // here wolfssl_read couldn't fetch any extra data
                             strncpy(error_buffer, "Websocket Connection Lost", error_buffer_array_length);
 
                             error = true;
@@ -2134,7 +2134,7 @@ bool lock_client::basic_read(){
             // we check if the last BIO_read call returned 0 or < 0 which would indicate an error
             if(read_bytes <= 0){
                 
-                // here bio_read couldn't fetch any data
+                // here wolfssl_read couldn't fetch any data
                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                 error = true;
@@ -2191,7 +2191,7 @@ bool lock_client::basic_read(){
                     // we check if the last BIO_read call returned 0 or < 0 which would indicate an error
                     if(read_bytes <= 0){
                         
-                        // here bio_read couldn't fetch any data
+                        // here wolfssl_read couldn't fetch any data
                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                         error = true;
@@ -2244,7 +2244,7 @@ bool lock_client::basic_read(){
                     // we check if the last BIO_read call returned 0 or < 0 which would indicate an error
                     if(read_bytes <= 0){
                         
-                        // here bio_read couldn't fetch any data
+                        // here wolfssl_read couldn't fetch any data
                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                         error = true;
@@ -2316,7 +2316,7 @@ bool lock_client::basic_read(){
                         int64_t len = wolfSSL_read(c_ssl, cursor, frame_data_len);
 
                         if(len > 0){
-                        // bio_read fetched some extra bytes
+                        // wolfssl_read fetched some extra bytes
                         
                             cursor += len;
                             
@@ -2326,7 +2326,7 @@ bool lock_client::basic_read(){
                                 int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len));
                                 
                                 if(extra_bytes_read > 0){
-                                // bio_read fetched extra data
+                                // wolfssl_read fetched extra data
 
                                     len += extra_bytes_read;
                                     
@@ -2334,12 +2334,12 @@ bool lock_client::basic_read(){
 
                                 }
                                 else{
-                                // bio_read couldn't fetch extra data
+                                // wolfssl_read couldn't fetch extra data
 
                                     // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                     unblock_sigpipe_signal();
 
-                                    // here bio_read couldn't fetch any extra data
+                                    // here wolfssl_read couldn't fetch any extra data
                                     strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                     error = true;
@@ -2357,12 +2357,12 @@ bool lock_client::basic_read(){
 
                         }
                         else{
-                        // bio_read didn't fetch any more data so we fail the connection
+                        // wolfssl_read didn't fetch any more data so we fail the connection
                             
                             // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                             unblock_sigpipe_signal();
 
-                            // here bio_read couldn't fetch any extra data
+                            // here wolfssl_read couldn't fetch any extra data
                             strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                             error = true;
@@ -2398,7 +2398,7 @@ bool lock_client::basic_read(){
                         int64_t len = wolfSSL_read(c_ssl, cursor, frame_data_len);
 
                         if(len > 0){
-                        // bio_read fetched some extra bytes
+                        // wolfssl_read fetched some extra bytes
                         
                             cursor += len;
                             
@@ -2408,7 +2408,7 @@ bool lock_client::basic_read(){
                                 int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                                 
                                 if(extra_bytes_read > 0){
-                                // bio_read fetched extra data
+                                // wolfssl_read fetched extra data
 
                                     len += extra_bytes_read;
                                     
@@ -2416,12 +2416,12 @@ bool lock_client::basic_read(){
 
                                 }
                                 else{
-                                // bio_read couldn't fetch extra data
+                                // wolfssl_read couldn't fetch extra data
 
                                     // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                     unblock_sigpipe_signal();
 
-                                    // here bio_read couldn't fetch any extra data
+                                    // here wolfssl_read couldn't fetch any extra data
                                     strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                     error = true;
@@ -2439,12 +2439,12 @@ bool lock_client::basic_read(){
 
                         }
                         else{
-                        // bio_read didn't fetch any more data so we fail the connection
+                        // wolfssl_read didn't fetch any more data so we fail the connection
                             
                             // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                             unblock_sigpipe_signal();
 
-                            // here bio_read couldn't fetch any extra data
+                            // here wolfssl_read couldn't fetch any extra data
                             strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                             error = true;
@@ -2499,7 +2499,7 @@ bool lock_client::basic_read(){
                                 int64_t len = wolfSSL_read(c_ssl, cursor, frame_data_len);
 
                                 if(len > 0){
-                                // bio_read fetched some extra bytes
+                                // wolfssl_read fetched some extra bytes
                                 
                                     cursor += len;
                                     
@@ -2509,7 +2509,7 @@ bool lock_client::basic_read(){
                                         int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                                         
                                         if(extra_bytes_read > 0){
-                                        // bio_read fetched extra data
+                                        // wolfssl_read fetched extra data
 
                                             len += extra_bytes_read;
                                             
@@ -2517,12 +2517,12 @@ bool lock_client::basic_read(){
 
                                         }
                                         else{
-                                        // bio_read couldn't fetch extra data
+                                        // wolfssl_read couldn't fetch extra data
 
                                             // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                             unblock_sigpipe_signal();
 
-                                            // here bio_read couldn't fetch any extra data
+                                            // here wolfssl_read couldn't fetch any extra data
                                             strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                             error = true;
@@ -2540,12 +2540,12 @@ bool lock_client::basic_read(){
 
                                 }
                                 else{
-                                // bio_read didn't fetch any more data so we fail the connection
+                                // wolfssl_read didn't fetch any more data so we fail the connection
                                     
                                     // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                     unblock_sigpipe_signal();
 
-                                    // here bio_read couldn't fetch any extra data
+                                    // here wolfssl_read couldn't fetch any extra data
                                     strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                     error = true;
@@ -2599,7 +2599,7 @@ bool lock_client::basic_read(){
                             int64_t len = wolfSSL_read(c_ssl, cursor, frame_data_len);
 
                             if(len > 0){
-                            // bio_read fetched some extra bytes
+                            // wolfssl_read fetched some extra bytes
                             
                                 cursor += len;
                                 
@@ -2609,7 +2609,7 @@ bool lock_client::basic_read(){
                                     int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                                     
                                     if(extra_bytes_read > 0){
-                                    // bio_read fetched extra data
+                                    // wolfssl_read fetched extra data
 
                                         len += extra_bytes_read;
                                         
@@ -2617,12 +2617,12 @@ bool lock_client::basic_read(){
 
                                     }
                                     else{
-                                    // bio_read couldn't fetch extra data
+                                    // wolfssl_read couldn't fetch extra data
 
                                         // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                         unblock_sigpipe_signal();
 
-                                        // here bio_read couldn't fetch any extra data
+                                        // here wolfssl_read couldn't fetch any extra data
                                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                         error = true;
@@ -2640,12 +2640,12 @@ bool lock_client::basic_read(){
 
                             }
                             else{
-                            // bio_read didn't fetch any more data so we fail the connection
+                            // wolfssl_read didn't fetch any more data so we fail the connection
                                 
                                 // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                 unblock_sigpipe_signal();
 
-                                // here bio_read couldn't fetch any extra data
+                                // here wolfssl_read couldn't fetch any extra data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                 error = true;
@@ -2709,7 +2709,7 @@ bool lock_client::basic_read(){
                     // we check if the last BIO_read call returned 0 or < 0 which would indicate an error
                     if(read_bytes <= 0){
                         
-                        // here bio_read couldn't fetch any data
+                        // here wolfssl_read couldn't fetch any data
                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                         error = true;
@@ -2762,7 +2762,7 @@ bool lock_client::basic_read(){
                     // we check if the last BIO_read call returned 0 or < 0 which would indicate an error
                     if(read_bytes <= 0){
                         
-                        // here bio_read couldn't fetch any data
+                        // here wolfssl_read couldn't fetch any data
                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                         error = true;
@@ -2828,7 +2828,7 @@ bool lock_client::basic_read(){
                     int64_t len = wolfSSL_read(c_ssl, cursor, frame_data_len);
 
                     if(len > 0){
-                    // bio_read fetched some extra bytes
+                    // wolfssl_read fetched some extra bytes
                     
                         cursor += len;
                         
@@ -2838,7 +2838,7 @@ bool lock_client::basic_read(){
                             int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                             
                             if(extra_bytes_read > 0){
-                            // bio_read fetched extra data
+                            // wolfssl_read fetched extra data
 
                                 len += extra_bytes_read;
                                 
@@ -2846,12 +2846,12 @@ bool lock_client::basic_read(){
 
                             }
                             else{
-                            // bio_read couldn't fetch extra data
+                            // wolfssl_read couldn't fetch extra data
 
                                 // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                 unblock_sigpipe_signal();
 
-                                // here bio_read couldn't fetch any extra data
+                                // here wolfssl_read couldn't fetch any extra data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                 error = true;
@@ -2869,12 +2869,12 @@ bool lock_client::basic_read(){
 
                     }
                     else{
-                    // bio_read didn't fetch any more data so we fail the connection
+                    // wolfssl_read didn't fetch any more data so we fail the connection
                         
                         // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                         unblock_sigpipe_signal();
 
-                        // here bio_read couldn't fetch any extra data
+                        // here wolfssl_read couldn't fetch any extra data
                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                         error = true;
@@ -2899,7 +2899,7 @@ bool lock_client::basic_read(){
                     int64_t len = wolfSSL_read(c_ssl, cursor, frame_data_len);
 
                     if(len > 0){
-                    // bio_read fetched some extra bytes
+                    // wolfssl_read fetched some extra bytes
                     
                         cursor += len;
                         
@@ -2909,7 +2909,7 @@ bool lock_client::basic_read(){
                             int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                             
                             if(extra_bytes_read > 0){
-                            // bio_read fetched extra data
+                            // wolfssl_read fetched extra data
 
                                 len += extra_bytes_read;
                                 
@@ -2917,12 +2917,12 @@ bool lock_client::basic_read(){
 
                             }
                             else{
-                            // bio_read couldn't fetch extra data
+                            // wolfssl_read couldn't fetch extra data
 
                                 // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                 unblock_sigpipe_signal();
 
-                                // here bio_read couldn't fetch any extra data
+                                // here wolfssl_read couldn't fetch any extra data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                 error = true;
@@ -2940,12 +2940,12 @@ bool lock_client::basic_read(){
 
                     }
                     else{
-                    // bio_read didn't fetch any more data so we fail the connection
+                    // wolfssl_read didn't fetch any more data so we fail the connection
                         
                         // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                         unblock_sigpipe_signal();
 
-                        // here bio_read couldn't fetch any extra data
+                        // here wolfssl_read couldn't fetch any extra data
                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                         error = true;
@@ -2990,7 +2990,7 @@ bool lock_client::basic_read(){
                             int64_t len = wolfSSL_read(c_ssl, cursor, frame_data_len);
 
                             if(len > 0){
-                            // bio_read fetched some extra bytes
+                            // wolfssl_read fetched some extra bytes
                             
                                 cursor += len;
                                 
@@ -3000,7 +3000,7 @@ bool lock_client::basic_read(){
                                     int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                                     
                                     if(extra_bytes_read > 0){
-                                    // bio_read fetched extra data
+                                    // wolfssl_read fetched extra data
 
                                         len += extra_bytes_read;
                                         
@@ -3008,12 +3008,12 @@ bool lock_client::basic_read(){
 
                                     }
                                     else{
-                                    // bio_read couldn't fetch extra data
+                                    // wolfssl_read couldn't fetch extra data
 
                                         // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                         unblock_sigpipe_signal();
 
-                                        // here bio_read couldn't fetch any extra data
+                                        // here wolfssl_read couldn't fetch any extra data
                                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                         error = true;
@@ -3031,12 +3031,12 @@ bool lock_client::basic_read(){
 
                             }
                             else{
-                            // bio_read didn't fetch any more data so we fail the connection
+                            // wolfssl_read didn't fetch any more data so we fail the connection
                                 
                                 // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                 unblock_sigpipe_signal();
 
-                                // here bio_read couldn't fetch any extra data
+                                // here wolfssl_read couldn't fetch any extra data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                 error = true;
@@ -3083,7 +3083,7 @@ bool lock_client::basic_read(){
                             int64_t len = wolfSSL_read(c_ssl, cursor, frame_data_len);
 
                             if(len > 0){
-                            // bio_read fetched some extra bytes
+                            // wolfssl_read fetched some extra bytes
                             
                                 cursor += len;
                                 
@@ -3093,7 +3093,7 @@ bool lock_client::basic_read(){
                                     int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                                     
                                     if(extra_bytes_read > 0){
-                                    // bio_read fetched extra data
+                                    // wolfssl_read fetched extra data
 
                                         len += extra_bytes_read;
                                         
@@ -3101,12 +3101,12 @@ bool lock_client::basic_read(){
 
                                     }
                                     else{
-                                    // bio_read couldn't fetch extra data
+                                    // wolfssl_read couldn't fetch extra data
 
                                         // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                         unblock_sigpipe_signal();
 
-                                        // here bio_read couldn't fetch any extra data
+                                        // here wolfssl_read couldn't fetch any extra data
                                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                         error = true;
@@ -3124,12 +3124,12 @@ bool lock_client::basic_read(){
 
                             }
                             else{
-                            // bio_read didn't fetch any more data so we fail the connection
+                            // wolfssl_read didn't fetch any more data so we fail the connection
                                 
                                 // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                 unblock_sigpipe_signal();
 
-                                // here bio_read couldn't fetch any extra data
+                                // here wolfssl_read couldn't fetch any extra data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                 error = true;
@@ -3191,7 +3191,7 @@ bool lock_client::basic_read(){
                     // we check if the last BIO_read call returned 0 or < 0 which would indicate an error
                     if(read_bytes <= 0){
                         
-                        // here bio_read couldn't fetch any data
+                        // here wolfssl_read couldn't fetch any data
                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                         error = true;
@@ -3244,7 +3244,7 @@ bool lock_client::basic_read(){
                     // we check if the last BIO_read call returned 0 or < 0 which would indicate an error
                     if(read_bytes <= 0){
                         
-                        // here bio_read couldn't fetch any data
+                        // here wolfssl_read couldn't fetch any data
                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                         error = true;
@@ -3307,7 +3307,7 @@ bool lock_client::basic_read(){
                     int64_t len = wolfSSL_read(c_ssl, cursor, frame_data_len);
 
                     if(len > 0){
-                    // bio_read fetched some extra bytes
+                    // wolfssl_read fetched some extra bytes
                     
                         cursor += len;
                         
@@ -3317,7 +3317,7 @@ bool lock_client::basic_read(){
                             int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                             
                             if(extra_bytes_read > 0){
-                            // bio_read fetched extra data
+                            // wolfssl_read fetched extra data
 
                                 len += extra_bytes_read;
                                 
@@ -3325,12 +3325,12 @@ bool lock_client::basic_read(){
 
                             }
                             else{
-                            // bio_read couldn't fetch extra data
+                            // wolfssl_read couldn't fetch extra data
 
                                 // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                 unblock_sigpipe_signal();
 
-                                // here bio_read couldn't fetch any extra data
+                                // here wolfssl_read couldn't fetch any extra data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                 error = true;
@@ -3348,12 +3348,12 @@ bool lock_client::basic_read(){
 
                     }
                     else{
-                    // bio_read didn't fetch any more data so we fail the connection
+                    // wolfssl_read didn't fetch any more data so we fail the connection
                         
                         // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                         unblock_sigpipe_signal();
 
-                        // here bio_read couldn't fetch any extra data
+                        // here wolfssl_read couldn't fetch any extra data
                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                         error = true;
@@ -3385,7 +3385,7 @@ bool lock_client::basic_read(){
                     int64_t len = wolfSSL_read(c_ssl, cursor, frame_data_len);
 
                     if(len > 0){
-                    // bio_read fetched some extra bytes
+                    // wolfssl_read fetched some extra bytes
                     
                         cursor += len;
                         
@@ -3395,7 +3395,7 @@ bool lock_client::basic_read(){
                             int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                             
                             if(extra_bytes_read > 0){
-                            // bio_read fetched extra data
+                            // wolfssl_read fetched extra data
 
                                 len += extra_bytes_read;
                                 
@@ -3403,12 +3403,12 @@ bool lock_client::basic_read(){
 
                             }
                             else{
-                            // bio_read couldn't fetch extra data
+                            // wolfssl_read couldn't fetch extra data
 
                                 // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                 unblock_sigpipe_signal();
 
-                                // here bio_read couldn't fetch any extra data
+                                // here wolfssl_read couldn't fetch any extra data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                 error = true;
@@ -3426,12 +3426,12 @@ bool lock_client::basic_read(){
 
                     }
                     else{
-                    // bio_read didn't fetch any more data so we fail the connection
+                    // wolfssl_read didn't fetch any more data so we fail the connection
                         
                         // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                         unblock_sigpipe_signal();
 
-                        // here bio_read couldn't fetch any extra data
+                        // here wolfssl_read couldn't fetch any extra data
                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                         error = true;
@@ -3484,7 +3484,7 @@ bool lock_client::basic_read(){
                             int64_t len = wolfSSL_read(c_ssl, cursor, frame_data_len);
 
                             if(len > 0){
-                            // bio_read fetched some extra bytes
+                            // wolfssl_read fetched some extra bytes
                             
                                 cursor += len;
                                 
@@ -3494,7 +3494,7 @@ bool lock_client::basic_read(){
                                     int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                                     
                                     if(extra_bytes_read > 0){
-                                    // bio_read fetched extra data
+                                    // wolfssl_read fetched extra data
 
                                         len += extra_bytes_read;
                                         
@@ -3502,12 +3502,12 @@ bool lock_client::basic_read(){
 
                                     }
                                     else{
-                                    // bio_read couldn't fetch extra data
+                                    // wolfssl_read couldn't fetch extra data
 
                                         // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                         unblock_sigpipe_signal();
 
-                                        // here bio_read couldn't fetch any extra data
+                                        // here wolfssl_read couldn't fetch any extra data
                                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                         error = true;
@@ -3525,12 +3525,12 @@ bool lock_client::basic_read(){
 
                             }
                             else{
-                            // bio_read didn't fetch any more data so we fail the connection
+                            // wolfssl_read didn't fetch any more data so we fail the connection
                                 
                                 // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                 unblock_sigpipe_signal();
 
-                                // here bio_read couldn't fetch any extra data
+                                // here wolfssl_read couldn't fetch any extra data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                 error = true;
@@ -3587,7 +3587,7 @@ bool lock_client::basic_read(){
                             int64_t len = wolfSSL_read(c_ssl, cursor, frame_data_len);
 
                             if(len > 0){
-                            // bio_read fetched some extra bytes
+                            // wolfssl_read fetched some extra bytes
                             
                                 cursor += len;
                                 
@@ -3597,7 +3597,7 @@ bool lock_client::basic_read(){
                                     int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                                     
                                     if(extra_bytes_read > 0){
-                                    // bio_read fetched extra data
+                                    // wolfssl_read fetched extra data
 
                                         len += extra_bytes_read;
                                         
@@ -3605,12 +3605,12 @@ bool lock_client::basic_read(){
 
                                     }
                                     else{
-                                    // bio_read couldn't fetch extra data
+                                    // wolfssl_read couldn't fetch extra data
 
                                         // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                         unblock_sigpipe_signal();
 
-                                        // here bio_read couldn't fetch any extra data
+                                        // here wolfssl_read couldn't fetch any extra data
                                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                         error = true;
@@ -3628,12 +3628,12 @@ bool lock_client::basic_read(){
 
                             }
                             else{
-                            // bio_read didn't fetch any more data so we fail the connection
+                            // wolfssl_read didn't fetch any more data so we fail the connection
                                 
                                 // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                 unblock_sigpipe_signal();
 
-                                // here bio_read couldn't fetch any extra data
+                                // here wolfssl_read couldn't fetch any extra data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                 error = true;
@@ -3691,7 +3691,7 @@ bool lock_client::basic_read(){
                         int64_t len = wolfSSL_read(c_ssl, cursor, frame_data_len);
 
                         if(len > 0){
-                        // bio_read fetched some extra bytes
+                        // wolfssl_read fetched some extra bytes
                         
                             cursor += len;
                             
@@ -3701,7 +3701,7 @@ bool lock_client::basic_read(){
                                 int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                                 
                                 if(extra_bytes_read > 0){
-                                // bio_read fetched extra data
+                                // wolfssl_read fetched extra data
 
                                     len += extra_bytes_read;
                                     
@@ -3709,12 +3709,12 @@ bool lock_client::basic_read(){
 
                                 }
                                 else{
-                                // bio_read couldn't fetch extra data
+                                // wolfssl_read couldn't fetch extra data
 
                                     // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                     unblock_sigpipe_signal();
 
-                                    // here bio_read couldn't fetch any extra data
+                                    // here wolfssl_read couldn't fetch any extra data
                                     strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                     error = true;
@@ -3732,12 +3732,12 @@ bool lock_client::basic_read(){
 
                         }
                         else{
-                        // bio_read didn't fetch any more data so we fail the connection
+                        // wolfssl_read didn't fetch any more data so we fail the connection
                             
                             // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                             unblock_sigpipe_signal();
 
-                            // here bio_read couldn't fetch any extra data
+                            // here wolfssl_read couldn't fetch any extra data
                             strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                             error = true;
@@ -3797,7 +3797,7 @@ bool lock_client::basic_read(){
                     // we check if the last BIO_read call returned 0 or < 0 which would indicate an error
                     if(read_bytes <= 0){
                         
-                        // here bio_read couldn't fetch any data
+                        // here wolfssl_read couldn't fetch any data
                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                         error = true;
@@ -3850,7 +3850,7 @@ bool lock_client::basic_read(){
                     // we check if the last BIO_read call returned 0 or < 0 which would indicate an error
                     if(read_bytes <= 0){
                         
-                        // here bio_read couldn't fetch any data
+                        // here wolfssl_read couldn't fetch any data
                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                         error = true;
@@ -3911,7 +3911,7 @@ bool lock_client::basic_read(){
                     int64_t len = wolfSSL_read(c_ssl, cursor, frame_data_len);
 
                     if(len > 0){
-                    // bio_read fetched some extra bytes
+                    // wolfssl_read fetched some extra bytes
                     
                         cursor += len;
                         
@@ -3921,7 +3921,7 @@ bool lock_client::basic_read(){
                             int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                             
                             if(extra_bytes_read > 0){
-                            // bio_read fetched extra data
+                            // wolfssl_read fetched extra data
 
                                 len += extra_bytes_read;
                                 
@@ -3929,12 +3929,12 @@ bool lock_client::basic_read(){
 
                             }
                             else{
-                            // bio_read couldn't fetch extra data
+                            // wolfssl_read couldn't fetch extra data
 
                                 // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                 unblock_sigpipe_signal();
 
-                                // here bio_read couldn't fetch any extra data
+                                // here wolfssl_read couldn't fetch any extra data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                 error = true;
@@ -3952,12 +3952,12 @@ bool lock_client::basic_read(){
 
                     }
                     else{
-                    // bio_read didn't fetch any more data so we fail the connection
+                    // wolfssl_read didn't fetch any more data so we fail the connection
                         
                         // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                         unblock_sigpipe_signal();
 
-                        // here bio_read couldn't fetch any extra data
+                        // here wolfssl_read couldn't fetch any extra data
                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                         error = true;
@@ -3997,7 +3997,7 @@ bool lock_client::basic_read(){
                     int64_t len = wolfSSL_read(c_ssl, cursor, frame_data_len);
 
                     if(len > 0){
-                    // bio_read fetched some extra bytes
+                    // wolfssl_read fetched some extra bytes
                     
                         cursor += len;
                         
@@ -4007,7 +4007,7 @@ bool lock_client::basic_read(){
                             int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                             
                             if(extra_bytes_read > 0){
-                            // bio_read fetched extra data
+                            // wolfssl_read fetched extra data
 
                                 len += extra_bytes_read;
                                 
@@ -4015,12 +4015,12 @@ bool lock_client::basic_read(){
 
                             }
                             else{
-                            // bio_read couldn't fetch extra data
+                            // wolfssl_read couldn't fetch extra data
 
                                 // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                 unblock_sigpipe_signal();
 
-                                // here bio_read couldn't fetch any extra data
+                                // here wolfssl_read couldn't fetch any extra data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                 error = true;
@@ -4038,12 +4038,12 @@ bool lock_client::basic_read(){
 
                     }
                     else{
-                    // bio_read didn't fetch any more data so we fail the connection
+                    // wolfssl_read didn't fetch any more data so we fail the connection
                         
                         // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                         unblock_sigpipe_signal();
 
-                        // here bio_read couldn't fetch any extra data
+                        // here wolfssl_read couldn't fetch any extra data
                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                         error = true;
@@ -4105,7 +4105,7 @@ bool lock_client::basic_read(){
                             int64_t len = wolfSSL_read(c_ssl, cursor, frame_data_len);
 
                             if(len > 0){
-                            // bio_read fetched some extra bytes
+                            // wolfssl_read fetched some extra bytes
                             
                                 cursor += len;
                                 
@@ -4115,7 +4115,7 @@ bool lock_client::basic_read(){
                                     int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                                     
                                     if(extra_bytes_read > 0){
-                                    // bio_read fetched extra data
+                                    // wolfssl_read fetched extra data
 
                                         len += extra_bytes_read;
                                         
@@ -4123,12 +4123,12 @@ bool lock_client::basic_read(){
 
                                     }
                                     else{
-                                    // bio_read couldn't fetch extra data
+                                    // wolfssl_read couldn't fetch extra data
 
                                         // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                         unblock_sigpipe_signal();
 
-                                        // here bio_read couldn't fetch any extra data
+                                        // here wolfssl_read couldn't fetch any extra data
                                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                         error = true;
@@ -4146,12 +4146,12 @@ bool lock_client::basic_read(){
 
                             }
                             else{
-                            // bio_read didn't fetch any more data so we fail the connection
+                            // wolfssl_read didn't fetch any more data so we fail the connection
                                 
                                 // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                 unblock_sigpipe_signal();
 
-                                // here bio_read couldn't fetch any extra data
+                                // here wolfssl_read couldn't fetch any extra data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                 error = true;
@@ -4215,7 +4215,7 @@ bool lock_client::basic_read(){
                             int64_t len = wolfSSL_read(c_ssl, cursor, frame_data_len);
 
                             if(len > 0){
-                            // bio_read fetched some extra bytes
+                            // wolfssl_read fetched some extra bytes
                             
                                 cursor += len;
                                 
@@ -4225,7 +4225,7 @@ bool lock_client::basic_read(){
                                     int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                                     
                                     if(extra_bytes_read > 0){
-                                    // bio_read fetched extra data
+                                    // wolfssl_read fetched extra data
 
                                         len += extra_bytes_read;
                                         
@@ -4233,12 +4233,12 @@ bool lock_client::basic_read(){
 
                                     }
                                     else{
-                                    // bio_read couldn't fetch extra data
+                                    // wolfssl_read couldn't fetch extra data
 
                                         // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                         unblock_sigpipe_signal();
 
-                                        // here bio_read couldn't fetch any extra data
+                                        // here wolfssl_read couldn't fetch any extra data
                                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                         error = true;
@@ -4256,12 +4256,12 @@ bool lock_client::basic_read(){
 
                             }
                             else{
-                            // bio_read didn't fetch any more data so we fail the connection
+                            // wolfssl_read didn't fetch any more data so we fail the connection
                                 
                                 // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                 unblock_sigpipe_signal();
 
-                                // here bio_read couldn't fetch any extra data
+                                // here wolfssl_read couldn't fetch any extra data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                 error = true;
@@ -4326,7 +4326,7 @@ bool lock_client::basic_read(){
                         int64_t len = wolfSSL_read(c_ssl, cursor, frame_data_len);
 
                         if(len > 0){
-                        // bio_read fetched some extra bytes
+                        // wolfssl_read fetched some extra bytes
                         
                             cursor += len;
                             
@@ -4336,7 +4336,7 @@ bool lock_client::basic_read(){
                                 int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                                 
                                 if(extra_bytes_read > 0){
-                                // bio_read fetched extra data
+                                // wolfssl_read fetched extra data
 
                                     len += extra_bytes_read;
                                     
@@ -4344,12 +4344,12 @@ bool lock_client::basic_read(){
 
                                 }
                                 else{
-                                // bio_read couldn't fetch extra data
+                                // wolfssl_read couldn't fetch extra data
 
                                     // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                     unblock_sigpipe_signal();
 
-                                    // here bio_read couldn't fetch any extra data
+                                    // here wolfssl_read couldn't fetch any extra data
                                     strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                     error = true;
@@ -4367,12 +4367,12 @@ bool lock_client::basic_read(){
 
                         }
                         else{
-                        // bio_read didn't fetch any more data so we fail the connection
+                        // wolfssl_read didn't fetch any more data so we fail the connection
                             
                             // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                             unblock_sigpipe_signal();
 
-                            // here bio_read couldn't fetch any extra data
+                            // here wolfssl_read couldn't fetch any extra data
                             strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                             error = true;
@@ -4457,7 +4457,7 @@ bool lock_client::basic_read(){
                         // we check if the last BIO_read call returned 0 or < 0 which would indicate an error
                         if(read_bytes <= 0){
                             
-                            // here bio_read couldn't fetch any data
+                            // here wolfssl_read couldn't fetch any data
                             strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                             error = true;
@@ -4522,7 +4522,7 @@ bool lock_client::basic_read(){
                     int64_t len = wolfSSL_read(c_ssl, cursor, frame_data_len);
 
                     if(len > 0){
-                    // bio_read fetched some extra bytes
+                    // wolfssl_read fetched some extra bytes
                     
                         cursor += len;
                         
@@ -4532,7 +4532,7 @@ bool lock_client::basic_read(){
                             int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                             
                             if(extra_bytes_read > 0){
-                            // bio_read fetched extra data
+                            // wolfssl_read fetched extra data
 
                                 len += extra_bytes_read;
                                 
@@ -4540,12 +4540,12 @@ bool lock_client::basic_read(){
 
                             }
                             else{
-                            // bio_read couldn't fetch extra data
+                            // wolfssl_read couldn't fetch extra data
 
                                 // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                 unblock_sigpipe_signal();
 
-                                // here bio_read couldn't fetch any extra data
+                                // here wolfssl_read couldn't fetch any extra data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                 error = true;
@@ -4562,12 +4562,12 @@ bool lock_client::basic_read(){
 
                     }
                     else{
-                    // bio_read didn't fetch any more data so we fail the connection
+                    // wolfssl_read didn't fetch any more data so we fail the connection
                         
                         // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                         unblock_sigpipe_signal();
 
-                        // here bio_read couldn't fetch any extra data
+                        // here wolfssl_read couldn't fetch any extra data
                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                         error = true;
@@ -4614,7 +4614,7 @@ bool lock_client::basic_read(){
                 
                 }
                 
-                // send the close frame response - we do not test the return code of bio_read in this case
+                // send the close frame response - we do not test the return code of wolfssl_read in this case
                 (void)wolfSSL_write(c_ssl, send_data, i);
                 
                 // unblock SIGPIPE signal
@@ -4667,7 +4667,7 @@ bool lock_client::basic_read(){
                     int64_t len = wolfSSL_read(c_ssl, loc_cursor, frame_data_len);
 
                     if(len > 0){
-                    // bio_read fetched some extra bytes
+                    // wolfssl_read fetched some extra bytes
                     
                         loc_cursor += len;
                         
@@ -4677,7 +4677,7 @@ bool lock_client::basic_read(){
                             int64_t extra_bytes_read = wolfSSL_read(c_ssl, loc_cursor, (frame_data_len - len) );
                             
                             if(extra_bytes_read > 0){
-                            // bio_read fetched extra data
+                            // wolfssl_read fetched extra data
 
                                 len += extra_bytes_read;
                                 
@@ -4685,12 +4685,12 @@ bool lock_client::basic_read(){
 
                             }
                             else{
-                            // bio_read couldn't fetch extra data
+                            // wolfssl_read couldn't fetch extra data
 
                                 // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                 unblock_sigpipe_signal();
 
-                                // here bio_read couldn't fetch any extra data
+                                // here wolfssl_read couldn't fetch any extra data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                 error = true;
@@ -4708,12 +4708,12 @@ bool lock_client::basic_read(){
 
                     }
                     else{
-                    // bio_read didn't fetch any more data so we fail the connection
+                    // wolfssl_read didn't fetch any more data so we fail the connection
                         
                         // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                         unblock_sigpipe_signal();
 
-                        // here bio_read couldn't fetch any extra data
+                        // here wolfssl_read couldn't fetch any extra data
                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                         error = true;
@@ -5192,7 +5192,7 @@ bool lock_client::connect(std::string_view url){ // this is used to connect to c
                                         
                                         error = true;
                                         
-                                        reset(); // disconnect the underlying bio
+                                        reset(); // disconnect the underlying wolfssl object
                                         
                                     }
                                     else{ 
@@ -5232,7 +5232,7 @@ bool lock_client::connect(std::string_view url){ // this is used to connect to c
                                     
                                         error = true;
                                         
-                                        reset(); // disconnect the underlying bio
+                                        reset(); // disconnect the underlying wolfssl object
                                     
                                     }
                                     else{ 
@@ -5789,7 +5789,7 @@ bool lock_client::interface_connect(std::string_view url, in_addr* interface_add
                                         
                                         error = true;
                                         
-                                        reset(); // disconnect the underlying bio
+                                        reset(); // disconnect the underlying wolfssl object
                                         
                                     }
                                     else{ 
@@ -5829,7 +5829,7 @@ bool lock_client::interface_connect(std::string_view url, in_addr* interface_add
                                     
                                         error = true;
                                         
-                                        reset(); // disconnect the underlying bio
+                                        reset(); // disconnect the underlying wolfssl object
                                     
                                     }
                                     else{ 
@@ -6728,7 +6728,7 @@ lock_client_nb::lock_client_nb(std::string_view url){
                                         
                                         error = true;
                                         
-                                        reset(); // disconnect the underlying bio
+                                        reset(); // disconnect the underlying wolfssl object
                                         
                                     }
                                     else{
@@ -6768,7 +6768,7 @@ lock_client_nb::lock_client_nb(std::string_view url){
                                     
                                         error = true;
                                         
-                                        reset(); // disconnect the underlying bio
+                                        reset(); // disconnect the underlying wolfssl object
                                     
                                     }
                                     else{ 
@@ -6838,7 +6838,7 @@ lock_client_nb::lock_client_nb(std::string_view url){
                                         int err = wolfSSL_get_error(c_ssl, ret);
 
                                         // we check if the wolfssl handle is still expecting a read
-                                        if(err == WOLFSSL_ERROR_WANT_READ){
+                                        if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
 
                                             continue;
 
@@ -7320,7 +7320,7 @@ lock_client_nb::lock_client_nb(std::string_view url, in_addr* interface_address,
                                 
                                 error = true;
                                 
-                                reset(); // disconnect the underlying bio
+                                reset(); // disconnect the underlying wolfssl object
                                 
                             }
                             else{
@@ -7360,7 +7360,7 @@ lock_client_nb::lock_client_nb(std::string_view url, in_addr* interface_address,
                             
                                 error = true;
                                 
-                                reset(); // disconnect the underlying bio
+                                reset(); // disconnect the underlying wolfssl object
                             
                             }
                             else{ 
@@ -7430,7 +7430,7 @@ lock_client_nb::lock_client_nb(std::string_view url, in_addr* interface_address,
                                 int err = wolfSSL_get_error(c_ssl, ret);
 
                                 // we check if the wolfssl handle is still expecting a read
-                                if(err == WOLFSSL_ERROR_WANT_READ){
+                                if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
 
                                     continue;
 
@@ -7741,7 +7741,7 @@ bool lock_client_nb::ping(){ // sends a ping on an established websocket connect
                     }
                     else{
 
-                        // here bio_read couldn't fetch any extra data
+                        // here wolfssl_read couldn't fetch any extra data
                         strncpy(error_buffer, "Websocket Connection Lost", error_buffer_array_length);
 
                         error = true;
@@ -7847,7 +7847,7 @@ bool lock_client_nb::pong(int ping_data_len){ // sends out a pong frame unsolici
                     }
                     else{
 
-                        // here bio_read couldn't fetch any extra data
+                        // here wolfssl_read couldn't fetch any extra data
                         strncpy(error_buffer, "Websocket Connection Lost", error_buffer_array_length);
 
                         error = true;
@@ -8049,7 +8049,7 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
                             }
                             else{
 
-                                // here bio_read couldn't fetch any extra data
+                                // here wolfssl_read couldn't fetch any extra data
                                 strncpy(error_buffer, "Websocket Connection Lost", error_buffer_array_length);
 
                                 error = true;
@@ -8198,7 +8198,7 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
                         }
                         else{
 
-                            // here bio_read couldn't fetch any extra data
+                            // here wolfssl_read couldn't fetch any extra data
                             strncpy(error_buffer, "Websocket Connection Lost", error_buffer_array_length);
 
                             error = true;
@@ -8346,7 +8346,7 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
                                 }
                                 else{
 
-                                    // here bio_read couldn't fetch any extra data
+                                    // here wolfssl_read couldn't fetch any extra data
                                     strncpy(error_buffer, "Websocket Connection Lost", error_buffer_array_length);
 
                                     error = true;
@@ -8488,7 +8488,7 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
                                 }
                                 else{
 
-                                    // here bio_read couldn't fetch any extra data
+                                    // here wolfssl_read couldn't fetch any extra data
                                     strncpy(error_buffer, "Websocket Connection Lost", error_buffer_array_length);
 
                                     error = true;
@@ -8593,11 +8593,14 @@ bool lock_client_nb::basic_read(){
                 // we call BIO_read to attempt to read the bytes into the buffer
                 read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                // if BIO_read returns a value <= 0 we check if there is data available to be read
+                // if wolfssl_read returns a value <= 0 we check if there is data available to be read
                 if(read_bytes <= 0){
 
-                    // we check if the BIO should retry
-                    if(BIO_should_retry(c_bio)){
+                    // we get the error message
+                    int err = wolfSSL_get_error(c_ssl, read_bytes);
+
+                    // we check if the wolfssl library still expects more reads or if this is an actual error
+                    if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
 
                         // getting here BIO should retry returns true so we check if any ata has been fetched in this basic read call
                         if(total_read_bytes > 0){
@@ -8620,9 +8623,9 @@ bool lock_client_nb::basic_read(){
 
                     }
                     else{
-                    // getting here the error number returned by BIO read isn't due to BIO should retry so we fail this websocket connection
+                    // getting here the error number returned by wolfssl read isn't due to wolfssl want read so we fail this websocket connection
                     
-                        // here bio_read couldn't fetch any data
+                        // here wolfssl_read couldn't fetch any data
                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                         error = true;
@@ -8654,7 +8657,7 @@ bool lock_client_nb::basic_read(){
                     frame_data_len = rand_bytes[1];
                     
                 }
-                else if( rand_bytes[1] == 126 ){ // next two bytes store the data length
+                else if(rand_bytes[1] == 126){ // next two bytes store the data length
                     
                     // getting here the SIGPIPE signal is still blocked
 
@@ -8678,8 +8681,11 @@ bool lock_client_nb::basic_read(){
                         // if BIO_read returns a value <= 0 we check if there is data available to be read
                         if(read_bytes <= 0){
 
-                            // we check if the BIO should retry
-                            if(BIO_should_retry(c_bio)){
+                            // we get the error message
+                            int err = wolfSSL_get_error(c_ssl, read_bytes);
+
+                            // we check if the wolfssl library still expects more reads or if this is an actual error
+                            if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
 
                                 // getting here BIO should retry returns true so we check if any ata has been fetched in this basic read call
                                 if(total_read_bytes > 0){
@@ -8699,11 +8705,12 @@ bool lock_client_nb::basic_read(){
 
                                 }
 
+
                             }
                             else{
-                            // getting here the error number returned by BIO read isn't due to BIO should retry so we fail this websocket connection
+                            // getting here the error number returned by wolfssl read isn't due to wolfssl want read so we fail this websocket connection
                             
-                                // here bio_read couldn't fetch any data
+                                // here wolfssl_read couldn't fetch any data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                 error = true;
@@ -8730,7 +8737,7 @@ bool lock_client_nb::basic_read(){
                     frame_data_len = (rand_bytes[0] << 8) | rand_bytes[1];
                     
                 }
-                else if( rand_bytes[1] == 127 ){ // this would mean that the next 8 bytes is our length
+                else if(rand_bytes[1] == 127){ // this would mean that the next 8 bytes is our length
                     
                     // getting here the SIGPIPE signal is still blocked
 
@@ -8748,14 +8755,17 @@ bool lock_client_nb::basic_read(){
                     // we keep reading till we have our total bytes to read
                     while(total_read_bytes < bytes_to_read){
 
-                        // we call BIO_read to attempt to read the bytes into the buffer
+                        // we call wolfssl_read to attempt to read the bytes into the buffer
                         read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if BIO_read returns a value <= 0 we check if there is data available to be read
+                        // if wolfssl_read returns a value <= 0 we check if there is data available to be read
                         if(read_bytes <= 0){
 
-                            // we check if the BIO should retry
-                            if(BIO_should_retry(c_bio)){
+                            // we get the error message
+                            int err = wolfSSL_get_error(c_ssl, read_bytes);
+
+                            // we check if the wolfssl library still expects more reads or if this is an actual error
+                            if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
 
                                 // getting here BIO should retry returns true so we check if any ata has been fetched in this basic read call
                                 if(total_read_bytes > 0){
@@ -8775,11 +8785,12 @@ bool lock_client_nb::basic_read(){
 
                                 }
 
+
                             }
                             else{
-                            // getting here the error number returned by BIO read isn't due to BIO should retry so we fail this websocket connection
+                            // getting here the error number returned by wolfssl read isn't due to wolfssl want read so we fail this websocket connection
                             
-                                // here bio_read couldn't fetch any data
+                                // here wolfssl_read couldn't fetch any data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                 error = true;
@@ -8854,7 +8865,7 @@ bool lock_client_nb::basic_read(){
                     
                     // SIGPIPE signal is still blocked
 
-                    int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
+                    int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from wolfssl read because wolfssl read could return a negative value which would make frame data len - len calculation be wrong
 
                     // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                     while(len < frame_data_len){
@@ -8862,7 +8873,7 @@ bool lock_client_nb::basic_read(){
                         int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                             
                         if(extra_bytes_read > 0){
-                        // bio_read fetched extra data
+                        // wolfssl_read fetched extra data
 
                             len += extra_bytes_read;
                             
@@ -8870,9 +8881,12 @@ bool lock_client_nb::basic_read(){
 
                         }
                         else{
-                        // bio_read couldn't fetch data
+                        // wolfssl read didn't fetch more data
 
-                            if(BIO_should_retry(c_bio)){
+                            // we get the error message
+                            int err = wolfSSL_get_error(c_ssl, extra_bytes_read);
+
+                            if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
                             // no data available yet
 
                                 continue;
@@ -8884,7 +8898,7 @@ bool lock_client_nb::basic_read(){
                                 // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                 unblock_sigpipe_signal();
 
-                                // here bio_read couldn't fetch any extra data
+                                // here wolfssl_read couldn't fetch any extra data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                 error = true;
@@ -8918,15 +8932,15 @@ bool lock_client_nb::basic_read(){
                     
                     // SIGPIPE signal is still blocked
 
-                    int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
+                    int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from wolfssl read because wolfssl read could return a negative value which would make frame data len - len calculation be wrong
 
                     // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                     while(len < frame_data_len){
-                        
+                    
                         int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                             
                         if(extra_bytes_read > 0){
-                        // bio_read fetched extra data
+                        // wolfssl_read fetched extra data
 
                             len += extra_bytes_read;
                             
@@ -8934,9 +8948,12 @@ bool lock_client_nb::basic_read(){
 
                         }
                         else{
-                        // bio_read couldn't fetch data
+                        // wolfssl read didn't fetch more data
 
-                            if(BIO_should_retry(c_bio)){
+                            // we get the error message
+                            int err = wolfSSL_get_error(c_ssl, extra_bytes_read);
+
+                            if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
                             // no data available yet
 
                                 continue;
@@ -8948,7 +8965,7 @@ bool lock_client_nb::basic_read(){
                                 // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                 unblock_sigpipe_signal();
 
-                                // here bio_read couldn't fetch any extra data
+                                // here wolfssl_read couldn't fetch any extra data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                 error = true;
@@ -9002,15 +9019,15 @@ bool lock_client_nb::basic_read(){
                         
                             // SIGPIPE signal is still blocked
 
-                            int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
+                            int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from wolfssl read because wolfssl read could return a negative value which would make frame data len - len calculation be wrong
 
                             // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                             while(len < frame_data_len){
-                                
+                            
                                 int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                                     
                                 if(extra_bytes_read > 0){
-                                // bio_read fetched extra data
+                                // wolfssl_read fetched extra data
 
                                     len += extra_bytes_read;
                                     
@@ -9018,9 +9035,12 @@ bool lock_client_nb::basic_read(){
 
                                 }
                                 else{
-                                // bio_read couldn't fetch data
+                                // wolfssl read didn't fetch more data
 
-                                    if(BIO_should_retry(c_bio)){
+                                    // we get the error message
+                                    int err = wolfSSL_get_error(c_ssl, extra_bytes_read);
+
+                                    if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
                                     // no data available yet
 
                                         continue;
@@ -9032,7 +9052,7 @@ bool lock_client_nb::basic_read(){
                                         // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                         unblock_sigpipe_signal();
 
-                                        // here bio_read couldn't fetch any extra data
+                                        // here wolfssl_read couldn't fetch any extra data
                                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                         error = true;
@@ -9088,15 +9108,15 @@ bool lock_client_nb::basic_read(){
                         
                             // SIGPIPE signal is still blocked
 
-                            int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
+                            int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from wolfssl read because wolfssl read could return a negative value which would make frame data len - len calculation be wrong
 
                             // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                             while(len < frame_data_len){
-                                
+                            
                                 int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                                     
                                 if(extra_bytes_read > 0){
-                                // bio_read fetched extra data
+                                // wolfssl_read fetched extra data
 
                                     len += extra_bytes_read;
                                     
@@ -9104,9 +9124,12 @@ bool lock_client_nb::basic_read(){
 
                                 }
                                 else{
-                                // bio_read couldn't fetch data
+                                // wolfssl read didn't fetch more data
 
-                                    if(BIO_should_retry(c_bio)){
+                                    // we get the error message
+                                    int err = wolfSSL_get_error(c_ssl, extra_bytes_read);
+
+                                    if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
                                     // no data available yet
 
                                         continue;
@@ -9118,7 +9141,7 @@ bool lock_client_nb::basic_read(){
                                         // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                         unblock_sigpipe_signal();
 
-                                        // here bio_read couldn't fetch any extra data
+                                        // here wolfssl_read couldn't fetch any extra data
                                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                         error = true;
@@ -9157,7 +9180,7 @@ bool lock_client_nb::basic_read(){
                     frame_data_len = rand_bytes[1];
                     
                 }
-                else if( rand_bytes[1] == 126 ){ // next two bytes store the data length
+                else if(rand_bytes[1] == 126){ // next two bytes store the data length
                     
                     // getting here the SIGPIPE signal is still blocked
 
@@ -9181,8 +9204,11 @@ bool lock_client_nb::basic_read(){
                         // if BIO_read returns a value <= 0 we check if there is data available to be read
                         if(read_bytes <= 0){
 
-                            // we check if the BIO should retry
-                            if(BIO_should_retry(c_bio)){
+                            // we get the error message
+                            int err = wolfSSL_get_error(c_ssl, read_bytes);
+
+                            // we check if the wolfssl library still expects more reads or if this is an actual error
+                            if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
 
                                 // getting here BIO should retry returns true so we check if any ata has been fetched in this basic read call
                                 if(total_read_bytes > 0){
@@ -9202,11 +9228,12 @@ bool lock_client_nb::basic_read(){
 
                                 }
 
+
                             }
                             else{
-                            // getting here the error number returned by BIO read isn't due to BIO should retry so we fail this websocket connection
+                            // getting here the error number returned by wolfssl read isn't due to wolfssl want read so we fail this websocket connection
                             
-                                // here bio_read couldn't fetch any data
+                                // here wolfssl_read couldn't fetch any data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                 error = true;
@@ -9233,7 +9260,7 @@ bool lock_client_nb::basic_read(){
                     frame_data_len = (rand_bytes[0] << 8) | rand_bytes[1];
                     
                 }
-                else if( rand_bytes[1] == 127 ){ // this would mean that the next 8 bytes is our length
+                else if(rand_bytes[1] == 127){ // this would mean that the next 8 bytes is our length
                     
                     // getting here the SIGPIPE signal is still blocked
 
@@ -9251,14 +9278,17 @@ bool lock_client_nb::basic_read(){
                     // we keep reading till we have our total bytes to read
                     while(total_read_bytes < bytes_to_read){
 
-                        // we call BIO_read to attempt to read the bytes into the buffer
+                        // we call wolfssl_read to attempt to read the bytes into the buffer
                         read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if BIO_read returns a value <= 0 we check if there is data available to be read
+                        // if wolfssl_read returns a value <= 0 we check if there is data available to be read
                         if(read_bytes <= 0){
 
-                            // we check if the BIO should retry
-                            if(BIO_should_retry(c_bio)){
+                            // we get the error message
+                            int err = wolfSSL_get_error(c_ssl, read_bytes);
+
+                            // we check if the wolfssl library still expects more reads or if this is an actual error
+                            if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
 
                                 // getting here BIO should retry returns true so we check if any ata has been fetched in this basic read call
                                 if(total_read_bytes > 0){
@@ -9278,11 +9308,12 @@ bool lock_client_nb::basic_read(){
 
                                 }
 
+
                             }
                             else{
-                            // getting here the error number returned by BIO read isn't due to BIO should retry so we fail this websocket connection
+                            // getting here the error number returned by wolfssl read isn't due to wolfssl want read so we fail this websocket connection
                             
-                                // here bio_read couldn't fetch any data
+                                // here wolfssl_read couldn't fetch any data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                 error = true;
@@ -9354,15 +9385,15 @@ bool lock_client_nb::basic_read(){
                     
                     // SIGPIPE signal is still blocked
 
-                    int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
+                    int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from wolfssl read because wolfssl read could return a negative value which would make frame data len - len calculation be wrong
 
-                    // we keep polling till we have read the entire frame
+                    // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                     while(len < frame_data_len){
                     
                         int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                             
                         if(extra_bytes_read > 0){
-                        // bio_read fetched extra data
+                        // wolfssl_read fetched extra data
 
                             len += extra_bytes_read;
                             
@@ -9370,9 +9401,12 @@ bool lock_client_nb::basic_read(){
 
                         }
                         else{
-                        // bio_read couldn't fetch data
+                        // wolfssl read didn't fetch more data
 
-                            if(BIO_should_retry(c_bio)){
+                            // we get the error message
+                            int err = wolfSSL_get_error(c_ssl, extra_bytes_read);
+
+                            if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
                             // no data available yet
 
                                 continue;
@@ -9384,7 +9418,7 @@ bool lock_client_nb::basic_read(){
                                 // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                 unblock_sigpipe_signal();
 
-                                // here bio_read couldn't fetch any extra data
+                                // here wolfssl_read couldn't fetch any extra data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                 error = true;
@@ -9415,15 +9449,15 @@ bool lock_client_nb::basic_read(){
                     
                     // SIGPIPE signal is still blocked
 
-                    int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
+                    int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from wolfssl read because wolfssl read could return a negative value which would make frame data len - len calculation be wrong
 
-                    // we keep polling till we have read the entire frame
+                    // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                     while(len < frame_data_len){
-                        
+                    
                         int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                             
                         if(extra_bytes_read > 0){
-                        // bio_read fetched extra data
+                        // wolfssl_read fetched extra data
 
                             len += extra_bytes_read;
                             
@@ -9431,9 +9465,12 @@ bool lock_client_nb::basic_read(){
 
                         }
                         else{
-                        // bio_read couldn't fetch data
+                        // wolfssl read didn't fetch more data
 
-                            if(BIO_should_retry(c_bio)){
+                            // we get the error message
+                            int err = wolfSSL_get_error(c_ssl, extra_bytes_read);
+
+                            if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
                             // no data available yet
 
                                 continue;
@@ -9445,7 +9482,7 @@ bool lock_client_nb::basic_read(){
                                 // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                 unblock_sigpipe_signal();
 
-                                // here bio_read couldn't fetch any extra data
+                                // here wolfssl_read couldn't fetch any extra data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                 error = true;
@@ -9496,15 +9533,15 @@ bool lock_client_nb::basic_read(){
                         
                             // SIGPIPE signal is still blocked
 
-                            int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
+                            int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from wolfssl read because wolfssl read could return a negative value which would make frame data len - len calculation be wrong
 
-                            // we keep polling till we have read the entire frame
+                            // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                             while(len < frame_data_len){
-                                
+                            
                                 int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                                     
                                 if(extra_bytes_read > 0){
-                                // bio_read fetched extra data
+                                // wolfssl_read fetched extra data
 
                                     len += extra_bytes_read;
                                     
@@ -9512,9 +9549,12 @@ bool lock_client_nb::basic_read(){
 
                                 }
                                 else{
-                                // bio_read couldn't fetch data
+                                // wolfssl read didn't fetch more data
 
-                                    if(BIO_should_retry(c_bio)){
+                                    // we get the error message
+                                    int err = wolfSSL_get_error(c_ssl, extra_bytes_read);
+
+                                    if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
                                     // no data available yet
 
                                         continue;
@@ -9526,7 +9566,7 @@ bool lock_client_nb::basic_read(){
                                         // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                         unblock_sigpipe_signal();
 
-                                        // here bio_read couldn't fetch any extra data
+                                        // here wolfssl_read couldn't fetch any extra data
                                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                         error = true;
@@ -9579,15 +9619,15 @@ bool lock_client_nb::basic_read(){
                         
                             // SIGPIPE signal is still blocked
 
-                            int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
+                            int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from wolfssl read because wolfssl read could return a negative value which would make frame data len - len calculation be wrong
 
-                            // we keep polling till we have read the entire frame
+                            // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                             while(len < frame_data_len){
-                                
+                            
                                 int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                                     
                                 if(extra_bytes_read > 0){
-                                // bio_read fetched extra data
+                                // wolfssl_read fetched extra data
 
                                     len += extra_bytes_read;
                                     
@@ -9595,9 +9635,12 @@ bool lock_client_nb::basic_read(){
 
                                 }
                                 else{
-                                // bio_read couldn't fetch data
+                                // wolfssl read didn't fetch more data
 
-                                    if(BIO_should_retry(c_bio)){
+                                    // we get the error message
+                                    int err = wolfSSL_get_error(c_ssl, extra_bytes_read);
+
+                                    if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
                                     // no data available yet
 
                                         continue;
@@ -9609,7 +9652,7 @@ bool lock_client_nb::basic_read(){
                                         // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                         unblock_sigpipe_signal();
 
-                                        // here bio_read couldn't fetch any extra data
+                                        // here wolfssl_read couldn't fetch any extra data
                                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                         error = true;
@@ -9646,7 +9689,7 @@ bool lock_client_nb::basic_read(){
                     frame_data_len = rand_bytes[1];
                     
                 }
-                else if( rand_bytes[1] == 126 ){ // next two bytes store the data length
+                else if(rand_bytes[1] == 126){ // next two bytes store the data length
                     
                     // getting here the SIGPIPE signal is still blocked
 
@@ -9670,8 +9713,11 @@ bool lock_client_nb::basic_read(){
                         // if BIO_read returns a value <= 0 we check if there is data available to be read
                         if(read_bytes <= 0){
 
-                            // we check if the BIO should retry
-                            if(BIO_should_retry(c_bio)){
+                            // we get the error message
+                            int err = wolfSSL_get_error(c_ssl, read_bytes);
+
+                            // we check if the wolfssl library still expects more reads or if this is an actual error
+                            if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
 
                                 // getting here BIO should retry returns true so we check if any ata has been fetched in this basic read call
                                 if(total_read_bytes > 0){
@@ -9691,11 +9737,12 @@ bool lock_client_nb::basic_read(){
 
                                 }
 
+
                             }
                             else{
-                            // getting here the error number returned by BIO read isn't due to BIO should retry so we fail this websocket connection
+                            // getting here the error number returned by wolfssl read isn't due to wolfssl want read so we fail this websocket connection
                             
-                                // here bio_read couldn't fetch any data
+                                // here wolfssl_read couldn't fetch any data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                 error = true;
@@ -9722,7 +9769,7 @@ bool lock_client_nb::basic_read(){
                     frame_data_len = (rand_bytes[0] << 8) | rand_bytes[1];
                     
                 }
-                else if( rand_bytes[1] == 127 ){ // this would mean that the next 8 bytes is our length
+                else if(rand_bytes[1] == 127){ // this would mean that the next 8 bytes is our length
                     
                     // getting here the SIGPIPE signal is still blocked
 
@@ -9740,14 +9787,17 @@ bool lock_client_nb::basic_read(){
                     // we keep reading till we have our total bytes to read
                     while(total_read_bytes < bytes_to_read){
 
-                        // we call BIO_read to attempt to read the bytes into the buffer
+                        // we call wolfssl_read to attempt to read the bytes into the buffer
                         read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if BIO_read returns a value <= 0 we check if there is data available to be read
+                        // if wolfssl_read returns a value <= 0 we check if there is data available to be read
                         if(read_bytes <= 0){
 
-                            // we check if the BIO should retry
-                            if(BIO_should_retry(c_bio)){
+                            // we get the error message
+                            int err = wolfSSL_get_error(c_ssl, read_bytes);
+
+                            // we check if the wolfssl library still expects more reads or if this is an actual error
+                            if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
 
                                 // getting here BIO should retry returns true so we check if any ata has been fetched in this basic read call
                                 if(total_read_bytes > 0){
@@ -9767,11 +9817,12 @@ bool lock_client_nb::basic_read(){
 
                                 }
 
+
                             }
                             else{
-                            // getting here the error number returned by BIO read isn't due to BIO should retry so we fail this websocket connection
+                            // getting here the error number returned by wolfssl read isn't due to wolfssl want read so we fail this websocket connection
                             
-                                // here bio_read couldn't fetch any data
+                                // here wolfssl_read couldn't fetch any data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                 error = true;
@@ -9840,15 +9891,15 @@ bool lock_client_nb::basic_read(){
                     
                     // SIGPIPE signal is still blocked
 
-                    int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
+                    int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from wolfssl read because wolfssl read could return a negative value which would make frame data len - len calculation be wrong
 
-                    // we keep polling till we have read the entire frame
+                    // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                     while(len < frame_data_len){
                     
                         int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                             
                         if(extra_bytes_read > 0){
-                        // bio_read fetched extra data
+                        // wolfssl_read fetched extra data
 
                             len += extra_bytes_read;
                             
@@ -9856,9 +9907,12 @@ bool lock_client_nb::basic_read(){
 
                         }
                         else{
-                        // bio_read couldn't fetch data
+                        // wolfssl read didn't fetch more data
 
-                            if(BIO_should_retry(c_bio)){
+                            // we get the error message
+                            int err = wolfSSL_get_error(c_ssl, extra_bytes_read);
+
+                            if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
                             // no data available yet
 
                                 continue;
@@ -9870,7 +9924,7 @@ bool lock_client_nb::basic_read(){
                                 // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                 unblock_sigpipe_signal();
 
-                                // here bio_read couldn't fetch any extra data
+                                // here wolfssl_read couldn't fetch any extra data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                 error = true;
@@ -9908,15 +9962,15 @@ bool lock_client_nb::basic_read(){
                     
                     // SIGPIPE signal is still blocked
 
-                    int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
+                    int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from wolfssl read because wolfssl read could return a negative value which would make frame data len - len calculation be wrong
 
-                    // we keep polling till we have read the entire frame
+                    // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                     while(len < frame_data_len){
                     
                         int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                             
                         if(extra_bytes_read > 0){
-                        // bio_read fetched extra data
+                        // wolfssl_read fetched extra data
 
                             len += extra_bytes_read;
                             
@@ -9924,9 +9978,12 @@ bool lock_client_nb::basic_read(){
 
                         }
                         else{
-                        // bio_read couldn't fetch data
+                        // wolfssl read didn't fetch more data
 
-                            if(BIO_should_retry(c_bio)){
+                            // we get the error message
+                            int err = wolfSSL_get_error(c_ssl, extra_bytes_read);
+
+                            if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
                             // no data available yet
 
                                 continue;
@@ -9938,7 +9995,7 @@ bool lock_client_nb::basic_read(){
                                 // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                 unblock_sigpipe_signal();
 
-                                // here bio_read couldn't fetch any extra data
+                                // here wolfssl_read couldn't fetch any extra data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                 error = true;
@@ -9997,15 +10054,15 @@ bool lock_client_nb::basic_read(){
                             
                             // SIGPIPE signal is still blocked
 
-                            int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
+                            int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from wolfssl read because wolfssl read could return a negative value which would make frame data len - len calculation be wrong
 
-                            // we keep polling till we have read the entire frame
+                            // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                             while(len < frame_data_len){
                             
                                 int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                                     
                                 if(extra_bytes_read > 0){
-                                // bio_read fetched extra data
+                                // wolfssl_read fetched extra data
 
                                     len += extra_bytes_read;
                                     
@@ -10013,9 +10070,12 @@ bool lock_client_nb::basic_read(){
 
                                 }
                                 else{
-                                // bio_read couldn't fetch data
+                                // wolfssl read didn't fetch more data
 
-                                    if(BIO_should_retry(c_bio)){
+                                    // we get the error message
+                                    int err = wolfSSL_get_error(c_ssl, extra_bytes_read);
+
+                                    if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
                                     // no data available yet
 
                                         continue;
@@ -10027,7 +10087,7 @@ bool lock_client_nb::basic_read(){
                                         // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                         unblock_sigpipe_signal();
 
-                                        // here bio_read couldn't fetch any extra data
+                                        // here wolfssl_read couldn't fetch any extra data
                                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                         error = true;
@@ -10088,15 +10148,15 @@ bool lock_client_nb::basic_read(){
                             
                             // SIGPIPE signal is still blocked
 
-                            int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
+                            int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from wolfssl read because wolfssl read could return a negative value which would make frame data len - len calculation be wrong
 
-                            // we keep polling till we have read the entire frame
+                            // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                             while(len < frame_data_len){
                             
-                                int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
+                                int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len));
                                     
                                 if(extra_bytes_read > 0){
-                                // bio_read fetched extra data
+                                // wolfssl_read fetched extra data
 
                                     len += extra_bytes_read;
                                     
@@ -10104,9 +10164,12 @@ bool lock_client_nb::basic_read(){
 
                                 }
                                 else{
-                                // bio_read couldn't fetch data
+                                // wolfssl read didn't fetch more data
 
-                                    if(BIO_should_retry(c_bio)){
+                                    // we get the error message
+                                    int err = wolfSSL_get_error(c_ssl, extra_bytes_read);
+
+                                    if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
                                     // no data available yet
 
                                         continue;
@@ -10118,7 +10181,7 @@ bool lock_client_nb::basic_read(){
                                         // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                         unblock_sigpipe_signal();
 
-                                        // here bio_read couldn't fetch any extra data
+                                        // here wolfssl_read couldn't fetch any extra data
                                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                         error = true;
@@ -10180,15 +10243,15 @@ bool lock_client_nb::basic_read(){
                         
                         // SIGPIPE signal is still blocked
 
-                        int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
+                        int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from wolfssl read because wolfssl read could return a negative value which would make frame data len - len calculation be wrong
 
-                        // we keep polling till we have read the entire frame
+                        // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                         while(len < frame_data_len){
                         
                             int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                                 
                             if(extra_bytes_read > 0){
-                            // bio_read fetched extra data
+                            // wolfssl_read fetched extra data
 
                                 len += extra_bytes_read;
                                 
@@ -10196,9 +10259,12 @@ bool lock_client_nb::basic_read(){
 
                             }
                             else{
-                            // bio_read couldn't fetch data
+                            // wolfssl read didn't fetch more data
 
-                                if(BIO_should_retry(c_bio)){
+                                // we get the error message
+                                int err = wolfSSL_get_error(c_ssl, extra_bytes_read);
+
+                                if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
                                 // no data available yet
 
                                     continue;
@@ -10210,7 +10276,7 @@ bool lock_client_nb::basic_read(){
                                     // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                     unblock_sigpipe_signal();
 
-                                    // here bio_read couldn't fetch any extra data
+                                    // here wolfssl_read couldn't fetch any extra data
                                     strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                     error = true;
@@ -10245,7 +10311,7 @@ bool lock_client_nb::basic_read(){
                     frame_data_len = rand_bytes[1];
                     
                 }
-                else if( rand_bytes[1] == 126 ){ // next two bytes store the data length
+                else if(rand_bytes[1] == 126){ // next two bytes store the data length
                     
                     // getting here the SIGPIPE signal is still blocked
 
@@ -10269,8 +10335,11 @@ bool lock_client_nb::basic_read(){
                         // if BIO_read returns a value <= 0 we check if there is data available to be read
                         if(read_bytes <= 0){
 
-                            // we check if the BIO should retry
-                            if(BIO_should_retry(c_bio)){
+                            // we get the error message
+                            int err = wolfSSL_get_error(c_ssl, read_bytes);
+
+                            // we check if the wolfssl library still expects more reads or if this is an actual error
+                            if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
 
                                 // getting here BIO should retry returns true so we check if any ata has been fetched in this basic read call
                                 if(total_read_bytes > 0){
@@ -10290,11 +10359,12 @@ bool lock_client_nb::basic_read(){
 
                                 }
 
+
                             }
                             else{
-                            // getting here the error number returned by BIO read isn't due to BIO should retry so we fail this websocket connection
+                            // getting here the error number returned by wolfssl read isn't due to wolfssl want read so we fail this websocket connection
                             
-                                // here bio_read couldn't fetch any data
+                                // here wolfssl_read couldn't fetch any data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                 error = true;
@@ -10321,7 +10391,7 @@ bool lock_client_nb::basic_read(){
                     frame_data_len = (rand_bytes[0] << 8) | rand_bytes[1];
                     
                 }
-                else if( rand_bytes[1] == 127 ){ // this would mean that the next 8 bytes is our length
+                else if(rand_bytes[1] == 127){ // this would mean that the next 8 bytes is our length
                     
                     // getting here the SIGPIPE signal is still blocked
 
@@ -10339,14 +10409,17 @@ bool lock_client_nb::basic_read(){
                     // we keep reading till we have our total bytes to read
                     while(total_read_bytes < bytes_to_read){
 
-                        // we call BIO_read to attempt to read the bytes into the buffer
+                        // we call wolfssl_read to attempt to read the bytes into the buffer
                         read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if BIO_read returns a value <= 0 we check if there is data available to be read
+                        // if wolfssl_read returns a value <= 0 we check if there is data available to be read
                         if(read_bytes <= 0){
 
-                            // we check if the BIO should retry
-                            if(BIO_should_retry(c_bio)){
+                            // we get the error message
+                            int err = wolfSSL_get_error(c_ssl, read_bytes);
+
+                            // we check if the wolfssl library still expects more reads or if this is an actual error
+                            if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
 
                                 // getting here BIO should retry returns true so we check if any ata has been fetched in this basic read call
                                 if(total_read_bytes > 0){
@@ -10366,11 +10439,12 @@ bool lock_client_nb::basic_read(){
 
                                 }
 
+
                             }
                             else{
-                            // getting here the error number returned by BIO read isn't due to BIO should retry so we fail this websocket connection
+                            // getting here the error number returned by wolfssl read isn't due to wolfssl want read so we fail this websocket connection
                             
-                                // here bio_read couldn't fetch any data
+                                // here wolfssl_read couldn't fetch any data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                 error = true;
@@ -10437,15 +10511,15 @@ bool lock_client_nb::basic_read(){
                     
                     // SIGPIPE signal is still blocked
 
-                    int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
+                    int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from wolfssl read because wolfssl read could return a negative value which would make frame data len - len calculation be wrong
 
-                    // we keep polling till we have read the entire frame
+                    // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                     while(len < frame_data_len){
                     
                         int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                             
                         if(extra_bytes_read > 0){
-                        // bio_read fetched extra data
+                        // wolfssl_read fetched extra data
 
                             len += extra_bytes_read;
                             
@@ -10453,9 +10527,12 @@ bool lock_client_nb::basic_read(){
 
                         }
                         else{
-                        // bio_read couldn't fetch data
+                        // wolfssl read didn't fetch more data
 
-                            if(BIO_should_retry(c_bio)){
+                            // we get the error message
+                            int err = wolfSSL_get_error(c_ssl, extra_bytes_read);
+
+                            if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
                             // no data available yet
 
                                 continue;
@@ -10467,7 +10544,7 @@ bool lock_client_nb::basic_read(){
                                 // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                 unblock_sigpipe_signal();
 
-                                // here bio_read couldn't fetch any extra data
+                                // here wolfssl_read couldn't fetch any extra data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                 error = true;
@@ -10511,15 +10588,15 @@ bool lock_client_nb::basic_read(){
                     
                     // SIGPIPE signal is still blocked
 
-                    int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
+                    int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from wolfssl read because wolfssl read could return a negative value which would make frame data len - len calculation be wrong
 
-                    // we keep polling till we have read the entire frame
+                    // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                     while(len < frame_data_len){
                     
                         int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                             
                         if(extra_bytes_read > 0){
-                        // bio_read fetched extra data
+                        // wolfssl_read fetched extra data
 
                             len += extra_bytes_read;
                             
@@ -10527,9 +10604,12 @@ bool lock_client_nb::basic_read(){
 
                         }
                         else{
-                        // bio_read couldn't fetch data
+                        // wolfssl read didn't fetch more data
 
-                            if(BIO_should_retry(c_bio)){
+                            // we get the error message
+                            int err = wolfSSL_get_error(c_ssl, extra_bytes_read);
+
+                            if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
                             // no data available yet
 
                                 continue;
@@ -10541,7 +10621,7 @@ bool lock_client_nb::basic_read(){
                                 // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                 unblock_sigpipe_signal();
 
-                                // here bio_read couldn't fetch any extra data
+                                // here wolfssl_read couldn't fetch any extra data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                 error = true;
@@ -10607,15 +10687,15 @@ bool lock_client_nb::basic_read(){
                             
                             // SIGPIPE signal is still blocked
 
-                            int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
+                            int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from wolfssl read because wolfssl read could return a negative value which would make frame data len - len calculation be wrong
 
-                            // we keep polling till we have read the entire frame
+                            // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                             while(len < frame_data_len){
                             
                                 int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                                     
                                 if(extra_bytes_read > 0){
-                                // bio_read fetched extra data
+                                // wolfssl_read fetched extra data
 
                                     len += extra_bytes_read;
                                     
@@ -10623,9 +10703,12 @@ bool lock_client_nb::basic_read(){
 
                                 }
                                 else{
-                                // bio_read couldn't fetch data
+                                // wolfssl read didn't fetch more data
 
-                                    if(BIO_should_retry(c_bio)){
+                                    // we get the error message
+                                    int err = wolfSSL_get_error(c_ssl, extra_bytes_read);
+
+                                    if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
                                     // no data available yet
 
                                         continue;
@@ -10637,7 +10720,7 @@ bool lock_client_nb::basic_read(){
                                         // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                         unblock_sigpipe_signal();
 
-                                        // here bio_read couldn't fetch any extra data
+                                        // here wolfssl_read couldn't fetch any extra data
                                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                         error = true;
@@ -10705,15 +10788,15 @@ bool lock_client_nb::basic_read(){
                             
                             // SIGPIPE signal is still blocked
 
-                            int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
+                            int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from wolfssl read because wolfssl read could return a negative value which would make frame data len - len calculation be wrong
 
-                            // we keep polling till we have read the entire frame
+                            // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                             while(len < frame_data_len){
                             
                                 int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                                     
                                 if(extra_bytes_read > 0){
-                                // bio_read fetched extra data
+                                // wolfssl_read fetched extra data
 
                                     len += extra_bytes_read;
                                     
@@ -10721,9 +10804,12 @@ bool lock_client_nb::basic_read(){
 
                                 }
                                 else{
-                                // bio_read couldn't fetch data
+                                // wolfssl read didn't fetch more data
 
-                                    if(BIO_should_retry(c_bio)){
+                                    // we get the error message
+                                    int err = wolfSSL_get_error(c_ssl, extra_bytes_read);
+
+                                    if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
                                     // no data available yet
 
                                         continue;
@@ -10735,7 +10821,7 @@ bool lock_client_nb::basic_read(){
                                         // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                         unblock_sigpipe_signal();
 
-                                        // here bio_read couldn't fetch any extra data
+                                        // here wolfssl_read couldn't fetch any extra data
                                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                         error = true;
@@ -10803,15 +10889,15 @@ bool lock_client_nb::basic_read(){
                         
                         // SIGPIPE signal is still blocked
 
-                        int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
+                        int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from wolfssl read because wolfssl read could return a negative value which would make frame data len - len calculation be wrong
 
-                        // we keep polling till we have read the entire frame
+                        // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                         while(len < frame_data_len){
                         
                             int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                                 
                             if(extra_bytes_read > 0){
-                            // bio_read fetched extra data
+                            // wolfssl_read fetched extra data
 
                                 len += extra_bytes_read;
                                 
@@ -10819,9 +10905,12 @@ bool lock_client_nb::basic_read(){
 
                             }
                             else{
-                            // bio_read couldn't fetch data
+                            // wolfssl read didn't fetch more data
 
-                                if(BIO_should_retry(c_bio)){
+                                // we get the error message
+                                int err = wolfSSL_get_error(c_ssl, extra_bytes_read);
+
+                                if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
                                 // no data available yet
 
                                     continue;
@@ -10833,7 +10922,7 @@ bool lock_client_nb::basic_read(){
                                     // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                     unblock_sigpipe_signal();
 
-                                    // here bio_read couldn't fetch any extra data
+                                    // here wolfssl_read couldn't fetch any extra data
                                     strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                     error = true;
@@ -10894,7 +10983,7 @@ bool lock_client_nb::basic_read(){
                     
                     frame_data_len = rand_bytes[1];
                     
-                    int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
+                    int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from wolfssl read because wolfssl read could return a negative value which would make frame data len - len calculation be wrong
 
                     // point the upgrade request pointer to the upgrade request static array
                     upgrade_request = upgrade_request_static;
@@ -10904,20 +10993,23 @@ bool lock_client_nb::basic_read(){
                     // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                     while(len < frame_data_len){
                     
-                        int64_t extra_bytes_read = wolfSSL_read(c_ssl, upgrade_request, frame_data_len - len);
+                        int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                             
                         if(extra_bytes_read > 0){
-                        // bio_read fetched extra data
+                        // wolfssl_read fetched extra data
 
                             len += extra_bytes_read;
                             
-                            upgrade_request += extra_bytes_read;
+                            cursor += extra_bytes_read;
 
                         }
                         else{
-                        // bio_read couldn't fetch data
+                        // wolfssl read didn't fetch more data
 
-                            if(BIO_should_retry(c_bio)){
+                            // we get the error message
+                            int err = wolfSSL_get_error(c_ssl, extra_bytes_read);
+
+                            if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
                             // no data available yet
 
                                 continue;
@@ -10929,7 +11021,7 @@ bool lock_client_nb::basic_read(){
                                 // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                                 unblock_sigpipe_signal();
 
-                                // here bio_read couldn't fetch any extra data
+                                // here wolfssl_read couldn't fetch any extra data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                                 error = true;
@@ -10989,7 +11081,7 @@ bool lock_client_nb::basic_read(){
                 
                 // SIGPIPE signal is still blocked
 
-                int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
+                int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from wolfssl read because wolfssl read could return a negative value which would make frame data len - len calculation be wrong
 
                 // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                 while(len < frame_data_len){
@@ -10997,7 +11089,7 @@ bool lock_client_nb::basic_read(){
                     int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                         
                     if(extra_bytes_read > 0){
-                    // bio_read fetched extra data
+                    // wolfssl_read fetched extra data
 
                         len += extra_bytes_read;
                         
@@ -11005,9 +11097,12 @@ bool lock_client_nb::basic_read(){
 
                     }
                     else{
-                    // bio_read couldn't fetch data
+                    // wolfssl read didn't fetch more data
 
-                        if(BIO_should_retry(c_bio)){
+                        // we get the error message
+                        int err = wolfSSL_get_error(c_ssl, extra_bytes_read);
+
+                        if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
                         // no data available yet
 
                             continue;
@@ -11019,7 +11114,7 @@ bool lock_client_nb::basic_read(){
                             // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                             unblock_sigpipe_signal();
 
-                            // here bio_read couldn't fetch any extra data
+                            // here wolfssl_read couldn't fetch any extra data
                             strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                             error = true;
@@ -11068,13 +11163,13 @@ bool lock_client_nb::basic_read(){
                 
                 }
                 
-                // send the close frame response - we do not test the return code of bio_read in this case neither do we poll to ensure it sends
+                // send the close frame response - we do not test the return code of wolfssl_read in this case neither do we poll to ensure it sends
                 (void)wolfSSL_write(c_ssl, send_data, i);
                 
                 // unblock SIGPIPE signal
                 unblock_sigpipe_signal();
                 
-                reset(); // close the existing connection and reset the bio
+                reset(); // close the existing connection and reset the wolfssl object
                 
                 memset(data_array, '\0', frame_data_len); // zero out the data array
                 
@@ -11120,20 +11215,23 @@ bool lock_client_nb::basic_read(){
                 // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                 while(len < frame_data_len){
                 
-                    int64_t extra_bytes_read = wolfSSL_read(c_ssl, upgrade_request, frame_data_len - len);
+                    int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
                         
                     if(extra_bytes_read > 0){
-                    // bio_read fetched extra data
+                    // wolfssl_read fetched extra data
 
                         len += extra_bytes_read;
                         
-                        upgrade_request += extra_bytes_read;
+                        cursor += extra_bytes_read;
 
                     }
                     else{
-                    // bio_read couldn't fetch data
+                    // wolfssl read didn't fetch more data
 
-                        if(BIO_should_retry(c_bio)){
+                        // we get the error message
+                        int err = wolfSSL_get_error(c_ssl, extra_bytes_read);
+
+                        if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
                         // no data available yet
 
                             continue;
@@ -11145,7 +11243,7 @@ bool lock_client_nb::basic_read(){
                             // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                             unblock_sigpipe_signal();
 
-                            // here bio_read couldn't fetch any extra data
+                            // here wolfssl_read couldn't fetch any extra data
                             strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
                             error = true;
@@ -11651,7 +11749,7 @@ bool lock_client_nb::connect(std::string_view url){ // this is used to connect t
                                     
                                     error = true;
                                     
-                                    reset(); // disconnect the underlying bio
+                                    reset(); // disconnect the underlying wolfssl object
                                     
                                 }
                                 else{
@@ -11691,7 +11789,7 @@ bool lock_client_nb::connect(std::string_view url){ // this is used to connect t
                                 
                                     error = true;
                                     
-                                    reset(); // disconnect the underlying bio
+                                    reset(); // disconnect the underlying wolfssl object
                                 
                                 }
                                 else{ 
@@ -11761,7 +11859,7 @@ bool lock_client_nb::connect(std::string_view url){ // this is used to connect t
                                     int err = wolfSSL_get_error(c_ssl, ret);
 
                                     // we check if the wolfssl handle is still expecting a read
-                                    if(err == WOLFSSL_ERROR_WANT_READ){
+                                    if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
 
                                         continue;
 
@@ -12219,7 +12317,7 @@ bool lock_client_nb::interface_connect(std::string_view url, in_addr* interface_
                             
                             error = true;
                             
-                            reset(); // disconnect the underlying bio
+                            reset(); // disconnect the underlying wolfssl object
                             
                         }
                         else{
@@ -12259,7 +12357,7 @@ bool lock_client_nb::interface_connect(std::string_view url, in_addr* interface_
                         
                             error = true;
                             
-                            reset(); // disconnect the underlying bio
+                            reset(); // disconnect the underlying wolfssl object
                         
                         }
                         else{ 
@@ -12329,7 +12427,7 @@ bool lock_client_nb::interface_connect(std::string_view url, in_addr* interface_
                             int err = wolfSSL_get_error(c_ssl, ret);
 
                             // we check if the wolfssl handle is still expecting a read
-                            if(err == WOLFSSL_ERROR_WANT_READ){
+                            if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
 
                                 continue;
 
