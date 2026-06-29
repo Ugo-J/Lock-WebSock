@@ -1322,8 +1322,6 @@ lock_client::lock_client(std::string_view url, in_addr* interface_address, char*
 // lock client parameterless constructor
 lock_client::lock_client(){
 
-    std::cout<<"Wolfssl"<<std::endl;
-
     // initialisation of class wide variables
     if(!wolfssl_init){
 
