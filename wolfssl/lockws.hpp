@@ -6912,7 +6912,7 @@ lock_client_nb::lock_client_nb(std::string_view url){
                                     int err = wolfSSL_get_error(c_ssl, len);
 
                                     // we check if the wolfssl handle is still expecting a write
-                                    if(err == WOLFSSL_ERROR_WANT_WRITE){
+                                    if(err == WOLFSSL_ERROR_WANT_WRITE || err == WOLFSSL_ERROR_WANT_READ){
 
                                         continue;
 
@@ -7526,7 +7526,7 @@ lock_client_nb::lock_client_nb(std::string_view url, in_addr* interface_address,
                             int err = wolfSSL_get_error(c_ssl, len);
 
                             // we check if the wolfssl handle is still expecting a write
-                            if(err == WOLFSSL_ERROR_WANT_WRITE){
+                            if(err == WOLFSSL_ERROR_WANT_WRITE || err == WOLFSSL_ERROR_WANT_READ){
 
                                 continue;
 
@@ -7877,7 +7877,7 @@ bool lock_client_nb::ping(){ // sends a ping on an established websocket connect
                     // we get the error message
                     int err = wolfSSL_get_error(c_ssl, local_len);
 
-                    if(err == WOLFSSL_ERROR_WANT_WRITE){
+                    if(err == WOLFSSL_ERROR_WANT_WRITE || err == WOLFSSL_ERROR_WANT_READ){
 
                         continue;
 
@@ -7983,7 +7983,7 @@ bool lock_client_nb::pong(int ping_data_len){ // sends out a pong frame unsolici
                     // we get the error message
                     int err = wolfSSL_get_error(c_ssl, local_len);
 
-                    if(err == WOLFSSL_ERROR_WANT_WRITE){
+                    if(err == WOLFSSL_ERROR_WANT_WRITE || err == WOLFSSL_ERROR_WANT_READ){
 
                         continue;
 
@@ -8185,7 +8185,7 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
                             // we get the error message
                             int err = wolfSSL_get_error(c_ssl, local_len);
 
-                            if(err == WOLFSSL_ERROR_WANT_WRITE){
+                            if(err == WOLFSSL_ERROR_WANT_WRITE || err == WOLFSSL_ERROR_WANT_READ){
 
                                 continue;
 
@@ -8334,7 +8334,7 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
                         // we get the error message
                         int err = wolfSSL_get_error(c_ssl, local_len);
 
-                        if(err == WOLFSSL_ERROR_WANT_WRITE){
+                        if(err == WOLFSSL_ERROR_WANT_WRITE || err == WOLFSSL_ERROR_WANT_READ){
 
                             continue;
 
@@ -8482,7 +8482,7 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
                                 // we get the error message
                                 int err = wolfSSL_get_error(c_ssl, local_len);
 
-                                if(err == WOLFSSL_ERROR_WANT_WRITE){
+                                if(err == WOLFSSL_ERROR_WANT_WRITE || err == WOLFSSL_ERROR_WANT_READ){
 
                                     continue;
 
@@ -8624,7 +8624,7 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
                                 // we get the error message
                                 int err = wolfSSL_get_error(c_ssl, local_len);
 
-                                if(err == WOLFSSL_ERROR_WANT_WRITE){
+                                if(err == WOLFSSL_ERROR_WANT_WRITE || err == WOLFSSL_ERROR_WANT_READ){
 
                                     continue;
 
@@ -11977,7 +11977,7 @@ bool lock_client_nb::connect(std::string_view url){ // this is used to connect t
                                 int err = wolfSSL_get_error(c_ssl, len);
 
                                 // we check if the wolfssl handle is still expecting a write
-                                if(err == WOLFSSL_ERROR_WANT_WRITE){
+                                if(err == WOLFSSL_ERROR_WANT_WRITE || err == WOLFSSL_ERROR_WANT_READ){
 
                                     continue;
 
@@ -12551,7 +12551,7 @@ bool lock_client_nb::interface_connect(std::string_view url, in_addr* interface_
                         int err = wolfSSL_get_error(c_ssl, len);
 
                         // we check if the wolfssl handle is still expecting a write
-                        if(err == WOLFSSL_ERROR_WANT_WRITE){
+                        if(err == WOLFSSL_ERROR_WANT_WRITE || err == WOLFSSL_ERROR_WANT_READ){
 
                             continue;
 
