@@ -3,10 +3,11 @@
 
 #ifdef USE_WOLFSSL
     // If the compiled with -DUSE_WOLFSSL, route to the wolfSSL variant
-    #include "wolfssl/lockws.hpp"
+    #include "wolfssl/lockws_crtp.hpp"
 #else
     // default fallback variant using standard openSSL
-    #include "openssl/lockws.hpp"
+    #include "openssl/lockws_crtp.hpp"
 #endif
 
 #endif
+

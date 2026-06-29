@@ -43,6 +43,7 @@ protected:
     inline void block_sigpipe_signal(); // function to block sigpipe signals before any write or read
     void unblock_sigpipe_signal(); // function to unblock sigpipe signals after any write or read
     int connect_to_server(const char *hostname, const char *port, in_addr* interface_address, const char *interface_name); // function to connect to server when we manually configure the socket
+    int reset(); // function to reset a wolfssl session and disconnect the underlying connection
 
 // protected signal handling variables
 protected:
@@ -55,10 +56,15 @@ protected:
 // class wide variables    
 protected:
     
-    inline static bool openssl_init = false; // bool variable to test if openssl initialisations have been done
-    inline static SSL_CTX* ssl_ctx = NULL;
+    bool wolfssl_init = false; // bool variable to test if wolfssl initialisations have been done
+    WOLFSSL_CTX* ssl_ctx = NULL;
     inline static const char string_to_append[] = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"; // this string is appended to the base64 encoded nonce to calculate the Sec-WebSocket-Accept header value and compare with the server's
     inline static const int size_of_SHA1_digest = 20;
+
+    // static memory for wolfssl because we disabled dynamic allocation on the hot path
+    static constexpr size_t CRYPTO_ARENA_SIZE = 256 * 1024;
+    alignas(16) uint8_t crypto_memory_pool[CRYPTO_ARENA_SIZE];
+    alignas(16) uint8_t general_memory_pool[CRYPTO_ARENA_SIZE];
     
 // instance connection data variables     
 protected:
@@ -88,14 +94,10 @@ protected:
     bool error = false;
     unsigned char client_state = CLOSED; // this variable is used to store the lock client state, OPEN meaning there is an active websocket connection and CLOSED meaning that there isn't 
     
-// Openssl Library instance variables    
+// Wolfssl Library instance variables    
 protected:
         
-   BIO* c_bio = NULL; // sets the lock_client_crtp instance connection handle
-   BIO* out_bio = NULL; // sets the bio instance used for screen output
-   BIO* c_base64 = NULL; //  BIO structure for Base64 encoding
-   BIO* c_mem_base64 = NULL; // mem bio that is chained to the base64 filter bio 
-   SSL* c_ssl = NULL; // defines the ssl object that is used to set instance-specific openssl options  
+   WOLFSSL* c_ssl = NULL; // defines the ssl object that is used to set instance-specific wolfssl options
 
 // variables for upgrading to and maintaining WebSocket connection    
 protected:
@@ -253,6 +255,7 @@ protected:
     inline void block_sigpipe_signal(); // function to block sigpipe signals before any write or read
     void unblock_sigpipe_signal(); // function to unblock sigpipe signals after any write or read
     int connect_to_server(const char *hostname, const char *port, in_addr* interface_address, const char *interface_name); // function to connect to server when we manually configure the socket
+    int reset(); // function to reset a wolfssl session and disconnect the underlying connection
 
 // protected signal handling variables
 protected: 
@@ -265,10 +268,15 @@ protected:
 // class wide variables    
 protected:    
     
-    inline static bool openssl_init = false; // bool variable to test if openssl initialisations have been done
-    inline static SSL_CTX* ssl_ctx = NULL;
+    bool wolfssl_init = false; // bool variable to test if wolfssl initialisations have been done
+    WOLFSSL_CTX* ssl_ctx = NULL;
     inline static const char string_to_append[] = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"; // this string is appended to the base64 encoded nonce to calculate the Sec-WebSocket-Accept header value and compare with the server's
     inline static const int size_of_SHA1_digest = 20;
+
+    // static memory for wolfssl because we disabled dynamic allocation on the hot path
+    static constexpr size_t CRYPTO_ARENA_SIZE = 256 * 1024;
+    alignas(16) uint8_t crypto_memory_pool[CRYPTO_ARENA_SIZE];
+    alignas(16) uint8_t general_memory_pool[CRYPTO_ARENA_SIZE];
     
 // instance connection data variables     
 protected:
@@ -298,14 +306,10 @@ protected:
     bool error = false;
     unsigned char client_state = CLOSED; // this variable is used to store the lock client state, OPEN meaning there is an active websocket connection and CLOSED meaning that there isn't 
     
-// Openssl Library instance variables    
+// Wolfssl Library instance variables    
 protected:
  
-   BIO* c_bio = NULL; // sets the lock_client_crtp instance connection handle
-   BIO* out_bio = NULL; // sets the bio instance used for screen output
-   BIO* c_base64 = NULL; //  BIO structure for Base64 encoding
-   BIO* c_mem_base64 = NULL; // mem bio that is chained to the base64 filter bio 
-   SSL* c_ssl = NULL; // defines the ssl object that is used to set instance-specific openssl options  
+   WOLFSSL* c_ssl = NULL; // defines the ssl object that is used to set instance-specific wolfssl options  
 
 // variables for upgrading to and maintaining WebSocket connection    
 protected:

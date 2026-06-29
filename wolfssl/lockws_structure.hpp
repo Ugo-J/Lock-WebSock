@@ -99,10 +99,10 @@ private:
     bool error = false;
     unsigned char client_state = CLOSED; // this variable is used to store the lock client state, OPEN meaning there is an active websocket connection and CLOSED meaning that there isn't 
     
-// Openssl Library instance variables    
+// wolfssl Library instance variables    
 private:
 
-   WOLFSSL* c_ssl = NULL; // defines the ssl object that is used to set instance-specific openssl options  
+   WOLFSSL* c_ssl = NULL; // defines the ssl object that is used to set instance-specific wolfssl options  
 
 // variables for upgrading to and maintaining WebSocket connection    
 private:
@@ -314,10 +314,10 @@ private:
     bool error = false;
     unsigned char client_state = CLOSED; // this variable is used to store the lock client state, OPEN meaning there is an active websocket connection and CLOSED meaning that there isn't 
     
-// Openssl Library instance variables    
+// wolfssl Library instance variables    
 private:
         
-   WOLFSSL* c_ssl = NULL; // defines the ssl object that is used to set instance-specific openssl options
+   WOLFSSL* c_ssl = NULL; // defines the ssl object that is used to set instance-specific wolfssl options
 
 // variables for upgrading to and maintaining WebSocket connection    
 private:
