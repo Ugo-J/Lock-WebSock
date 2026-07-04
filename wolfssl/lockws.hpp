@@ -8745,7 +8745,7 @@ bool lock_client_nb::basic_read(){
                     // we check if the wolfssl library still expects more reads or if this is an actual error
                     if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
 
-                        // getting here WOLFSSL_ERROR_WANT_READ || WRITE returns true so we check if any ata has been fetched in this basic read call
+                        // getting here WOLFSSL_ERROR_WANT_READ || WRITE returns true so we check if any data has been fetched in this basic read call
                         if(total_read_bytes > 0){
                         // getting here data has been gotten in this current basic read call so we continue the loop till the entire data is fetched
 
@@ -8830,7 +8830,7 @@ bool lock_client_nb::basic_read(){
                             // we check if the wolfssl library still expects more reads or if this is an actual error
                             if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
 
-                                // getting here WOLFSSL_ERROR_WANT_READ || WRITE returns true so we check if any ata has been fetched in this basic read call
+                                // getting here WOLFSSL_ERROR_WANT_READ || WRITE returns true so we check if any data has been fetched in this basic read call
                                 if(total_read_bytes > 0){
                                 // getting here data has been gotten in this current basic read call so we continue the loop till the entire data is fetched
 
@@ -8910,7 +8910,7 @@ bool lock_client_nb::basic_read(){
                             // we check if the wolfssl library still expects more reads or if this is an actual error
                             if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
 
-                                // getting here WOLFSSL_ERROR_WANT_READ || WRITE returns true so we check if any ata has been fetched in this basic read call
+                                // getting here WOLFSSL_ERROR_WANT_READ || WRITE returns true so we check if any data has been fetched in this basic read call
                                 if(total_read_bytes > 0){
                                 // getting here data has been gotten in this current basic read call so we continue the loop till the entire data is fetched
 
@@ -9353,7 +9353,7 @@ bool lock_client_nb::basic_read(){
                             // we check if the wolfssl library still expects more reads or if this is an actual error
                             if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
 
-                                // getting here WOLFSSL_ERROR_WANT_READ || WRITE returns true so we check if any ata has been fetched in this basic read call
+                                // getting here WOLFSSL_ERROR_WANT_READ || WRITE returns true so we check if any data has been fetched in this basic read call
                                 if(total_read_bytes > 0){
                                 // getting here data has been gotten in this current basic read call so we continue the loop till the entire data is fetched
 
@@ -9433,7 +9433,7 @@ bool lock_client_nb::basic_read(){
                             // we check if the wolfssl library still expects more reads or if this is an actual error
                             if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
 
-                                // getting here WOLFSSL_ERROR_WANT_READ || WRITE returns true so we check if any ata has been fetched in this basic read call
+                                // getting here WOLFSSL_ERROR_WANT_READ || WRITE returns true so we check if any data has been fetched in this basic read call
                                 if(total_read_bytes > 0){
                                 // getting here data has been gotten in this current basic read call so we continue the loop till the entire data is fetched
 
@@ -9862,7 +9862,7 @@ bool lock_client_nb::basic_read(){
                             // we check if the wolfssl library still expects more reads or if this is an actual error
                             if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
 
-                                // getting here WOLFSSL_ERROR_WANT_READ || WRITE returns true so we check if any ata has been fetched in this basic read call
+                                // getting here WOLFSSL_ERROR_WANT_READ || WRITE returns true so we check if any data has been fetched in this basic read call
                                 if(total_read_bytes > 0){
                                 // getting here data has been gotten in this current basic read call so we continue the loop till the entire data is fetched
 
@@ -9942,7 +9942,7 @@ bool lock_client_nb::basic_read(){
                             // we check if the wolfssl library still expects more reads or if this is an actual error
                             if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
 
-                                // getting here WOLFSSL_ERROR_WANT_READ || WRITE returns true so we check if any ata has been fetched in this basic read call
+                                // getting here WOLFSSL_ERROR_WANT_READ || WRITE returns true so we check if any data has been fetched in this basic read call
                                 if(total_read_bytes > 0){
                                 // getting here data has been gotten in this current basic read call so we continue the loop till the entire data is fetched
 
@@ -10484,7 +10484,7 @@ bool lock_client_nb::basic_read(){
                             // we check if the wolfssl library still expects more reads or if this is an actual error
                             if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
 
-                                // getting here WOLFSSL_ERROR_WANT_READ || WRITE returns true so we check if any ata has been fetched in this basic read call
+                                // getting here WOLFSSL_ERROR_WANT_READ || WRITE returns true so we check if any data has been fetched in this basic read call
                                 if(total_read_bytes > 0){
                                 // getting here data has been gotten in this current basic read call so we continue the loop till the entire data is fetched
 
@@ -10564,7 +10564,7 @@ bool lock_client_nb::basic_read(){
                             // we check if the wolfssl library still expects more reads or if this is an actual error
                             if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
 
-                                // getting here WOLFSSL_ERROR_WANT_READ || WRITE returns true so we check if any ata has been fetched in this basic read call
+                                // getting here WOLFSSL_ERROR_WANT_READ || WRITE returns true so we check if any data has been fetched in this basic read call
                                 if(total_read_bytes > 0){
                                 // getting here data has been gotten in this current basic read call so we continue the loop till the entire data is fetched
 
