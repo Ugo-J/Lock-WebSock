@@ -2171,19 +2171,19 @@ bool lock_client::basic_read(){
             // we set our bytes to read variable to the number of bytes we are trying to read
             int bytes_to_read = 2;
 
-            // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array BIO_read should write to
+            // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfSSL_read should write to
             int total_read_bytes = 0;
 
-            // we initialise our read bytes to 0, read bytes keeps track of how many bytes were read in each BIO_read call
+            // we initialise our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfSSL_read call
             int read_bytes = 0;
 
             // we keep reading till we have our total bytes to read
             while(total_read_bytes < bytes_to_read){
 
-                // we call BIO_read to attempt to read the bytes into the buffer
+                // we call wolfSSL_read to attempt to read the bytes into the buffer
                 read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                // if BIO_read returns a value <= 0 it indicates an error so we break out from the loop
+                // if wolfSSL_read returns a value <= 0 it indicates an error so we break out from the loop
                 if(read_bytes <= 0) break;
 
                 // we increment our total read bytes
@@ -2191,7 +2191,7 @@ bool lock_client::basic_read(){
 
             }
             
-            // we check if the last BIO_read call returned 0 or < 0 which would indicate an error
+            // we check if the last wolfSSL_read call returned 0 or < 0 which would indicate an error
             if(read_bytes <= 0){
                 
                 // here wolfssl_read couldn't fetch any data
@@ -2228,19 +2228,19 @@ bool lock_client::basic_read(){
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 2;
 
-                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array BIO_read should write to. We reset it to 0
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfSSL_read should write to. We reset it to 0
                     total_read_bytes = 0;
 
-                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each BIO_read call
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfSSL_read call
                     read_bytes = 0;
 
                     // we keep reading till we have our total bytes to read
                     while(total_read_bytes < bytes_to_read){
 
-                        // we call BIO_read to attempt to read the bytes into the buffer
+                        // we call wolfSSL_read to attempt to read the bytes into the buffer
                         read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if BIO_read returns a value <= 0 it indicates an error so we break out from the loop
+                        // if wolfSSL_read returns a value <= 0 it indicates an error so we break out from the loop
                         if(read_bytes <= 0) break;
 
                         // we increment our total read bytes
@@ -2248,7 +2248,7 @@ bool lock_client::basic_read(){
 
                     }
                     
-                    // we check if the last BIO_read call returned 0 or < 0 which would indicate an error
+                    // we check if the last wolfSSL_read call returned 0 or < 0 which would indicate an error
                     if(read_bytes <= 0){
                         
                         // here wolfssl_read couldn't fetch any data
@@ -2281,19 +2281,19 @@ bool lock_client::basic_read(){
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 8;
 
-                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array BIO_read should write to. We reset it to 0
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfSSL_read should write to. We reset it to 0
                     total_read_bytes = 0;
 
-                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each BIO_read call
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfSSL_read call
                     read_bytes = 0;
 
                     // we keep reading till we have our total bytes to read
                     while(total_read_bytes < bytes_to_read){
 
-                        // we call BIO_read to attempt to read the bytes into the buffer
+                        // we call wolfSSL_read to attempt to read the bytes into the buffer
                         read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if BIO_read returns a value <= 0 it indicates an error so we break out from the loop
+                        // if wolfSSL_read returns a value <= 0 it indicates an error so we break out from the loop
                         if(read_bytes <= 0) break;
 
                         // we increment our total read bytes
@@ -2301,7 +2301,7 @@ bool lock_client::basic_read(){
 
                     }
                     
-                    // we check if the last BIO_read call returned 0 or < 0 which would indicate an error
+                    // we check if the last wolfSSL_read call returned 0 or < 0 which would indicate an error
                     if(read_bytes <= 0){
                         
                         // here wolfssl_read couldn't fetch any data
@@ -2746,19 +2746,19 @@ bool lock_client::basic_read(){
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 2;
 
-                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array BIO_read should write to. We reset it to 0
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfSSL_read should write to. We reset it to 0
                     total_read_bytes = 0;
 
-                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each BIO_read call
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfSSL_read call
                     read_bytes = 0;
 
                     // we keep reading till we have our total bytes to read
                     while(total_read_bytes < bytes_to_read){
 
-                        // we call BIO_read to attempt to read the bytes into the buffer
+                        // we call wolfSSL_read to attempt to read the bytes into the buffer
                         read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if BIO_read returns a value <= 0 it indicates an error so we break out from the loop
+                        // if wolfSSL_read returns a value <= 0 it indicates an error so we break out from the loop
                         if(read_bytes <= 0) break;
 
                         // we increment our total read bytes
@@ -2766,7 +2766,7 @@ bool lock_client::basic_read(){
 
                     }
                     
-                    // we check if the last BIO_read call returned 0 or < 0 which would indicate an error
+                    // we check if the last wolfSSL_read call returned 0 or < 0 which would indicate an error
                     if(read_bytes <= 0){
                         
                         // here wolfssl_read couldn't fetch any data
@@ -2799,19 +2799,19 @@ bool lock_client::basic_read(){
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 8;
 
-                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array BIO_read should write to. We reset it to 0
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfSSL_read should write to. We reset it to 0
                     total_read_bytes = 0;
 
-                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each BIO_read call
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfSSL_read call
                     read_bytes = 0;
 
                     // we keep reading till we have our total bytes to read
                     while(total_read_bytes < bytes_to_read){
 
-                        // we call BIO_read to attempt to read the bytes into the buffer
+                        // we call wolfSSL_read to attempt to read the bytes into the buffer
                         read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if BIO_read returns a value <= 0 it indicates an error so we break out from the loop
+                        // if wolfSSL_read returns a value <= 0 it indicates an error so we break out from the loop
                         if(read_bytes <= 0) break;
 
                         // we increment our total read bytes
@@ -2819,7 +2819,7 @@ bool lock_client::basic_read(){
 
                     }
                     
-                    // we check if the last BIO_read call returned 0 or < 0 which would indicate an error
+                    // we check if the last wolfSSL_read call returned 0 or < 0 which would indicate an error
                     if(read_bytes <= 0){
                         
                         // here wolfssl_read couldn't fetch any data
@@ -3228,19 +3228,19 @@ bool lock_client::basic_read(){
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 2;
 
-                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array BIO_read should write to. We reset it to 0
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfSSL_read should write to. We reset it to 0
                     total_read_bytes = 0;
 
-                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each BIO_read call
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfSSL_read call
                     read_bytes = 0;
 
                     // we keep reading till we have our total bytes to read
                     while(total_read_bytes < bytes_to_read){
 
-                        // we call BIO_read to attempt to read the bytes into the buffer
+                        // we call wolfSSL_read to attempt to read the bytes into the buffer
                         read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if BIO_read returns a value <= 0 it indicates an error so we break out from the loop
+                        // if wolfSSL_read returns a value <= 0 it indicates an error so we break out from the loop
                         if(read_bytes <= 0) break;
 
                         // we increment our total read bytes
@@ -3248,7 +3248,7 @@ bool lock_client::basic_read(){
 
                     }
                     
-                    // we check if the last BIO_read call returned 0 or < 0 which would indicate an error
+                    // we check if the last wolfSSL_read call returned 0 or < 0 which would indicate an error
                     if(read_bytes <= 0){
                         
                         // here wolfssl_read couldn't fetch any data
@@ -3281,19 +3281,19 @@ bool lock_client::basic_read(){
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 8;
 
-                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array BIO_read should write to. We reset it to 0
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfSSL_read should write to. We reset it to 0
                     total_read_bytes = 0;
 
-                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each BIO_read call
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfSSL_read call
                     read_bytes = 0;
 
                     // we keep reading till we have our total bytes to read
                     while(total_read_bytes < bytes_to_read){
 
-                        // we call BIO_read to attempt to read the bytes into the buffer
+                        // we call wolfSSL_read to attempt to read the bytes into the buffer
                         read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if BIO_read returns a value <= 0 it indicates an error so we break out from the loop
+                        // if wolfSSL_read returns a value <= 0 it indicates an error so we break out from the loop
                         if(read_bytes <= 0) break;
 
                         // we increment our total read bytes
@@ -3301,7 +3301,7 @@ bool lock_client::basic_read(){
 
                     }
                     
-                    // we check if the last BIO_read call returned 0 or < 0 which would indicate an error
+                    // we check if the last wolfSSL_read call returned 0 or < 0 which would indicate an error
                     if(read_bytes <= 0){
                         
                         // here wolfssl_read couldn't fetch any data
@@ -3834,19 +3834,19 @@ bool lock_client::basic_read(){
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 2;
 
-                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array BIO_read should write to. We reset it to 0
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfSSL_read should write to. We reset it to 0
                     total_read_bytes = 0;
 
-                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each BIO_read call
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfSSL_read call
                     read_bytes = 0;
 
                     // we keep reading till we have our total bytes to read
                     while(total_read_bytes < bytes_to_read){
 
-                        // we call BIO_read to attempt to read the bytes into the buffer
+                        // we call wolfSSL_read to attempt to read the bytes into the buffer
                         read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if BIO_read returns a value <= 0 it indicates an error so we break out from the loop
+                        // if wolfSSL_read returns a value <= 0 it indicates an error so we break out from the loop
                         if(read_bytes <= 0) break;
 
                         // we increment our total read bytes
@@ -3854,7 +3854,7 @@ bool lock_client::basic_read(){
 
                     }
                     
-                    // we check if the last BIO_read call returned 0 or < 0 which would indicate an error
+                    // we check if the last wolfSSL_read call returned 0 or < 0 which would indicate an error
                     if(read_bytes <= 0){
                         
                         // here wolfssl_read couldn't fetch any data
@@ -3887,19 +3887,19 @@ bool lock_client::basic_read(){
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 8;
 
-                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array BIO_read should write to. We reset it to 0
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfSSL_read should write to. We reset it to 0
                     total_read_bytes = 0;
 
-                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each BIO_read call
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfSSL_read call
                     read_bytes = 0;
 
                     // we keep reading till we have our total bytes to read
                     while(total_read_bytes < bytes_to_read){
 
-                        // we call BIO_read to attempt to read the bytes into the buffer
+                        // we call wolfSSL_read to attempt to read the bytes into the buffer
                         read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if BIO_read returns a value <= 0 it indicates an error so we break out from the loop
+                        // if wolfSSL_read returns a value <= 0 it indicates an error so we break out from the loop
                         if(read_bytes <= 0) break;
 
                         // we increment our total read bytes
@@ -3907,7 +3907,7 @@ bool lock_client::basic_read(){
 
                     }
                     
-                    // we check if the last BIO_read call returned 0 or < 0 which would indicate an error
+                    // we check if the last wolfSSL_read call returned 0 or < 0 which would indicate an error
                     if(read_bytes <= 0){
                         
                         // here wolfssl_read couldn't fetch any data
@@ -4494,19 +4494,19 @@ bool lock_client::basic_read(){
                         // we set our bytes to read variable to the number of bytes we are trying to read
                         bytes_to_read = (int)frame_data_len;
 
-                        // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the upgrade request static array BIO_read should write to. We reset it to 0
+                        // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the upgrade request static array wolfSSL_read should write to. We reset it to 0
                         total_read_bytes = 0;
 
-                        // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each BIO_read call
+                        // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfSSL_read call
                         read_bytes = 0;
 
                         // we keep reading till we have our total bytes to read
                         while(total_read_bytes < bytes_to_read){
 
-                            // we call BIO_read to attempt to read the bytes into the buffer
+                            // we call wolfSSL_read to attempt to read the bytes into the buffer
                             read_bytes = wolfSSL_read(c_ssl, &upgrade_request_static[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                            // if BIO_read returns a value <= 0 it indicates an error so we break out from the loop
+                            // if wolfSSL_read returns a value <= 0 it indicates an error so we break out from the loop
                             if(read_bytes <= 0) break;
 
                             // we increment our total read bytes
@@ -4514,7 +4514,7 @@ bool lock_client::basic_read(){
 
                         }
                         
-                        // we check if the last BIO_read call returned 0 or < 0 which would indicate an error
+                        // we check if the last wolfSSL_read call returned 0 or < 0 which would indicate an error
                         if(read_bytes <= 0){
                             
                             // here wolfssl_read couldn't fetch any data
@@ -8724,16 +8724,16 @@ bool lock_client_nb::basic_read(){
             // we set our bytes to read variable to the number of bytes we are trying to read
             int bytes_to_read = 2;
 
-            // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array BIO_read should write to
+            // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfSSL_read should write to
             int total_read_bytes = 0;
 
-            // we initialise our read bytes to 0, read bytes keeps track of how many bytes were read in each BIO_read call
+            // we initialise our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfSSL_read call
             int read_bytes = 0;
 
             // we keep reading till we have our total bytes to read
             while(total_read_bytes < bytes_to_read){
 
-                // we call BIO_read to attempt to read the bytes into the buffer
+                // we call wolfSSL_read to attempt to read the bytes into the buffer
                 read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
                 // if wolfssl_read returns a value <= 0 we check if there is data available to be read
@@ -8809,19 +8809,19 @@ bool lock_client_nb::basic_read(){
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 2;
 
-                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array BIO_read should write to
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfSSL_read should write to
                     total_read_bytes = 0;
 
-                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each BIO_read call
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfSSL_read call
                     read_bytes = 0;
 
                     // we keep reading till we have our total bytes to read
                     while(total_read_bytes < bytes_to_read){
 
-                        // we call BIO_read to attempt to read the bytes into the buffer
+                        // we call wolfSSL_read to attempt to read the bytes into the buffer
                         read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if BIO_read returns a value <= 0 we check if there is data available to be read
+                        // if wolfSSL_read returns a value <= 0 we check if there is data available to be read
                         if(read_bytes <= 0){
 
                             // we get the error message
@@ -8889,10 +8889,10 @@ bool lock_client_nb::basic_read(){
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 8;
 
-                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array BIO_read should write to
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfSSL_read should write to
                     total_read_bytes = 0;
 
-                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each BIO_read call
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfSSL_read call
                     read_bytes = 0;
 
                     // we keep reading till we have our total bytes to read
@@ -9332,19 +9332,19 @@ bool lock_client_nb::basic_read(){
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 2;
 
-                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array BIO_read should write to
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfSSL_read should write to
                     total_read_bytes = 0;
 
-                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each BIO_read call
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfSSL_read call
                     read_bytes = 0;
 
                     // we keep reading till we have our total bytes to read
                     while(total_read_bytes < bytes_to_read){
 
-                        // we call BIO_read to attempt to read the bytes into the buffer
+                        // we call wolfSSL_read to attempt to read the bytes into the buffer
                         read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if BIO_read returns a value <= 0 we check if there is data available to be read
+                        // if wolfSSL_read returns a value <= 0 we check if there is data available to be read
                         if(read_bytes <= 0){
 
                             // we get the error message
@@ -9412,10 +9412,10 @@ bool lock_client_nb::basic_read(){
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 8;
 
-                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array BIO_read should write to
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfSSL_read should write to
                     total_read_bytes = 0;
 
-                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each BIO_read call
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfSSL_read call
                     read_bytes = 0;
 
                     // we keep reading till we have our total bytes to read
@@ -9841,19 +9841,19 @@ bool lock_client_nb::basic_read(){
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 2;
 
-                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array BIO_read should write to
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfSSL_read should write to
                     total_read_bytes = 0;
 
-                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each BIO_read call
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfSSL_read call
                     read_bytes = 0;
 
                     // we keep reading till we have our total bytes to read
                     while(total_read_bytes < bytes_to_read){
 
-                        // we call BIO_read to attempt to read the bytes into the buffer
+                        // we call wolfSSL_read to attempt to read the bytes into the buffer
                         read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if BIO_read returns a value <= 0 we check if there is data available to be read
+                        // if wolfSSL_read returns a value <= 0 we check if there is data available to be read
                         if(read_bytes <= 0){
 
                             // we get the error message
@@ -9921,10 +9921,10 @@ bool lock_client_nb::basic_read(){
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 8;
 
-                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array BIO_read should write to
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfSSL_read should write to
                     total_read_bytes = 0;
 
-                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each BIO_read call
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfSSL_read call
                     read_bytes = 0;
 
                     // we keep reading till we have our total bytes to read
@@ -10463,19 +10463,19 @@ bool lock_client_nb::basic_read(){
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 2;
 
-                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array BIO_read should write to
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfSSL_read should write to
                     total_read_bytes = 0;
 
-                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each BIO_read call
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfSSL_read call
                     read_bytes = 0;
 
                     // we keep reading till we have our total bytes to read
                     while(total_read_bytes < bytes_to_read){
 
-                        // we call BIO_read to attempt to read the bytes into the buffer
+                        // we call wolfSSL_read to attempt to read the bytes into the buffer
                         read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if BIO_read returns a value <= 0 we check if there is data available to be read
+                        // if wolfSSL_read returns a value <= 0 we check if there is data available to be read
                         if(read_bytes <= 0){
 
                             // we get the error message
@@ -10543,10 +10543,10 @@ bool lock_client_nb::basic_read(){
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 8;
 
-                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array BIO_read should write to
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfSSL_read should write to
                     total_read_bytes = 0;
 
-                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each BIO_read call
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfSSL_read call
                     read_bytes = 0;
 
                     // we keep reading till we have our total bytes to read
