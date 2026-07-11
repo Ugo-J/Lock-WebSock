@@ -13323,7 +13323,7 @@ void lock_client_nb::unblock_sigpipe_signal(){
 void lock_client_nb::fail_ws_connection(unsigned short status_code){
 
     if(cursor != NULL && data_array != NULL){
-        
+
         memset(data_array, '\0', (cursor - data_array) ); // zero out the data possibly already written to the data array if the fail_ws_connection is called when a fragmented message was being transmitted.
             
         cursor = data_array; // set cursor to point back to data array
@@ -13345,7 +13345,7 @@ void lock_client_nb::fail_ws_connection(unsigned short status_code){
     i++;
             
     for(int j = 0; j<mask_array_len; j++){
-                
+
         send_data[i] = mask[j]; // store the mask in the send data array
                 
         i++;
@@ -13357,7 +13357,7 @@ void lock_client_nb::fail_ws_connection(unsigned short status_code){
     int k = 0; // variable used to store the mask index of the exact byte in the mask array to mask with
             
     for(int j = 0; j<frame_len; j++){
-                
+   
         k = j % 4;
                 
         send_data[i] = close_payload[j] ^ mask[k];  
