@@ -13412,7 +13412,7 @@ bool lock_client_nb::close(unsigned short status_code){ // this closes an establ
             i++;
 
             for(int j = 0; j<mask_array_len; j++){
-                    
+
                 send_data[i] = mask[j]; // store the mask in the send data array
                     
                 i++;
