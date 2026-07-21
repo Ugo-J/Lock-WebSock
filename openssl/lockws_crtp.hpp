@@ -7686,20 +7686,31 @@ lock_client_nb_crtp<T>::lock_client_nb_crtp(std::string_view url, in_addr* inter
                         SSL_set_connect_state(c_ssl);  // Set as client
 
                         // Perform handshake
-                        if (BIO_do_handshake(c_bio) <= 0) {
-                            std::cout << "SSL handshake failed"<< std::endl;
-                            BIO_free_all(c_bio); // this throws segmentation fault when called without any network connection
-                            strncpy(error_buffer, "SSL handshake failed", error_buffer_array_length);          
-                            error = true;
-                        }
-                        else{
-                            std::cout << "SSL handshake successful"<< std::endl;
+                        while(BIO_do_handshake(c_bio) <= 0){
+
+                            if(BIO_should_retry(c_bio)){
+                            // getting here the read request would block so we just return
+
+                                continue;
+
+                            }
+                            else{
+                                
+                                std::cout << "SSL handshake failed"<< std::endl;
+                                BIO_free_all(c_bio); // this throws segmentation fault when called without any network connection
+                                strncpy(error_buffer, "SSL handshake failed", error_buffer_array_length);          
+                                error = true;
+
+                            }
+
                         }
 
                         // we fetch the path for this connection
 
                         if(!error){
                         // continue if no error
+
+                            std::cout <<"SSL handshake successful"<<std::endl;
 
                             // we check if a forward slash was found after the last colon, if none was we connect to the default root path else the forward slash till the end of the url string is the path
                             std::string_view path = (base_url_end_index != std::string_view::npos) ? url.substr(base_url_end_index) : "/";
@@ -12784,20 +12795,31 @@ bool lock_client_nb_crtp<T>::interface_connect(std::string_view url, in_addr* in
                         SSL_set_connect_state(c_ssl);  // Set as client
 
                         // Perform handshake
-                        if (BIO_do_handshake(c_bio) <= 0) {
-                            std::cout << "SSL handshake failed"<< std::endl;
-                            BIO_free_all(c_bio); // this throws segmentation fault when called without any network connection
-                            strncpy(error_buffer, "SSL handshake failed", error_buffer_array_length);          
-                            error = true;
-                        }
-                        else{
-                            std::cout << "SSL handshake successful"<< std::endl;
+                        while(BIO_do_handshake(c_bio) <= 0){
+
+                            if(BIO_should_retry(c_bio)){
+                            // getting here the read request would block so we just return
+
+                                continue;
+
+                            }
+                            else{
+                                
+                                std::cout << "SSL handshake failed"<< std::endl;
+                                BIO_free_all(c_bio); // this throws segmentation fault when called without any network connection
+                                strncpy(error_buffer, "SSL handshake failed", error_buffer_array_length);          
+                                error = true;
+
+                            }
+
                         }
 
                         // we fetch the path for this connection
 
                         if(!error){
                         // continue if no error
+
+                            std::cout<<"SSL handshake successful"<<std::endl;
 
                             // we check if a forward slash was found after the last colon, if none was we connect to the default root path else the forward slash till the end of the url string is the path
                             std::string_view path = (base_url_end_index != std::string_view::npos) ? url.substr(base_url_end_index) : "/";
