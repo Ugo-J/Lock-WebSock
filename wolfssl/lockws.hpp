@@ -44,11 +44,23 @@ lock_client::lock_client(std::string_view url){
                 error = true;
             }
 
+            // we pre allocate memory for io & general operations so we don't allocate during operations
+            crypto_memory_pool = new(std::nothrow) char[CRYPTO_ARENA_SIZE];
+            general_memory_pool = new(std::nothrow) char[CRYPTO_ARENA_SIZE];
+
             // now we set aside our static memory for our wolfssl ctx to use for io operations for ssl objects - we set the max number of session objects drawing from this pool to 1 in our last parameter
-            wolfSSL_CTX_load_static_memory(&ssl_ctx, NULL, crypto_memory_pool, CRYPTO_ARENA_SIZE, WOLFMEM_IO_POOL, 1);
+            if(crypto_memory_pool != nullptr){
+
+                wolfSSL_CTX_load_static_memory(&ssl_ctx, NULL, crypto_memory_pool, CRYPTO_ARENA_SIZE, WOLFMEM_IO_POOL, 1);
+
+            }
 
             // load the general memory pool
-            wolfSSL_CTX_load_static_memory(&ssl_ctx, NULL, general_memory_pool, CRYPTO_ARENA_SIZE, WOLFMEM_GENERAL, 1);
+            if(general_memory_pool != nullptr){
+
+                wolfSSL_CTX_load_static_memory(&ssl_ctx, NULL, general_memory_pool, CRYPTO_ARENA_SIZE, WOLFMEM_GENERAL, 1);
+
+            }
             
             // seed the random number generator
             srand(std::chrono::duration_cast< std::chrono::milliseconds >(std::chrono::system_clock::now().time_since_epoch()).count());
@@ -710,11 +722,23 @@ lock_client::lock_client(std::string_view url, in_addr* interface_address, char*
                 error = true;
             }
 
+            // we pre allocate memory for io & general operations so we don't allocate during operations
+            crypto_memory_pool = new(std::nothrow) char[CRYPTO_ARENA_SIZE];
+            general_memory_pool = new(std::nothrow) char[CRYPTO_ARENA_SIZE];
+
             // now we set aside our static memory for our wolfssl ctx to use for io operations for ssl objects - we set the max number of session objects drawing from this pool to 1 in our last parameter
-            wolfSSL_CTX_load_static_memory(&ssl_ctx, NULL, crypto_memory_pool, CRYPTO_ARENA_SIZE, WOLFMEM_IO_POOL, 1);
+            if(crypto_memory_pool != nullptr){
+
+                wolfSSL_CTX_load_static_memory(&ssl_ctx, NULL, crypto_memory_pool, CRYPTO_ARENA_SIZE, WOLFMEM_IO_POOL, 1);
+
+            }
 
             // load the general memory pool
-            wolfSSL_CTX_load_static_memory(&ssl_ctx, NULL, general_memory_pool, CRYPTO_ARENA_SIZE, WOLFMEM_GENERAL, 1);
+            if(general_memory_pool != nullptr){
+
+                wolfSSL_CTX_load_static_memory(&ssl_ctx, NULL, general_memory_pool, CRYPTO_ARENA_SIZE, WOLFMEM_GENERAL, 1);
+
+            }
             
             // seed the random number generator
             srand(std::chrono::duration_cast< std::chrono::milliseconds >(std::chrono::system_clock::now().time_since_epoch()).count());
@@ -6396,11 +6420,23 @@ lock_client_nb::lock_client_nb(std::string_view url){
                 error = true;
             }
 
+            // we pre allocate memory for io & general operations so we don't allocate during operations
+            crypto_memory_pool = new(std::nothrow) char[CRYPTO_ARENA_SIZE];
+            general_memory_pool = new(std::nothrow) char[CRYPTO_ARENA_SIZE];
+
             // now we set aside our static memory for our wolfssl ctx to use for io operations for ssl objects - we set the max number of session objects drawing from this pool to 1 in our last parameter
-            wolfSSL_CTX_load_static_memory(&ssl_ctx, NULL, crypto_memory_pool, CRYPTO_ARENA_SIZE, WOLFMEM_IO_POOL, 1);
+            if(crypto_memory_pool != nullptr){
+
+                wolfSSL_CTX_load_static_memory(&ssl_ctx, NULL, crypto_memory_pool, CRYPTO_ARENA_SIZE, WOLFMEM_IO_POOL, 1);
+
+            }
 
             // load the general memory pool
-            wolfSSL_CTX_load_static_memory(&ssl_ctx, NULL, general_memory_pool, CRYPTO_ARENA_SIZE, WOLFMEM_GENERAL, 1);
+            if(general_memory_pool != nullptr){
+
+                wolfSSL_CTX_load_static_memory(&ssl_ctx, NULL, general_memory_pool, CRYPTO_ARENA_SIZE, WOLFMEM_GENERAL, 1);
+
+            }
             
             // seed the random number generator
             srand(std::chrono::duration_cast< std::chrono::milliseconds >(std::chrono::system_clock::now().time_since_epoch()).count());
@@ -7137,11 +7173,23 @@ lock_client_nb::lock_client_nb(std::string_view url, in_addr* interface_address,
                 error = true;
             }
 
+            // we pre allocate memory for io & general operations so we don't allocate during operations
+            crypto_memory_pool = new(std::nothrow) char[CRYPTO_ARENA_SIZE];
+            general_memory_pool = new(std::nothrow) char[CRYPTO_ARENA_SIZE];
+
             // now we set aside our static memory for our wolfssl ctx to use for io operations for ssl objects - we set the max number of session objects drawing from this pool to 1 in our last parameter
-            wolfSSL_CTX_load_static_memory(&ssl_ctx, NULL, crypto_memory_pool, CRYPTO_ARENA_SIZE, WOLFMEM_IO_POOL, 1);
+            if(crypto_memory_pool != nullptr){
+
+                wolfSSL_CTX_load_static_memory(&ssl_ctx, NULL, crypto_memory_pool, CRYPTO_ARENA_SIZE, WOLFMEM_IO_POOL, 1);
+
+            }
 
             // load the general memory pool
-            wolfSSL_CTX_load_static_memory(&ssl_ctx, NULL, general_memory_pool, CRYPTO_ARENA_SIZE, WOLFMEM_GENERAL, 1);
+            if(general_memory_pool != nullptr){
+
+                wolfSSL_CTX_load_static_memory(&ssl_ctx, NULL, general_memory_pool, CRYPTO_ARENA_SIZE, WOLFMEM_GENERAL, 1);
+
+            }
             
             // seed the random number generator
             srand(std::chrono::duration_cast< std::chrono::milliseconds >(std::chrono::system_clock::now().time_since_epoch()).count());
@@ -7752,11 +7800,23 @@ lock_client_nb::lock_client_nb(){
                 error = true;
             }
 
+            // we pre allocate memory for io & general operations so we don't allocate during operations
+            crypto_memory_pool = new(std::nothrow) char[CRYPTO_ARENA_SIZE];
+            general_memory_pool = new(std::nothrow) char[CRYPTO_ARENA_SIZE];
+
             // now we set aside our static memory for our wolfssl ctx to use for io operations for ssl objects - we set the max number of session objects drawing from this pool to 1 in our last parameter
-            wolfSSL_CTX_load_static_memory(&ssl_ctx, NULL, crypto_memory_pool, CRYPTO_ARENA_SIZE, WOLFMEM_IO_POOL, 1);
+            if(crypto_memory_pool != nullptr){
+
+                wolfSSL_CTX_load_static_memory(&ssl_ctx, NULL, crypto_memory_pool, CRYPTO_ARENA_SIZE, WOLFMEM_IO_POOL, 1);
+
+            }
 
             // load the general memory pool
-            wolfSSL_CTX_load_static_memory(&ssl_ctx, NULL, general_memory_pool, CRYPTO_ARENA_SIZE, WOLFMEM_GENERAL, 1);
+            if(general_memory_pool != nullptr){
+
+                wolfSSL_CTX_load_static_memory(&ssl_ctx, NULL, general_memory_pool, CRYPTO_ARENA_SIZE, WOLFMEM_GENERAL, 1);
+
+            }
             
             // seed the random number generator
             srand(std::chrono::duration_cast< std::chrono::milliseconds >(std::chrono::system_clock::now().time_since_epoch()).count());
@@ -7831,6 +7891,18 @@ lock_client_nb::~lock_client_nb(){
         
         delete [] data_array_new; // free the memory used to receive data
         
+    }
+
+    if(crypto_memory_pool != NULL){
+
+        delete [] crypto_memory_pool;
+
+    }
+
+    if(general_memory_pool != NULL){
+
+        delete [] general_memory_pool;
+
     }
     
 }
