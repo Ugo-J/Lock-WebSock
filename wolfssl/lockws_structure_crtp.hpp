@@ -61,10 +61,10 @@ protected:
     inline static const char string_to_append[] = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"; // this string is appended to the base64 encoded nonce to calculate the Sec-WebSocket-Accept header value and compare with the server's
     inline static const int size_of_SHA1_digest = 20;
 
-    // static memory for wolfssl because we disabled dynamic allocation on the hot path
+    // static memory for wolfssl because we disabled dynamic allocation
     static constexpr size_t CRYPTO_ARENA_SIZE = 256 * 1024;
-    alignas(16) uint8_t crypto_memory_pool[CRYPTO_ARENA_SIZE];
-    alignas(16) uint8_t general_memory_pool[CRYPTO_ARENA_SIZE];
+    unsigned char* crypto_memory_pool;
+    unsigned char* general_memory_pool;
     
 // instance connection data variables     
 protected:
@@ -273,10 +273,10 @@ protected:
     inline static const char string_to_append[] = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"; // this string is appended to the base64 encoded nonce to calculate the Sec-WebSocket-Accept header value and compare with the server's
     inline static const int size_of_SHA1_digest = 20;
 
-    // static memory for wolfssl because we disabled dynamic allocation on the hot path
+    // static memory for wolfssl because we disabled dynamic allocation
     static constexpr size_t CRYPTO_ARENA_SIZE = 256 * 1024;
-    alignas(16) uint8_t crypto_memory_pool[CRYPTO_ARENA_SIZE];
-    alignas(16) uint8_t general_memory_pool[CRYPTO_ARENA_SIZE];
+    unsigned char* crypto_memory_pool;
+    unsigned char* general_memory_pool;
     
 // instance connection data variables     
 protected:

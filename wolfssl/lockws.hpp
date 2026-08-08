@@ -45,8 +45,8 @@ lock_client::lock_client(std::string_view url){
             }
 
             // we pre allocate memory for io & general operations so we don't allocate during operations
-            crypto_memory_pool = new(std::nothrow) char[CRYPTO_ARENA_SIZE];
-            general_memory_pool = new(std::nothrow) char[CRYPTO_ARENA_SIZE];
+            crypto_memory_pool = new(std::nothrow) unsigned char[CRYPTO_ARENA_SIZE];
+            general_memory_pool = new(std::nothrow) unsigned char[CRYPTO_ARENA_SIZE];
 
             // now we set aside our static memory for our wolfssl ctx to use for io operations for ssl objects - we set the max number of session objects drawing from this pool to 1 in our last parameter
             if(crypto_memory_pool != nullptr){
@@ -723,8 +723,8 @@ lock_client::lock_client(std::string_view url, in_addr* interface_address, char*
             }
 
             // we pre allocate memory for io & general operations so we don't allocate during operations
-            crypto_memory_pool = new(std::nothrow) char[CRYPTO_ARENA_SIZE];
-            general_memory_pool = new(std::nothrow) char[CRYPTO_ARENA_SIZE];
+            crypto_memory_pool = new(std::nothrow) unsigned char[CRYPTO_ARENA_SIZE];
+            general_memory_pool = new(std::nothrow) unsigned char[CRYPTO_ARENA_SIZE];
 
             // now we set aside our static memory for our wolfssl ctx to use for io operations for ssl objects - we set the max number of session objects drawing from this pool to 1 in our last parameter
             if(crypto_memory_pool != nullptr){
@@ -1381,8 +1381,8 @@ lock_client::lock_client(){
             }
 
             // we pre allocate memory for io & general operations so we don't allocate during operations
-            crypto_memory_pool = new(std::nothrow) char[CRYPTO_ARENA_SIZE];
-            general_memory_pool = new(std::nothrow) char[CRYPTO_ARENA_SIZE];
+            crypto_memory_pool = new(std::nothrow) unsigned char[CRYPTO_ARENA_SIZE];
+            general_memory_pool = new(std::nothrow) unsigned char[CRYPTO_ARENA_SIZE];
 
             // now we set aside our static memory for our wolfssl ctx to use for io operations for ssl objects - we set the max number of session objects drawing from this pool to 1 in our last parameter
             if(crypto_memory_pool != nullptr){
@@ -6421,8 +6421,8 @@ lock_client_nb::lock_client_nb(std::string_view url){
             }
 
             // we pre allocate memory for io & general operations so we don't allocate during operations
-            crypto_memory_pool = new(std::nothrow) char[CRYPTO_ARENA_SIZE];
-            general_memory_pool = new(std::nothrow) char[CRYPTO_ARENA_SIZE];
+            crypto_memory_pool = new(std::nothrow) unsigned char[CRYPTO_ARENA_SIZE];
+            general_memory_pool = new(std::nothrow) unsigned char[CRYPTO_ARENA_SIZE];
 
             // now we set aside our static memory for our wolfssl ctx to use for io operations for ssl objects - we set the max number of session objects drawing from this pool to 1 in our last parameter
             if(crypto_memory_pool != nullptr){
@@ -7174,8 +7174,8 @@ lock_client_nb::lock_client_nb(std::string_view url, in_addr* interface_address,
             }
 
             // we pre allocate memory for io & general operations so we don't allocate during operations
-            crypto_memory_pool = new(std::nothrow) char[CRYPTO_ARENA_SIZE];
-            general_memory_pool = new(std::nothrow) char[CRYPTO_ARENA_SIZE];
+            crypto_memory_pool = new(std::nothrow) unsigned char[CRYPTO_ARENA_SIZE];
+            general_memory_pool = new(std::nothrow) unsigned char[CRYPTO_ARENA_SIZE];
 
             // now we set aside our static memory for our wolfssl ctx to use for io operations for ssl objects - we set the max number of session objects drawing from this pool to 1 in our last parameter
             if(crypto_memory_pool != nullptr){
@@ -7801,8 +7801,8 @@ lock_client_nb::lock_client_nb(){
             }
 
             // we pre allocate memory for io & general operations so we don't allocate during operations
-            crypto_memory_pool = new(std::nothrow) char[CRYPTO_ARENA_SIZE];
-            general_memory_pool = new(std::nothrow) char[CRYPTO_ARENA_SIZE];
+            crypto_memory_pool = new(std::nothrow) unsigned char[CRYPTO_ARENA_SIZE];
+            general_memory_pool = new(std::nothrow) unsigned char[CRYPTO_ARENA_SIZE];
 
             // now we set aside our static memory for our wolfssl ctx to use for io operations for ssl objects - we set the max number of session objects drawing from this pool to 1 in our last parameter
             if(crypto_memory_pool != nullptr){
