@@ -68,8 +68,8 @@ private:
 
     // static memory for wolfssl because we disabled dynamic allocation
     static constexpr size_t CRYPTO_ARENA_SIZE = 256 * 1024;
-    alignas(16) uint8_t crypto_memory_pool[CRYPTO_ARENA_SIZE];
-    alignas(16) uint8_t general_memory_pool[CRYPTO_ARENA_SIZE];
+    unsigned char* crypto_memory_pool;
+    unsigned char* general_memory_pool;
     
 // instance connection data variables     
 private:
@@ -283,8 +283,8 @@ private:
 
     // static memory for wolfssl because we disabled dynamic allocation on the hot path
     static constexpr size_t CRYPTO_ARENA_SIZE = 256 * 1024;
-    alignas(16) uint8_t crypto_memory_pool[CRYPTO_ARENA_SIZE];
-    alignas(16) uint8_t general_memory_pool[CRYPTO_ARENA_SIZE];
+    unsigned char* crypto_memory_pool;
+    unsigned char* general_memory_pool;
     
 // instance connection data variables     
 private:
