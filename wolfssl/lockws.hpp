@@ -2271,7 +2271,7 @@ bool lock_client::basic_read(){
                     
                     // getting here the SIGPIPE signal is still blocked
 
-                    // read the next 2 bytes from c_bio to get the length
+                    // read the next 2 bytes from c_ssl to get the length
 
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 2;
@@ -2324,7 +2324,7 @@ bool lock_client::basic_read(){
                     
                     // getting here the SIGPIPE signal is still blocked
 
-                    // read the next 8 bytes from c_bio to get our length
+                    // read the next 8 bytes from c_ssl to get our length
 
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 8;
@@ -2789,7 +2789,7 @@ bool lock_client::basic_read(){
                     
                     // getting here the SIGPIPE signal is still blocked
 
-                    // read the next 2 bytes from c_bio to get the length
+                    // read the next 2 bytes from c_ssl to get the length
 
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 2;
@@ -2842,7 +2842,7 @@ bool lock_client::basic_read(){
                     
                     // getting here the SIGPIPE signal is still blocked
 
-                    // read the next 8 bytes from c_bio to get our length
+                    // read the next 8 bytes from c_ssl to get our length
 
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 8;
@@ -3271,7 +3271,7 @@ bool lock_client::basic_read(){
                     
                     // getting here the SIGPIPE signal is still blocked
 
-                    // read the next 2 bytes from c_bio to get the length
+                    // read the next 2 bytes from c_ssl to get the length
 
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 2;
@@ -3324,7 +3324,7 @@ bool lock_client::basic_read(){
                     
                     // getting here the SIGPIPE signal is still blocked
 
-                    // read the next 8 bytes from c_bio to get our length
+                    // read the next 8 bytes from c_ssl to get our length
 
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 8;
@@ -3877,7 +3877,7 @@ bool lock_client::basic_read(){
                     
                     // getting here the SIGPIPE signal is still blocked
 
-                    // read the next 2 bytes from c_bio to get the length
+                    // read the next 2 bytes from c_ssl to get the length
 
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 2;
@@ -3930,7 +3930,7 @@ bool lock_client::basic_read(){
                     
                     // getting here the SIGPIPE signal is still blocked
 
-                    // read the next 8 bytes from c_bio to get our length
+                    // read the next 8 bytes from c_ssl to get our length
 
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 8;
@@ -6115,7 +6115,7 @@ int lock_client::connect_to_server(const char *hostname, const char *port, in_ad
 
     struct addrinfo hints, *res = NULL, *p = NULL;
 
-    // we create the socket the BIO structure would use
+    // we create the socket the ssl structure would use
     int sock = socket(AF_INET, SOCK_STREAM, 0);
     if (sock < 0) {
         std::cout<<"Error creating socket"<<std::endl;
@@ -8900,7 +8900,7 @@ bool lock_client_nb::basic_read(){
                     
                     // getting here the SIGPIPE signal is still blocked
 
-                    // read the next 2 bytes from c_bio to get the length
+                    // read the next 2 bytes from c_ssl to get the length
 
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 2;
@@ -8980,7 +8980,7 @@ bool lock_client_nb::basic_read(){
                     
                     // getting here the SIGPIPE signal is still blocked
 
-                    // read the next 8 bytes from c_bio to get our length
+                    // read the next 8 bytes from c_ssl to get our length
 
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 8;
@@ -9423,7 +9423,7 @@ bool lock_client_nb::basic_read(){
                     
                     // getting here the SIGPIPE signal is still blocked
 
-                    // read the next 2 bytes from c_bio to get the length
+                    // read the next 2 bytes from c_ssl to get the length
 
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 2;
@@ -9503,7 +9503,7 @@ bool lock_client_nb::basic_read(){
                     
                     // getting here the SIGPIPE signal is still blocked
 
-                    // read the next 8 bytes from c_bio to get our length
+                    // read the next 8 bytes from c_ssl to get our length
 
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 8;
@@ -9932,7 +9932,7 @@ bool lock_client_nb::basic_read(){
                     
                     // getting here the SIGPIPE signal is still blocked
 
-                    // read the next 2 bytes from c_bio to get the length
+                    // read the next 2 bytes from c_ssl to get the length
 
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 2;
@@ -10012,7 +10012,7 @@ bool lock_client_nb::basic_read(){
                     
                     // getting here the SIGPIPE signal is still blocked
 
-                    // read the next 8 bytes from c_bio to get our length
+                    // read the next 8 bytes from c_ssl to get our length
 
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 8;
@@ -10554,7 +10554,7 @@ bool lock_client_nb::basic_read(){
                     
                     // getting here the SIGPIPE signal is still blocked
 
-                    // read the next 2 bytes from c_bio to get the length
+                    // read the next 2 bytes from c_ssl to get the length
 
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 2;
@@ -10634,7 +10634,7 @@ bool lock_client_nb::basic_read(){
                     
                     // getting here the SIGPIPE signal is still blocked
 
-                    // read the next 8 bytes from c_bio to get our length
+                    // read the next 8 bytes from c_ssl to get our length
 
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 8;
@@ -12816,7 +12816,7 @@ int lock_client_nb::connect_to_server(const char *hostname, const char *port, in
 
     struct addrinfo hints, *res = NULL, *p = NULL;
 
-    // we create the socket the BIO structure would use
+    // we create the socket the ssl structure would use
     int sock = socket(AF_INET, SOCK_STREAM, 0);
     if (sock < 0) {
         std::cout<<"Error creating socket"<<std::endl;
