@@ -4749,7 +4749,7 @@ bool lock_client_crtp<T>::basic_read(){
                     strcat(error_buffer, " (Server reason: ");
                     
                     // we fetch the error buffer index to copy this data to
-                    int error_buffer_index = strlen(error_bufer);
+                    int error_buffer_index = strlen(error_buffer);
 
                     // we now copy the server reason to the error buffer starting at offset 2 to capture only the server reason
                     memcpy(&error_buffer[error_buffer_index], data_array + 2, server_reason);
