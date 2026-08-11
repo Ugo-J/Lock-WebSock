@@ -11655,12 +11655,35 @@ bool lock_client_nb_crtp<T>::basic_read(){
                 
                 BIO_reset(c_bio); // close the existing connection and reset the bio
                 
+                // set error flag to indicate that the lock client instance connection has been closed by foreign host
+                strcpy(error_buffer, "Lock client WebSocket connection mutually closed after instance received unsolicited close frame from foreign host");
+
+                // now the received close frame application data may contain a server reason for closing after the first 2 bytes which is the status code for the close frame, so we check if the application data length is > 2 if it is we append it to the error buffer
+                
+                int server_reason = static_cast<int>(frame_data_len) - 2;
+
+                // we check if there is a received close reason
+                if(server_reason > 0){
+
+                    // getting here there is a received close reason so we append this reason to the error buffer
+
+                    // since this is a string within the received data we don't treat it as a null terminated string so we first fetch the index in the error buffer we would be copying this to - we first append our opening bracket and server reaon to the error buffer
+                    strcat(error_buffer, " (Server reason: ");
+                    
+                    // we fetch the error buffer index to copy this data to
+                    int error_buffer_index = strlen(error_buffer);
+
+                    // we now copy the server reason to the error buffer starting at offset 2 to capture only the server reason
+                    memcpy(&error_buffer[error_buffer_index], data_array + 2, server_reason);
+
+                    // now we append the closing parentheses to error_buffer
+                    memcpy(&error_buffer[error_buffer_index] + server_reason, ").", 3);
+
+                }
+
                 memset(data_array, '\0', frame_data_len); // zero out the data array
                 
                 cursor = data_array; // set cursor to point back to data array
-                
-                // set error flag to indicate that the lock client instance connection has been closed by foreign host
-                strncpy(error_buffer, "Lock client WebSocket connection mutually closed after instance received unsolicited close frame from foreign host", error_buffer_array_length);
                 
                 error = true;
                 
@@ -13272,6 +13295,7 @@ bool lock_client_nb_crtp<T>::interface_connect(std::string_view url, in_addr* in
 
 template <typename T>
 int lock_client_nb_crtp<T>::connect_to_server(const char *hostname, const char *port, in_addr* interface_address, const char *interface_name){
+
     struct addrinfo hints, *res = NULL, *p = NULL;
 
     // we create the socket the BIO structure would use
