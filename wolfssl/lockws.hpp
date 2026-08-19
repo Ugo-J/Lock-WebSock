@@ -4895,22 +4895,22 @@ bool lock_client::connect(std::string_view url){ // this is used to connect to c
 
     if(client_state == CLOSED){
         
-        memset(error_buffer, '\0', strlen(error_buffer)); // erase previous error message
+        // erase previous error message
+        memset(error_buffer, '\0', strlen(error_buffer));
         
         error = false;
         
     }
     else{ // the lock client instance has a websocket connection in open state
         
-        memset(error_buffer, '\0', strlen(error_buffer)); // erase any previous error message
+        // erase any previous error message
+        memset(error_buffer, '\0', strlen(error_buffer));
         
-        error = false; // sets the error flag to false first so the close function can run 
-        
-        if(close()) // close the open websocket connection 
-            
-            error = false; // if the close function disconnects the connection because an unrecognised length was received, we need to set the error flag to 0 so that the rest of the connect function can proceed without hitch.
-          
-            // no need to memset since an unclean close sets the error flag but writes nothing to the error buffer
+        // close the open websocket connection 
+        close();
+
+        // sets the error flag to false first so the close function can run 
+        error = false;
             
     }
   
@@ -11586,22 +11586,22 @@ bool lock_client_nb::connect(std::string_view url){ // this is used to connect t
     
     if(client_state == CLOSED){
         
-        memset(error_buffer, '\0', strlen(error_buffer)); // erase previous error message
+        // erase previous error message
+        memset(error_buffer, '\0', strlen(error_buffer));
         
         error = false;
         
     }
     else{ // the lock client instance has a websocket connection in open state
         
-        memset(error_buffer, '\0', strlen(error_buffer)); // erase any previous error message
+        // erase any previous error message
+        memset(error_buffer, '\0', strlen(error_buffer));
         
-        error = false; // sets the error flag to false first so the close function can run 
-        
-        if(close()) // close the open websocket connection 
-            
-            error = false; // if the close function disconnects the connection because an unrecognised length was received, we need to set the error flag to 0 so that the rest of the connect function can proceed without hitch.
-          
-            // no need to memset since an unclean close sets the error flag but writes nothing to the error buffer
+        // close the open websocket connection 
+        close();
+
+        // sets the error flag to false first so the close function can run 
+        error = false;
             
     }
   
