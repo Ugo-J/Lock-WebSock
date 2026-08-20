@@ -7961,94 +7961,147 @@ lock_client_nb_crtp<T>::lock_client_nb_crtp(std::string_view url, in_addr* inter
                                 if(!error){ // only continue if no error
                                     
                                     data_array = data_array_static;
-                                    BIO_puts(c_bio, upgrade_request);
-                                    
-                                    int len = BIO_read(c_bio, data_array, static_data_array_length); // this function call would block till there is data to read
-                                    data_array[len] = '\0'; // null terminate the received bytes
 
-                                    // test for the switching protocol header to confirm that the connection upgrade was successful
-                                    char success_response[] = "HTTP/1.1 101 Switching Protocols";
-                                    
-                                    if(strncmp(success_response, strtok(data_array, "\n"), strlen(success_response)) == 0){ // upgrade successful
+                                    // send the upgrade request
+                                    while(BIO_puts(c_bio, upgrade_request) <= 0){
                                         
-                                        // Authorise connection - confirm that the Sec-WebSocket-Accept is what it should be by calculating the key and comparing it with the server's
-                                        
-                                        // build the SHA1 parameter
-                                        strncpy(SHA1_parameter, (const char*)base64_encoded_nonce, SHA1_parameter_array_len);
-                                        strncat(SHA1_parameter, string_to_append, SHA1_parameter_array_len - strlen(SHA1_parameter));
-                                        // SHA1 parameter build end 
-                                        
-                                        SHA1((const unsigned char*)SHA1_parameter, strlen(SHA1_parameter), SHA1_digest); // get the sha1 hash digest
-                                        
-                                        // base64 encode the SHA1_digest 
-                                        BIO_write(c_base64, SHA1_digest, size_of_SHA1_digest);
-                                        BIO_flush(c_base64); 
-                                        BIO_read(c_mem_base64, local_sec_ws_accept_key, local_sec_ws_accept_key_array_len);
-                                        // base64 encoding of SHA1 digest end 
-                                        
-                                        // loop through the rest of the response string to find the Sec-WebSocket-Accept header
-                                        char key[] = "Sec";
-                                        char* cursor = strtok(NULL, "\n");
-                                        
-                                        while(!(cursor == NULL)){
-                                        // we keep looping through the HTTP upgrade request response till either cursor == NULL or we find our Sec-WebSocket-Key header
+                                        if(BIO_should_retry(c_bio)){
+                                        // getting here the read request would block so we continue polling
+
+                                            continue;
+
+                                        }
+                                        else{
                                             
-                                            // we use sizeof so we can get the length of key as a compile time constan, we subtract 1 from the result of sizeof() to account for the null byte that terminates the string
-                                            if((strncmp(key, cursor, sizeof(key) - 1) == 0) || (strncmp("sec", cursor, sizeof(key) - 1) == 0) || (strncmp("SEC", cursor, sizeof(key) - 1) == 0) || (strncmp("sEc", cursor, sizeof(key) - 1) == 0) || (strncmp("seC", cursor, sizeof(key) - 1) == 0) || (strncmp("sEC", cursor, sizeof(key) - 1) == 0) || (strncmp("SEc", cursor, sizeof(key) - 1) == 0) || (strncmp("SeC", cursor, sizeof(key) - 1) == 0)){ // only the Sec-WebSocket-key response header would have "Sec" in it so we test all possible upper and lower case combinations of the key word "sec"
-                                                    
-                                                cursor += strlen("Sec-WebSocket-Accept: "); //move cursor foward to point to accept key value
+                                            strncpy(error_buffer, "Error upgrading connection.", error_buffer_array_length);
+                                        
+                                            error = true;
+
+                                            break;
+
+                                        }
+
+                                    }
+                                    
+                                    if(!error){
+
+                                        int len = BIO_read(c_bio, data_array, static_data_array_length); // non blocking call to bio read
+
+                                        while(len <= 0){
+
+                                            if(BIO_should_retry(c_bio)){
+                                            // getting here the read request would block so we keep looping
+
+                                                len = BIO_read(c_bio, data_array, static_data_array_length);
+
+                                                continue;
+
+                                            }
+                                            else{
                                                 
-                                                // compare server's response with our calculation
-                                                if(strncmp(local_sec_ws_accept_key, cursor, strlen(local_sec_ws_accept_key)) == 0){
+                                                strncpy(error_buffer, "Error reading upgrade request response.", error_buffer_array_length);
+                                            
+                                                error = true;
+
+                                                break;
+
+                                            }
+
+                                        }
+
+                                        if(!error){
+
+                                            data_array[len] = '\0'; // null terminate the received bytes
+
+                                            // test for the switching protocol header to confirm that the connection upgrade was successful
+                                            char success_response[] = "HTTP/1.1 101 Switching Protocols";
+                                            
+                                            if(strncmp(success_response, strtok(data_array, "\n"), strlen(success_response)) == 0){ // upgrade successful
+
+                                                // Authorise connection - confirm that the Sec-WebSocket-Accept is what it should be by calculating the key and comparing it with the server's
+                                                
+                                                // build the SHA1 parameter
+                                                strncpy(SHA1_parameter, (const char*)base64_encoded_nonce, SHA1_parameter_array_len);
+                                                strncat(SHA1_parameter, string_to_append, SHA1_parameter_array_len - strlen(SHA1_parameter));
+                                                // SHA1 parameter build end 
+                                                
+                                                SHA1((const unsigned char*)SHA1_parameter, strlen(SHA1_parameter), SHA1_digest); // get the sha1 hash digest
+                                                
+                                                // base64 encode the SHA1_digest 
+                                                BIO_write(c_base64, SHA1_digest, size_of_SHA1_digest);
+                                                BIO_flush(c_base64); 
+                                                BIO_read(c_mem_base64, local_sec_ws_accept_key, local_sec_ws_accept_key_array_len);
+                                                // base64 encoding of SHA1 digest end 
+                                                
+                                                // loop through the rest of the response string to find the Sec-WebSocket-Accept header
+                                                char key[] = "Sec";
+                                                char* cursor = strtok(NULL, "\n");
+                                                
+                                                while(cursor != NULL){
+                                                // we keep looping through the HTTP upgrade request response till either cursor == NULL or we find our Sec-WebSocket-Key header
                                                     
-                                                    client_state = OPEN;
-                                                    
-                                                    break; // break if the server sec websocket key matches what we calculated. Connection authorised
+                                                    // we use sizeof so we can get the length of key as a compile time constan, we subtract 1 from the result of sizeof() to account for the null byte that terminates the string
+                                                    if((strncmp(key, cursor, sizeof(key) - 1) == 0) || (strncmp("sec", cursor, sizeof(key) - 1) == 0) || (strncmp("SEC", cursor, sizeof(key) - 1) == 0) || (strncmp("sEc", cursor, sizeof(key) - 1) == 0) || (strncmp("seC", cursor, sizeof(key) - 1) == 0) || (strncmp("sEC", cursor, sizeof(key) - 1) == 0) || (strncmp("SEc", cursor, sizeof(key) - 1) == 0) || (strncmp("SeC", cursor, sizeof(key) - 1) == 0)){ // only the Sec-WebSocket-key response header would have "Sec" in it so we test all possible upper and lower case combinations of the key word "sec"
                                                         
+                                                        cursor += strlen("Sec-WebSocket-Accept: "); //move cursor foward to point to accept key value
+                                                        
+                                                        // compare server's response with our calculation
+                                                        if(strncmp(local_sec_ws_accept_key, cursor, strlen(local_sec_ws_accept_key)) == 0){
+                                                            
+                                                            client_state = OPEN;
+
+                                                            break; // break if the server sec websocket key matches what we calculated. Connection authorised
+                                                        
+                                                        }
+                                                        else{
+                                                            
+                                                            strncpy(error_buffer, "Connection authorisation Failed", error_buffer_array_length);
+                                                            
+                                                            BIO_reset(c_bio); // reset bio and disconnect the underlying connection
+                                                            
+                                                            error = true;
+                                                            
+                                                            break;
+                                                                
+                                                        }
+                                                        
+                                                    }
+                                                    
+                                                    cursor = strtok(NULL, "\n");
+                                                    
                                                 }
-                                                else{
+                                                
+                                                if(cursor == NULL){
                                                     
-                                                    strncpy(error_buffer, "Connection authorisation Failed", error_buffer_array_length);
-                                                        
-                                                    BIO_reset(c_bio); // reset bio and disconnect the underlying connection
-                                                        
+                                                    // getting here means no Sec-Websocket-Key header was found before strtok returned a null value
+                                                    strncpy(error_buffer, "Invalid Upgrade request response received", error_buffer_array_length);
+                                                    
+                                                    // reset bio and disconnect the underlying connection
+                                                    BIO_reset(c_bio);
+                                                    
                                                     error = true;
-                                                        
-                                                    break;
-                                                        
+                                                
                                                 }
                                                 
                                             }
-                                            
-                                            cursor = strtok(NULL, "\n");
-                                            
-                                        }
-                                        
-                                        if(cursor == NULL){
-                                            
-                                            // getting here means no Sec-Websocket-Key header was found before strtok returned a null value
-                                            strncpy(error_buffer, "Invalid Upgrade request response received", error_buffer_array_length);
-                                            
-                                            BIO_reset(c_bio); // reset bio and disconnect the underlying connection
-                                            
-                                            error = true;
-                                        
-                                        }
-                                        
-                                    }
-                                    else{ // upgrade unsuccessful
-                                        
-                                        strncpy(error_buffer, "Connection upgrade failed. Invalid path supplied", error_buffer_array_length);
-                                        
-                                        BIO_reset(c_bio); // reset bio and disconnect the underlying connection
-                                        
-                                        error = true;
-                                        
-                                    }
-                                                        
-                                    memset(data_array, '\0', len); // zero out the data array
+                                            else{ // upgrade unsuccessful
+                                                
+                                                strncpy(error_buffer, "Connection upgrade failed. Invalid path or url supplied", error_buffer_array_length);
+                                                
+                                                // reset bio and disconnect the underlying connection
+                                                BIO_reset(c_bio);
+                                                
+                                                error = true;
+                                                
+                                            }
+                                                                
+                                            memset(data_array, '\0', len); // zero out the data array
 
-                                    memset(upgrade_request, '\0', upgrade_request_len); // zero out the upgrade request array
+                                            memset(upgrade_request, '\0', upgrade_request_len); // zero out the upgrade request array
+                                            
+                                        }
+
+                                    }
                             
                                 }
                             
