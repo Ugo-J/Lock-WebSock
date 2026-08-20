@@ -12582,26 +12582,14 @@ bool lock_client_nb_crtp<T>::connect(std::string_view url){ // this is used to c
 template <typename T>
 bool lock_client_nb_crtp<T>::interface_connect(std::string_view url, in_addr* interface_address, char* interface_name){
     
-    if(client_state == CLOSED){
-        
-        memset(error_buffer, '\0', strlen(error_buffer)); // erase previous error message
-        
-        error = false;
-        
-    }
-    else{ // the lock client instance has a websocket connection in open state
-        
-        memset(error_buffer, '\0', strlen(error_buffer)); // erase any previous error message
-        
-        error = false; // sets the error flag to false first so the close function can run 
-        
-        if(close()) // close the open websocket connection 
-            
-            error = false; // if the close function disconnects the connection because an unrecognised length was received, we need to set the error flag to 0 so that the rest of the connect function can proceed without hitch.
-          
-            // no need to memset since an unclean close sets the error flag but writes nothing to the error buffer
-            
-    }
+    // we close the websocket connection - if this handle was connected before, if it wasn't close is still a safe operation
+    close(NORMAL_CLOSE);
+
+    // erase any previous error message
+    memset(error_buffer, '\0', strlen(error_buffer));
+
+    // we set our error flag to false
+    error = false;
 
     // check if url is a ws:// or wss:// endpoint, check case insensitively
 
@@ -12804,7 +12792,8 @@ bool lock_client_nb_crtp<T>::interface_connect(std::string_view url, in_addr* in
             // only continue if no error
 
                 // we create an SSL object for this lock client instance
-                SSL *c_ssl = SSL_new(ssl_ctx);
+                c_ssl = SSL_new(ssl_ctx);
+
                 if(c_ssl == NULL){
                     
                     strncpy(error_buffer, "Error creating SSL structure ", error_buffer_array_length);
@@ -12820,11 +12809,11 @@ bool lock_client_nb_crtp<T>::interface_connect(std::string_view url, in_addr* in
                     // set SSL mode to retry automatically should SSL connection fail
                     SSL_set_mode(c_ssl, SSL_MODE_AUTO_RETRY);
 
-                    // Create BIO for this socket
-                    BIO* sock_bio = BIO_new_socket(sock, BIO_NOCLOSE);
-                    if (!sock_bio) {
+                    // Create BIO for this socket. we create this bio with the BIO_CLOSE flag so the underlying socket is closed by bio free
+                    BIO* sock_bio = BIO_new_socket(sock, BIO_CLOSE);
+                    if(!sock_bio){
                         SSL_free(c_ssl);
-                        close(sock);
+                        ::close(sock);
                         strncpy(error_buffer, "Error creating BIO structure from socket", error_buffer_array_length);          
                         error = true;
                     }
@@ -12834,7 +12823,7 @@ bool lock_client_nb_crtp<T>::interface_connect(std::string_view url, in_addr* in
 
                         // now we create an SSL BIO
                         BIO* ssl_bio = BIO_new(BIO_f_ssl());
-                        BIO_set_ssl(ssl_bio, c_ssl, BIO_CLOSE);
+                        BIO_set_ssl(ssl_bio, c_ssl, BIO_NOCLOSE);
 
                         // Chain ssl_bio and sock_bio together
                         c_bio = BIO_push(ssl_bio, sock_bio);
@@ -12854,8 +12843,7 @@ bool lock_client_nb_crtp<T>::interface_connect(std::string_view url, in_addr* in
                             else{
                                 
                                 std::cout << "SSL handshake failed"<< std::endl;
-                                BIO_free_all(c_bio); // this throws segmentation fault when called without any network connection
-                                strncpy(error_buffer, "SSL handshake failed", error_buffer_array_length);          
+                                strcpy(error_buffer, "SSL handshake failed");          
                                 error = true;
 
                             }
@@ -13061,7 +13049,8 @@ bool lock_client_nb_crtp<T>::interface_connect(std::string_view url, in_addr* in
                                         
                                             error = true;
                                             
-                                            BIO_reset(c_bio); // disconnect the underlying bio
+                                            // disconnect the underlying bio
+                                            BIO_reset(c_bio);
                                         
                                         }
                                         else{ 
@@ -13095,94 +13084,147 @@ bool lock_client_nb_crtp<T>::interface_connect(std::string_view url, in_addr* in
                                 if(!error){ // only continue if no error
                                     
                                     data_array = data_array_static;
-                                    BIO_puts(c_bio, upgrade_request);
-                                    
-                                    int len = BIO_read(c_bio, data_array, static_data_array_length); // this function call would block till there is data to read
-                                    data_array[len] = '\0'; // null terminate the received bytes
 
-                                    // test for the switching protocol header to confirm that the connection upgrade was successful
-                                    char success_response[] = "HTTP/1.1 101 Switching Protocols";
-                                    
-                                    if(strncmp(success_response, strtok(data_array, "\n"), strlen(success_response)) == 0){ // upgrade successful
+                                    // send the upgrade request
+                                    while(BIO_puts(c_bio, upgrade_request) <= 0){
                                         
-                                        // Authorise connection - confirm that the Sec-WebSocket-Accept is what it should be by calculating the key and comparing it with the server's
-                                        
-                                        // build the SHA1 parameter
-                                        strncpy(SHA1_parameter, (const char*)base64_encoded_nonce, SHA1_parameter_array_len);
-                                        strncat(SHA1_parameter, string_to_append, SHA1_parameter_array_len - strlen(SHA1_parameter));
-                                        // SHA1 parameter build end 
-                                        
-                                        SHA1((const unsigned char*)SHA1_parameter, strlen(SHA1_parameter), SHA1_digest); // get the sha1 hash digest
-                                        
-                                        // base64 encode the SHA1_digest 
-                                        BIO_write(c_base64, SHA1_digest, size_of_SHA1_digest);
-                                        BIO_flush(c_base64); 
-                                        BIO_read(c_mem_base64, local_sec_ws_accept_key, local_sec_ws_accept_key_array_len);
-                                        // base64 encoding of SHA1 digest end 
-                                        
-                                        // loop through the rest of the response string to find the Sec-WebSocket-Accept header
-                                        char key[] = "Sec";
-                                        char* cursor = strtok(NULL, "\n");
-                                        
-                                        while(!(cursor == NULL)){
-                                        // we keep looping through the HTTP upgrade request response till either cursor == NULL or we find our Sec-WebSocket-Key header
+                                        if(BIO_should_retry(c_bio)){
+                                        // getting here the read request would block so we continue polling
+
+                                            continue;
+
+                                        }
+                                        else{
                                             
-                                            // we use sizeof so we can get the length of key as a compile time constan, we subtract 1 from the result of sizeof() to account for the null byte that terminates the string
-                                            if((strncmp(key, cursor, sizeof(key) - 1) == 0) || (strncmp("sec", cursor, sizeof(key) - 1) == 0) || (strncmp("SEC", cursor, sizeof(key) - 1) == 0) || (strncmp("sEc", cursor, sizeof(key) - 1) == 0) || (strncmp("seC", cursor, sizeof(key) - 1) == 0) || (strncmp("sEC", cursor, sizeof(key) - 1) == 0) || (strncmp("SEc", cursor, sizeof(key) - 1) == 0) || (strncmp("SeC", cursor, sizeof(key) - 1) == 0)){ // only the Sec-WebSocket-key response header would have "Sec" in it so we test all possible upper and lower case combinations of the key word "sec"
-                                                    
-                                                cursor += strlen("Sec-WebSocket-Accept: "); //move cursor foward to point to accept key value
+                                            strncpy(error_buffer, "Error upgrading connection.", error_buffer_array_length);
+                                        
+                                            error = true;
+
+                                            break;
+
+                                        }
+
+                                    }
+                                    
+                                    if(!error){
+
+                                        int len = BIO_read(c_bio, data_array, static_data_array_length); // non blocking call to bio read
+
+                                        while(len <= 0){
+
+                                            if(BIO_should_retry(c_bio)){
+                                            // getting here the read request would block so we keep looping
+
+                                                len = BIO_read(c_bio, data_array, static_data_array_length);
+
+                                                continue;
+
+                                            }
+                                            else{
                                                 
-                                                // compare server's response with our calculation
-                                                if(strncmp(local_sec_ws_accept_key, cursor, strlen(local_sec_ws_accept_key)) == 0){
+                                                strncpy(error_buffer, "Error reading upgrade request response.", error_buffer_array_length);
+                                            
+                                                error = true;
+
+                                                break;
+
+                                            }
+
+                                        }
+
+                                        if(!error){
+
+                                            data_array[len] = '\0'; // null terminate the received bytes
+
+                                            // test for the switching protocol header to confirm that the connection upgrade was successful
+                                            char success_response[] = "HTTP/1.1 101 Switching Protocols";
+                                            
+                                            if(strncmp(success_response, strtok(data_array, "\n"), strlen(success_response)) == 0){ // upgrade successful
+
+                                                // Authorise connection - confirm that the Sec-WebSocket-Accept is what it should be by calculating the key and comparing it with the server's
+                                                
+                                                // build the SHA1 parameter
+                                                strncpy(SHA1_parameter, (const char*)base64_encoded_nonce, SHA1_parameter_array_len);
+                                                strncat(SHA1_parameter, string_to_append, SHA1_parameter_array_len - strlen(SHA1_parameter));
+                                                // SHA1 parameter build end 
+                                                
+                                                SHA1((const unsigned char*)SHA1_parameter, strlen(SHA1_parameter), SHA1_digest); // get the sha1 hash digest
+                                                
+                                                // base64 encode the SHA1_digest 
+                                                BIO_write(c_base64, SHA1_digest, size_of_SHA1_digest);
+                                                BIO_flush(c_base64); 
+                                                BIO_read(c_mem_base64, local_sec_ws_accept_key, local_sec_ws_accept_key_array_len);
+                                                // base64 encoding of SHA1 digest end 
+                                                
+                                                // loop through the rest of the response string to find the Sec-WebSocket-Accept header
+                                                char key[] = "Sec";
+                                                char* cursor = strtok(NULL, "\n");
+                                                
+                                                while(cursor != NULL){
+                                                // we keep looping through the HTTP upgrade request response till either cursor == NULL or we find our Sec-WebSocket-Key header
                                                     
-                                                    client_state = OPEN;
-                                                    
-                                                    break; // break if the server sec websocket key matches what we calculated. Connection authorised
+                                                    // we use sizeof so we can get the length of key as a compile time constan, we subtract 1 from the result of sizeof() to account for the null byte that terminates the string
+                                                    if((strncmp(key, cursor, sizeof(key) - 1) == 0) || (strncmp("sec", cursor, sizeof(key) - 1) == 0) || (strncmp("SEC", cursor, sizeof(key) - 1) == 0) || (strncmp("sEc", cursor, sizeof(key) - 1) == 0) || (strncmp("seC", cursor, sizeof(key) - 1) == 0) || (strncmp("sEC", cursor, sizeof(key) - 1) == 0) || (strncmp("SEc", cursor, sizeof(key) - 1) == 0) || (strncmp("SeC", cursor, sizeof(key) - 1) == 0)){ // only the Sec-WebSocket-key response header would have "Sec" in it so we test all possible upper and lower case combinations of the key word "sec"
                                                         
+                                                        cursor += strlen("Sec-WebSocket-Accept: "); //move cursor foward to point to accept key value
+                                                        
+                                                        // compare server's response with our calculation
+                                                        if(strncmp(local_sec_ws_accept_key, cursor, strlen(local_sec_ws_accept_key)) == 0){
+                                                            
+                                                            client_state = OPEN;
+
+                                                            break; // break if the server sec websocket key matches what we calculated. Connection authorised
+                                                                
+                                                        }
+                                                        else{
+                                                            
+                                                            strncpy(error_buffer, "Connection authorisation Failed", error_buffer_array_length);
+                                                            
+                                                            BIO_reset(c_bio); // reset bio and disconnect the underlying connection
+                                                            
+                                                            error = true;
+                                                            
+                                                            break;
+                                                                
+                                                        }
+                                                        
+                                                    }
+                                                    
+                                                    cursor = strtok(NULL, "\n");
+                                                    
                                                 }
-                                                else{
+                                                
+                                                if(cursor == NULL){
                                                     
-                                                    strncpy(error_buffer, "Connection authorisation Failed", error_buffer_array_length);
-                                                        
-                                                    BIO_reset(c_bio); // reset bio and disconnect the underlying connection
-                                                        
+                                                    // getting here means no Sec-Websocket-Key header was found before strtok returned a null value
+                                                    strncpy(error_buffer, "Invalid Upgrade request response received", error_buffer_array_length);
+                                                    
+                                                    // reset bio and disconnect the underlying connection
+                                                    BIO_reset(c_bio);
+                                                    
                                                     error = true;
-                                                        
-                                                    break;
-                                                        
+                                                
                                                 }
                                                 
                                             }
-                                            
-                                            cursor = strtok(NULL, "\n");
-                                            
-                                        }
-                                        
-                                        if(cursor == NULL){
-                                            
-                                            // getting here means no Sec-Websocket-Key header was found before strtok returned a null value
-                                            strncpy(error_buffer, "Invalid Upgrade request response received", error_buffer_array_length);
-                                            
-                                            BIO_reset(c_bio); // reset bio and disconnect the underlying connection
-                                            
-                                            error = true;
-                                        
-                                        }
-                                        
-                                    }
-                                    else{ // upgrade unsuccessful
-                                        
-                                        strncpy(error_buffer, "Connection upgrade failed. Invalid path supplied", error_buffer_array_length);
-                                        
-                                        BIO_reset(c_bio); // reset bio and disconnect the underlying connection
-                                        
-                                        error = true;
-                                        
-                                    }
-                                                        
-                                    memset(data_array, '\0', len); // zero out the data array
+                                            else{ // upgrade unsuccessful
+                                                
+                                                strncpy(error_buffer, "Connection upgrade failed. Invalid path or url supplied", error_buffer_array_length);
+                                                
+                                                // reset bio and disconnect the underlying connection
+                                                BIO_reset(c_bio);
+                                                
+                                                error = true;
+                                                
+                                            }
+                                                                
+                                            memset(data_array, '\0', len); // zero out the data array
 
-                                    memset(upgrade_request, '\0', upgrade_request_len); // zero out the upgrade request array
+                                            memset(upgrade_request, '\0', upgrade_request_len); // zero out the upgrade request array
+                                            
+                                        }
+                                        
+                                    }
                             
                                 }
                             
@@ -13302,37 +13344,47 @@ int lock_client_nb_crtp<T>::connect_to_server(const char *hostname, const char *
 
     // we create the socket the BIO structure would use
     int sock = socket(AF_INET, SOCK_STREAM, 0);
-    if (sock < 0) {
+    if(sock < 0) {
         std::cout<<"Error creating socket"<<std::endl;
         strncpy(error_buffer, "Error creating socket", error_buffer_array_length);          
         error = true;
         return -1;
     }
 
-    // Bind to a specific device
-    if (setsockopt(sock, SOL_SOCKET, SO_BINDTODEVICE, interface_name, strlen(interface_name)) < 0) {
-        std::cout<<"Error binding socket to device"<<std::endl;
-        perror("setsockopt(SO_BINDTODEVICE)");
-        strncpy(error_buffer, "Error binding socket to device", error_buffer_array_length);          
-        error = true;
-        close(sock);
-        return -1;
-    }
-    else{
-        std::cout<<"Successfully bound socket to device "<<interface_name<<std::endl;
+    // we bind to an interface if the supplied interface pointer is non null
+    if(interface_name != nullptr){
+
+        // Bind to a specific device
+        if(setsockopt(sock, SOL_SOCKET, SO_BINDTODEVICE, interface_name, strlen(interface_name)) < 0) {
+            std::cout<<"Error binding socket to device"<<std::endl;
+            perror("setsockopt(SO_BINDTODEVICE)");
+            strncpy(error_buffer, "Error binding socket to device", error_buffer_array_length);          
+            error = true;
+            close(sock);
+            return -1;
+        }
+        else{
+            std::cout<<"Successfully bound socket to device "<<interface_name<<std::endl;
+        }
+
     }
 
-    // Set up local address structure
-    struct sockaddr_in localaddr;
-    memset(&localaddr, 0, sizeof(localaddr));
-    localaddr.sin_family = AF_INET;
-    localaddr.sin_addr.s_addr = interface_address->s_addr;
-    localaddr.sin_port = 0;  // Lets the system choose port
+    // we bind to a specific interface address if the supplied interface address is non null
+    if(interface_address != nullptr){
 
-    // Bind socket to specific interface
-    if (bind(sock, (struct sockaddr*)&localaddr, sizeof(localaddr)) < 0) {
-        // if the binding fails the library does not set the error flag to true it just prints the error message, ignores the specified interface and attempts to make the connection with whatever network interface is available
-        std::cout<<"Lockws Error: Binding To Supplied Interface Address Failed...Connection Will Be Attempted With The Default Network Interface Address..."<<std::endl;
+        // Set up local address structure
+        struct sockaddr_in localaddr;
+        memset(&localaddr, 0, sizeof(localaddr));
+        localaddr.sin_family = AF_INET;
+        localaddr.sin_addr.s_addr = interface_address->s_addr;
+        localaddr.sin_port = 0;  // Lets the system choose port
+
+        // Bind socket to specific interface
+        if(bind(sock, (struct sockaddr*)&localaddr, sizeof(localaddr)) < 0) {
+            // if the binding fails the library does not set the error flag to true it just prints the error message, ignores the specified interface and attempts to make the connection with whatever network interface is available
+            std::cout<<"Lockws Error: Binding To Supplied Interface Address Failed...Connection Will Be Attempted With The Default Network Interface Address..."<<std::endl;
+        }
+
     }
 
     // Set up hints for getaddrinfo
@@ -13341,7 +13393,7 @@ int lock_client_nb_crtp<T>::connect_to_server(const char *hostname, const char *
     hints.ai_socktype = SOCK_STREAM; // TCP stream sockets
 
     // Perform DNS resolution
-    if (getaddrinfo(hostname, port, &hints, &res) != 0) {
+    if(getaddrinfo(hostname, port, &hints, &res) != 0) {
         std::cout<<"Error resolving hostname: "<<hostname<<std::endl;
         strncpy(error_buffer, "Error resolving hostname", error_buffer_array_length);          
         error = true;
