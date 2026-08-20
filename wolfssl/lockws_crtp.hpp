@@ -120,12 +120,11 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url){
                 
             
             }
-            else{ // neither static or dynamic memory is large enough, we test whether memory has already been allocated or not 
+            else{ // neither static or dynamic memory is large enough, we test whether memory has already been allocated or not
                 
                 if(c_url_new == NULL){ // memory has not yet been allocated
                     
                     c_url_new = new(std::nothrow) char[req_mem]; // the nothrow parameter prevents an exception from being thrown by the C++ runtime should the heap allocation fail
-                
                 
                     if(c_url_new == NULL){
                         
@@ -154,7 +153,6 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url){
                     // heap memory allocation for urls larger than the static array length
                     c_url_new = new(std::nothrow) char[req_mem]; // the nothrow parameter prevents an exception from being thrown by the C++ runtime should the heap allocation fail
                 
-                    
                     if(c_url_new == NULL){
                         
                         strncpy(error_buffer, "Error allocating heap memory for lock_client url parameter ", error_buffer_array_length);
@@ -178,15 +176,12 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url){
 
             }
             
-            if(!error){ // checks if there was any error allocating memory, that is if that part of the code was executed. The constructor only continues if there was no error 
+            if(!error){ // checks if there was any error allocating memory, that is if that part of the code was executed. The constructor only continues if there was no error
                 
                 // we check if the supplied url has the port number appended if not we append it
                 if(strchr(c_url, ':') == NULL){
                     strcat(c_url, ":443"); // we use strcat here because the array length check already checks that we have enough space in the array to accomodate for the port number
                 }
-                
-                // set SSL mode to retry automatically should SSL connection fail
-                // wolfSSL_set_mode(c_ssl, WOLFSSL_MODE_AUTO_RETRY);
         
             }
         
@@ -228,10 +223,9 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url){
             }
             else{ // neither static or already allocated memory is large enough, we test the two possible cases
                 
-                if(c_host_new == NULL){ // memory has not been allocated yet 
+                if(c_host_new == NULL){ // memory has not been allocated yet
                 
                     c_host_new = new(std::nothrow) char[host_name_len + 1]; // the nothrow parameter prevents an exception from being thrown by the C++ runtime should the heap allocation fail
-            
             
                     if(c_host_new == NULL){
                 
@@ -258,7 +252,6 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url){
                     delete [] c_host_new; // delete the previously allocated memory
                     
                     c_host_new = new(std::nothrow) char[host_name_len + 1]; // the nothrow parameter prevents an exception from being thrown by the C++ runtime should the heap allocation fail
-            
             
                     if(c_host_new == NULL){
                 
@@ -328,7 +321,7 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url){
                         c_path = c_path_new;
                         
                     }
-                    else{ // neither static or already allocated memory is large enough, we test the two possible cases 
+                    else{ // neither static or already allocated memory is large enough, we test the two possible cases
                         
                         if(c_path_new == NULL){ //memory has not been allocated yet
                         
@@ -829,7 +822,6 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url, in_addr* interface_a
                     // heap memory allocation for urls larger than the static array length
                     c_url_new = new(std::nothrow) char[req_mem]; // the nothrow parameter prevents an exception from being thrown by the C++ runtime should the heap allocation fail
                 
-                    
                     if(c_url_new == NULL){
                         
                         strncpy(error_buffer, "Error allocating heap memory for lock_client url parameter ", error_buffer_array_length);
@@ -865,7 +857,7 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url, in_addr* interface_a
                 
                 int host_name_len = (host_name_end_index == std::string_view::npos) ? url.size() - protocol_prefix_len : (int)host_name_end_index - protocol_prefix_len;
 
-                if( host_name_len < host_static_array_length ){ // static array is large enough
+                if(host_name_len < host_static_array_length){ // static array is large enough
                 
                     url.copy(c_host_static, host_name_len, protocol_prefix_len);
                 
@@ -874,7 +866,7 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url, in_addr* interface_a
                     c_host = c_host_static;
                 
                 }
-                else if( host_name_len < size_of_allocated_host_memory){ // dynamic memory is large enough
+                else if(host_name_len < size_of_allocated_host_memory){ // dynamic memory is large enough
                     
                     url.copy(c_host_new, host_name_len, protocol_prefix_len);
                 
@@ -888,7 +880,6 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url, in_addr* interface_a
                     if(c_host_new == NULL){ // memory has not been allocated yet 
                     
                         c_host_new = new(std::nothrow) char[host_name_len + 1]; // the nothrow parameter prevents an exception from being thrown by the C++ runtime should the heap allocation fail
-                
                 
                         if(c_host_new == NULL){
                     
@@ -915,7 +906,6 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url, in_addr* interface_a
                         delete [] c_host_new; // delete the previously allocated memory
                         
                         c_host_new = new(std::nothrow) char[host_name_len + 1]; // the nothrow parameter prevents an exception from being thrown by the C++ runtime should the heap allocation fail
-                
                 
                         if(c_host_new == NULL){
                     
@@ -976,9 +966,6 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url, in_addr* interface_a
 
                         // Set SNI
                         wolfSSL_UseSNI(c_ssl, WOLFSSL_SNI_HOST_NAME, c_host, host_name_len);
-
-                        // set SSL mode to retry automatically should SSL connection fail
-                        // wolfSSL_set_mode(c_ssl, WOLFSSL_MODE_AUTO_RETRY);
 
                         // getting here the connect to server function returned successfully and oue ssl structure was allocated successfully, so now we bind the returned socket fd to our c_ssl object
                         wolfSSL_set_fd(c_ssl, sockfd);
@@ -1433,28 +1420,28 @@ lock_client_crtp<T>::~lock_client_crtp(){
     }
     
     // free url heap memory - this only runs if dynamic memory allocation is used to store the url
-    if(!(c_url_new == NULL)){
+    if(c_url_new != NULL){
         
         delete [] c_url_new;
         
     }
     
     // free path heap memory if the path string was stored in dynamic memory
-    if(!(c_path_new == NULL)){
+    if(c_path_new != NULL){
         
         delete [] c_path_new;
         
     }
     
     // free host heap memory if host string was stored in dynamic memory
-    if(!(c_host_new == NULL)){
+    if(c_host_new != NULL){
         
         delete [] c_host_new;
         
     }
     
     // free upgrade request string heap memory if upgrade request string was stored in dynamic memory
-    if(!(upgrade_request_new == NULL)){
+    if(upgrade_request_new != NULL){
         
         delete [] upgrade_request_new;
         
@@ -1471,7 +1458,7 @@ lock_client_crtp<T>::~lock_client_crtp(){
         
     }
     
-    if (data_array_new != NULL){
+    if(data_array_new != NULL){
         
         delete [] data_array_new; // free the memory used to receive data
         
@@ -4897,26 +4884,14 @@ bool lock_client_crtp<T>::basic_read(){
 template <typename T>
 bool lock_client_crtp<T>::connect(std::string_view url){ // this is used to connect to connect to the url passed as a parameter, it can be used when a lock client object was created without establishing a websocket connection by using the parameterless constructor, or to connect an already established websocket connection and lock client instance to a different websocket server, it can also be used to retry connecting an instance that encountered an error during connection
 
-    if(client_state == CLOSED){
-        
-        // erase previous error message
-        memset(error_buffer, '\0', strlen(error_buffer));
-        
-        error = false;
-        
-    }
-    else{ // the lock client instance has a websocket connection in open state
-        
-        // erase any previous error message
-        memset(error_buffer, '\0', strlen(error_buffer));
-        
-        // close the open websocket connection 
-        close();
+    // we close the websocket connection - if this handle was connected before, if it wasn't close is still a safe operation
+    close(NORMAL_CLOSE);
 
-        // sets the error flag to false first so the close function can run 
-        error = false;
-            
-    }
+    // erase any previous error message
+    memset(error_buffer, '\0', strlen(error_buffer));
+
+    // we set our error flag to false
+    error = false;
   
     // check if url is a wss:// endpoint, check case insensitively
 
@@ -4960,8 +4935,7 @@ bool lock_client_crtp<T>::connect(std::string_view url){ // this is used to conn
             if(c_url_new == NULL){ // memory has not yet been allocated
                 
                 c_url_new = new(std::nothrow) char[req_mem]; // the nothrow parameter prevents an exception from being thrown by the C++ runtime should the heap allocation fail
-            
-            
+
                 if(c_url_new == NULL){
                     
                     strncpy(error_buffer, "Error allocating heap memory for lock_client url parameter ", error_buffer_array_length);
@@ -4989,7 +4963,6 @@ bool lock_client_crtp<T>::connect(std::string_view url){ // this is used to conn
                 // heap memory allocation for urls larger than the static array length
                 c_url_new = new(std::nothrow) char[req_mem]; // the nothrow parameter prevents an exception from being thrown by the C++ runtime should the heap allocation fail
             
-                
                 if(c_url_new == NULL){
                     
                     strncpy(error_buffer, "Error allocating heap memory for lock_client url parameter ", error_buffer_array_length);
@@ -5019,9 +4992,6 @@ bool lock_client_crtp<T>::connect(std::string_view url){ // this is used to conn
             if(strchr(c_url, ':') == NULL){
                 strcat(c_url, ":443"); // we use strcat here because the array length check already checks that we have enough space in the array to accomodate for the port number
             }
-            
-            // set SSL mode to retry automatically should SSL connection fail
-            // wolfSSL_set_mode(c_ssl, WOLFSSL_MODE_AUTO_RETRY);
     
         }
     
@@ -5066,10 +5036,9 @@ bool lock_client_crtp<T>::connect(std::string_view url){ // this is used to conn
             if(c_host_new == NULL){ // memory has not been allocated yet 
             
                 c_host_new = new(std::nothrow) char[host_name_len + 1]; // the nothrow parameter prevents an exception from being thrown by the C++ runtime should the heap allocation fail
-        
-        
+
                 if(c_host_new == NULL){
-            
+
                     strncpy(error_buffer, "Error allocating heap memory for server host name ", error_buffer_array_length);
                 
                     error = true;    
@@ -5093,8 +5062,7 @@ bool lock_client_crtp<T>::connect(std::string_view url){ // this is used to conn
                 delete [] c_host_new; // delete the previously allocated memory
                 
                 c_host_new = new(std::nothrow) char[host_name_len + 1]; // the nothrow parameter prevents an exception from being thrown by the C++ runtime should the heap allocation fail
-        
-        
+
                 if(c_host_new == NULL){
             
                     strncpy(error_buffer, "Error allocating heap memory for server host name ", error_buffer_array_length);
@@ -5536,26 +5504,14 @@ bool lock_client_crtp<T>::connect(std::string_view url){ // this is used to conn
 template <typename T>
 bool lock_client_crtp<T>::interface_connect(std::string_view url, in_addr* interface_address, char* interface_name){
     
-    if(client_state == CLOSED){
-        
-        memset(error_buffer, '\0', strlen(error_buffer)); // erase previous error message
-        
-        error = false;
-        
-    }
-    else{ // the lock client instance has a websocket connection in open state
-        
-        memset(error_buffer, '\0', strlen(error_buffer)); // erase any previous error message
-        
-        error = false; // sets the error flag to false first so the close function can run 
-        
-        if(close()) // close the open websocket connection 
-            
-            error = false; // if the close function disconnects the connection because an unrecognised length was received, we need to set the error flag to 0 so that the rest of the connect function can proceed without hitch.
-          
-            // no need to memset since an unclean close sets the error flag but writes nothing to the error buffer
-            
-    }
+    // we close the websocket connection - if this handle was connected before, if it wasn't close is still a safe operation
+    close(NORMAL_CLOSE);
+
+    // erase any previous error message
+    memset(error_buffer, '\0', strlen(error_buffer));
+
+    // we set our error flag to false
+    error = false;
 
     // check if url is a wss:// endpoint. the wolfssl variant of lockclient supports only wss endpoints
 
@@ -5624,7 +5580,6 @@ bool lock_client_crtp<T>::interface_connect(std::string_view url, in_addr* inter
                 // heap memory allocation for urls larger than the static array length
                 c_url_new = new(std::nothrow) char[req_mem]; // the nothrow parameter prevents an exception from being thrown by the C++ runtime should the heap allocation fail
             
-                
                 if(c_url_new == NULL){
                     
                     strncpy(error_buffer, "Error allocating heap memory for lock_client url parameter ", error_buffer_array_length);
@@ -5660,7 +5615,7 @@ bool lock_client_crtp<T>::interface_connect(std::string_view url, in_addr* inter
             
             int host_name_len = (host_name_end_index == std::string_view::npos) ? url.size() - protocol_prefix_len : (int)host_name_end_index - protocol_prefix_len;
 
-            if( host_name_len < host_static_array_length ){ // static array is large enough
+            if(host_name_len < host_static_array_length){ // static array is large enough
             
                 url.copy(c_host_static, host_name_len, protocol_prefix_len);
             
@@ -5669,7 +5624,7 @@ bool lock_client_crtp<T>::interface_connect(std::string_view url, in_addr* inter
                 c_host = c_host_static;
             
             }
-            else if( host_name_len < size_of_allocated_host_memory){ // dynamic memory is large enough
+            else if(host_name_len < size_of_allocated_host_memory){ // dynamic memory is large enough
                 
                 url.copy(c_host_new, host_name_len, protocol_prefix_len);
             
@@ -5683,7 +5638,6 @@ bool lock_client_crtp<T>::interface_connect(std::string_view url, in_addr* inter
                 if(c_host_new == NULL){ // memory has not been allocated yet 
                 
                     c_host_new = new(std::nothrow) char[host_name_len + 1]; // the nothrow parameter prevents an exception from being thrown by the C++ runtime should the heap allocation fail
-            
             
                     if(c_host_new == NULL){
                 
@@ -5711,7 +5665,6 @@ bool lock_client_crtp<T>::interface_connect(std::string_view url, in_addr* inter
                     
                     c_host_new = new(std::nothrow) char[host_name_len + 1]; // the nothrow parameter prevents an exception from being thrown by the C++ runtime should the heap allocation fail
             
-            
                     if(c_host_new == NULL){
                 
                         strncpy(error_buffer, "Error allocating heap memory for server host name ", error_buffer_array_length);
@@ -5729,7 +5682,6 @@ bool lock_client_crtp<T>::interface_connect(std::string_view url, in_addr* inter
             
                         c_host = c_host_new;
 
-            
                     }
                 
                 }
@@ -5771,9 +5723,6 @@ bool lock_client_crtp<T>::interface_connect(std::string_view url, in_addr* inter
 
                     // Set SNI
                     wolfSSL_UseSNI(c_ssl, WOLFSSL_SNI_HOST_NAME, c_host, host_name_len);
-
-                    // set SSL mode to retry automatically should SSL connection fail
-                    // wolfSSL_set_mode(c_ssl, WOLFSSL_MODE_AUTO_RETRY);
 
                     // getting here the connect to server function returned successfully and oue ssl structure was allocated successfully, so now we bind the returned socket fd to our c_ssl object
                     wolfSSL_set_fd(c_ssl, sockfd);
@@ -5891,7 +5840,7 @@ bool lock_client_crtp<T>::interface_connect(std::string_view url, in_addr* inter
                             char char_remaining[] = "GET  HTTP/1.1\nHost: \nConnection: Upgrade\nPragma: no-cache\nUpgrade: websocket\nSec-WebSocket-Version: 13\nSec-WebSocket-Key: \n\n";
                             int upgrade_request_len = strlen(char_remaining) + length_of_supplied_data;
                             
-                            if( upgrade_request_len < upgrade_request_array_length ){ // static array is large enough
+                            if(upgrade_request_len < upgrade_request_array_length){ // static array is large enough
                                 
                                 // build the upgrade request
                                 strcpy(upgrade_request_static, "GET ");
@@ -6146,7 +6095,7 @@ int lock_client_crtp<T>::connect_to_server(const char *hostname, const char *por
 
     // we create the socket the ssl structure would use
     int sock = socket(AF_INET, SOCK_STREAM, 0);
-    if (sock < 0) {
+    if(sock < 0){
         std::cout<<"Error creating socket"<<std::endl;
         strncpy(error_buffer, "Error creating socket", error_buffer_array_length);          
         error = true;
@@ -6157,12 +6106,12 @@ int lock_client_crtp<T>::connect_to_server(const char *hostname, const char *por
     if(interface_name != nullptr){
 
         // Bind to a specific device
-        if (setsockopt(sock, SOL_SOCKET, SO_BINDTODEVICE, interface_name, strlen(interface_name)) < 0) {
+        if(setsockopt(sock, SOL_SOCKET, SO_BINDTODEVICE, interface_name, strlen(interface_name)) < 0){
             std::cout<<"Error binding socket to device"<<std::endl;
             perror("setsockopt(SO_BINDTODEVICE)");
             strncpy(error_buffer, "Error binding socket to device", error_buffer_array_length);          
             error = true;
-            close(sock);
+            ::close(sock);
             return -1;
         }
         else{
@@ -6195,7 +6144,7 @@ int lock_client_crtp<T>::connect_to_server(const char *hostname, const char *por
     hints.ai_socktype = SOCK_STREAM; // TCP stream sockets
 
     // Perform DNS resolution
-    if(getaddrinfo(hostname, port, &hints, &res) != 0) {
+    if(getaddrinfo(hostname, port, &hints, &res) != 0){
         std::cout<<"Error resolving hostname: "<<hostname<<std::endl;
         strncpy(error_buffer, "Error resolving hostname", error_buffer_array_length);          
         error = true;
@@ -6203,22 +6152,22 @@ int lock_client_crtp<T>::connect_to_server(const char *hostname, const char *por
     }
 
     // Iterate over results and try to connect
-    for(p = res; p != NULL; p = p->ai_next) {
+    for(p = res; p != NULL; p = p->ai_next){
 
         // Try to connect - we prepend the global resolution operator because the lockclient class has a connect function
-        if (::connect(sock, p->ai_addr, p->ai_addrlen) == 0) {
+        if(::connect(sock, p->ai_addr, p->ai_addrlen) == 0){
             std::cout<<"Connected to "<<hostname<<std::endl;
             break; // Connected successfully
         }
 
         perror("connect");
-        close(sock);
+        ::close(sock);
         sock = -1;
     }
 
     if(res != NULL) freeaddrinfo(res); // Free the addrinfo structure if non null
 
-    if (sock < 0) {
+    if(sock < 0){
         std::cout<<"Failed to connect to "<<hostname<<':'<<port<<std::endl;
         strncpy(error_buffer, "Failed to connect to host", error_buffer_array_length);          
         error = true;
@@ -6239,9 +6188,11 @@ int lock_client_crtp<T>::reset(){
     // if a valid socket is bound, we first close it effectively disconnecting it
     if(sockfd >= 0) ::close(sockfd);
 
-    // we now clear our wolfssl session
-    wolfSSL_set_fd(c_ssl, -1);
-    wolfSSL_clear(c_ssl);
+    // we free our wolfssl object
+    wolfSSL_free(c_ssl);
+
+    // we set our c_ssl pointer to null
+    c_ssl = nullptr;
 
     return 0;
 
@@ -6344,73 +6295,64 @@ void lock_client_crtp<T>::fail_ws_connection(unsigned short status_code){
 
 template <typename T>
 bool lock_client_crtp<T>::close(unsigned short status_code){ // this closes an established websocket connection although the object itself still exists till it goes out of scope, the object can be connected to a different or the same websocket server using the connect function
-
-    if(!error){ // only continue if no error
-        
-        if(client_state == OPEN){ // only continue if client is in open state
-        
-            int i = 0; // variable for traversing the send array and building up the close data frame
-            unsigned short frame_len = (unsigned short)2; // holds the length of the close data frame - sizeof unsigned short
-            unsigned char close_payload[2]; // holds the close payload data which is basically the status code in network byte order
-            
-            send_data = (char*)send_data_static; // set the send data pointer to the send data static array
-            
-            send_data[i] = (unsigned char)(FIN_BIT_SET | RSV_BIT_UNSET_ALL | CONNECTION_CLOSE);
-            close_payload[i] = (unsigned char)(status_code >> 8); // store the high byte of the status code
-            i++;
-            
-            send_data[i] = MASK_BIT_SET | ((unsigned char)frame_len);
-            close_payload[i] = (unsigned char)(0x00FF & status_code); // store the low byte of the status code
-            i++;
-
-            for(int j = 0; j<mask_array_len; j++){
-                    
-                send_data[i] = mask[j]; // store the mask in the send data array
-                    
-                i++;
-                  
-            }
-            // mask storing end 
-                
-            // mask the data and store the masked data in the send data array 
-            int k = 0; // variable used to store the mask index of the exact byte in the mask array to mask with
-                
-            for(int j = 0; j<frame_len; j++){
-                    
-                k = j % 4;
-                    
-                send_data[i] = close_payload[j] ^ mask[k];  
-                    
-                i++;
-                    
-            }
-                
-            // block SIGPIPE signal before attempting to send data, just incase the connection is closed
-            block_sigpipe_signal();
-                
-            // send the close frame
-            wolfSSL_write(c_ssl, send_data, i);
-            
-            // unblock SIGPIPE signal
-            unblock_sigpipe_signal();
-
-            // after sending the close frame we do not attempt to read any more data from the server we just disconnect the underlying network connection
-            reset();
-                
-            client_state = CLOSED;
-     
-        }
-        else{
-            
-            strncpy(error_buffer, "Lock Client not connected", error_buffer_array_length);
-                
-            error = true;
-            
-        }
-                
-    }
     
-    return error; // returning an error of 1 from the close function just means that the close was not a clean one but it was successful nonetheless, and the close function does not write any message to the error buffer
+    if(client_state == OPEN){ // only continue if client is in open state
+    
+        int i = 0; // variable for traversing the send array and building up the close data frame
+        unsigned short frame_len = (unsigned short)2; // holds the length of the close data frame - sizeof unsigned short
+        unsigned char close_payload[2]; // holds the close payload data which is basically the status code in network byte order
+        
+        send_data = (char*)send_data_static; // set the send data pointer to the send data static array
+        
+        send_data[i] = (unsigned char)(FIN_BIT_SET | RSV_BIT_UNSET_ALL | CONNECTION_CLOSE);
+        close_payload[i] = (unsigned char)(status_code >> 8); // store the high byte of the status code
+        i++;
+        
+        send_data[i] = MASK_BIT_SET | ((unsigned char)frame_len);
+        close_payload[i] = (unsigned char)(0x00FF & status_code); // store the low byte of the status code
+        i++;
+
+        for(int j = 0; j<mask_array_len; j++){
+                
+            send_data[i] = mask[j]; // store the mask in the send data array
+                
+            i++;
+                
+        }
+        // mask storing end 
+            
+        // mask the data and store the masked data in the send data array 
+        int k = 0; // variable used to store the mask index of the exact byte in the mask array to mask with
+            
+        for(int j = 0; j<frame_len; j++){
+                
+            k = j % 4;
+                
+            send_data[i] = close_payload[j] ^ mask[k];  
+                
+            i++;
+                
+        }
+            
+        // block SIGPIPE signal before attempting to send data, just incase the connection is closed
+        block_sigpipe_signal();
+            
+        // send the close frame
+        wolfSSL_write(c_ssl, send_data, i);
+        
+        // unblock SIGPIPE signal
+        unblock_sigpipe_signal();
+
+        // after sending the close frame we do not attempt to read any more data from the server we just disconnect the underlying network connection
+    
+    }
+
+    // we disconnect our underlying connection
+    reset();
+            
+    client_state = CLOSED;
+    
+    return error;
         
 }
 
@@ -13097,7 +13039,7 @@ bool lock_client_nb_crtp<T>::close(unsigned short status_code){ // this closes a
 
     client_state = CLOSED;
     
-    return error; // returning an error of 1 from the close function just means that the close was not a clean one but it was successful nonetheless, and the close function does not write any message to the error buffer
+    return error;
 }
 
 #pragma GCC diagnostic pop
