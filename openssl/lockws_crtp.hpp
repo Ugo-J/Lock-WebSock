@@ -23,7 +23,7 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url){
         int upper_bound = 255;
             
         for(int j = 0; j<mask_array_len; j++){
-                
+
             mask[j] = (unsigned char)(rand() % upper_bound);
 
         }
@@ -64,7 +64,8 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url){
 
         // SSL members initialisations
         c_bio = BIO_new_ssl_connect(ssl_ctx); // creates a new bio ssl object
-        BIO_get_ssl(c_bio, &c_ssl); // get the SSL structure component of the ssl bio for per instance SSL settings
+        if(c_bio != NULL) BIO_get_ssl(c_bio, &c_ssl); // get the SSL structure component of the ssl bio for per instance SSL settings
+
         if(c_ssl == NULL){
             
             strncpy(error_buffer, "Error fetching SSL structure pointer ", error_buffer_array_length);
@@ -101,7 +102,6 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url){
                     
                     c_url_new = new(std::nothrow) char[req_mem]; // the nothrow parameter prevents an exception from being thrown by the C++ runtime should the heap allocation fail
                 
-                
                     if(c_url_new == NULL){
                         
                         strncpy(error_buffer, "Error allocating heap memory for lock_client url parameter ", error_buffer_array_length);
@@ -129,7 +129,6 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url){
                     // heap memory allocation for urls larger than the static array length
                     c_url_new = new(std::nothrow) char[req_mem]; // the nothrow parameter prevents an exception from being thrown by the C++ runtime should the heap allocation fail
                 
-                    
                     if(c_url_new == NULL){
                         
                         strncpy(error_buffer, "Error allocating heap memory for lock_client url parameter ", error_buffer_array_length);
@@ -239,7 +238,6 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url){
                 // heap memory allocation for urls larger than the static array length
                 c_url_new = new(std::nothrow) char[req_mem]; // the nothrow parameter prevents an exception from being thrown by the C++ runtime should the heap allocation fail
         
-           
                 if(c_url_new == NULL){
                 
                     strncpy(error_buffer, "Error allocating heap memory for lock_client url parameter ", error_buffer_array_length);
@@ -294,7 +292,7 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url){
         
         int host_name_len = (host_name_end_index == std::string_view::npos) ? url.size() - search_start_index : (int)host_name_end_index - search_start_index;
 
-        if( host_name_len < host_static_array_length ){ // static array is large enough
+        if(host_name_len < host_static_array_length){ // static array is large enough
         
             url.copy(c_host_static, host_name_len, search_start_index);
         
@@ -303,7 +301,7 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url){
             c_host = c_host_static;
         
         }
-        else if( host_name_len < size_of_allocated_host_memory){ // dynamic memory is large enough
+        else if(host_name_len < size_of_allocated_host_memory){ // dynamic memory is large enough
             
             url.copy(c_host_new, host_name_len, search_start_index);
         
@@ -345,7 +343,6 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url){
                 
                 c_host_new = new(std::nothrow) char[host_name_len + 1]; // the nothrow parameter prevents an exception from being thrown by the C++ runtime should the heap allocation fail
         
-        
                 if(c_host_new == NULL){
             
                     strncpy(error_buffer, "Error allocating heap memory for server host name ", error_buffer_array_length);
@@ -373,7 +370,7 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url){
         if(!error){ // only continue if no error
         
             // we set the host name we wish to connect to for server name identification(SNI) if the websocket address passed is a wss:// address. We test this by checking that the c_ssl pointer is non-null
-            if(!(c_ssl == NULL)){
+            if(c_ssl != NULL){
                 
                 if(!SSL_set_tlsext_host_name(c_ssl, c_host)){
                 // we test the return value. SSL_set_tlsext_host_name returns 0 on error and 1 on success
@@ -501,7 +498,7 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url){
                         char char_remaining[] = "GET  HTTP/1.1\nHost: \nConnection: Upgrade\nPragma: no-cache\nUpgrade: websocket\nSec-WebSocket-Version: 13\nSec-WebSocket-Key: \n\n";
                         int upgrade_request_len = strlen(char_remaining) + length_of_supplied_data;
                         
-                        if( upgrade_request_len < upgrade_request_array_length ){ // static array is large enough
+                        if(upgrade_request_len < upgrade_request_array_length){ // static array is large enough
                             
                             // build the upgrade request
                             strcpy(upgrade_request_static, "GET ");
@@ -658,7 +655,7 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url){
                                 char key[] = "Sec";
                                 char* cursor = strtok(NULL, "\n");
                                 
-                                while(!(cursor == NULL)){
+                                while(cursor != NULL){
                                 // we keep looping through the HTTP upgrade request response till either cursor == NULL or we find our Sec-WebSocket-Key header
                                     
                                     // we use sizeof so we can get the length of key as a compile time constan, we subtract 1 from the result of sizeof() to account for the null byte that terminates the string
@@ -875,7 +872,7 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url, in_addr* interface_a
             
             int host_name_len = (host_name_end_index == std::string_view::npos) ? url.size() - protocol_prefix_len : (int)host_name_end_index - protocol_prefix_len;
 
-            if( host_name_len < host_static_array_length ){ // static array is large enough
+            if(host_name_len < host_static_array_length){ // static array is large enough
             
                 url.copy(c_host_static, host_name_len, protocol_prefix_len);
             
@@ -884,7 +881,7 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url, in_addr* interface_a
                 c_host = c_host_static;
             
             }
-            else if( host_name_len < size_of_allocated_host_memory){ // dynamic memory is large enough
+            else if(host_name_len < size_of_allocated_host_memory){ // dynamic memory is large enough
                 
                 url.copy(c_host_new, host_name_len, protocol_prefix_len);
             
@@ -973,7 +970,8 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url, in_addr* interface_a
             // only continue if no error
 
                 // we create an SSL object for this lock client instance
-                SSL *c_ssl = SSL_new(ssl_ctx);
+                c_ssl = SSL_new(ssl_ctx);
+
                 if(c_ssl == NULL){
                     
                     strncpy(error_buffer, "Error creating SSL structure ", error_buffer_array_length);
@@ -989,11 +987,11 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url, in_addr* interface_a
                     // set SSL mode to retry automatically should SSL connection fail
                     SSL_set_mode(c_ssl, SSL_MODE_AUTO_RETRY);
 
-                    // Create BIO for this socket
-                    BIO* sock_bio = BIO_new_socket(sock, BIO_NOCLOSE);
-                    if (!sock_bio) {
+                    // Create BIO for this socket - we create this bio with the BIO_CLOSE flag so bio free closes the underlying socket
+                    BIO* sock_bio = BIO_new_socket(sock, BIO_CLOSE);
+                    if(!sock_bio){
                         SSL_free(c_ssl);
-                        close(sock);
+                        ::close(sock);
                         strncpy(error_buffer, "Error creating BIO structure from socket", error_buffer_array_length);          
                         error = true;
                     }
@@ -1003,7 +1001,9 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url, in_addr* interface_a
 
                         // now we create an SSL BIO
                         BIO* ssl_bio = BIO_new(BIO_f_ssl());
-                        BIO_set_ssl(ssl_bio, c_ssl, BIO_CLOSE);
+
+                        // we create the ssl bio with the BIO_NOCLOSE flag so bio free does not free the underlying ssl pointer
+                        BIO_set_ssl(ssl_bio, c_ssl, BIO_NOCLOSE);
 
                         // Chain ssl_bio and sock_bio together
                         c_bio = BIO_push(ssl_bio, sock_bio);
@@ -1012,14 +1012,13 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url, in_addr* interface_a
                         SSL_set_connect_state(c_ssl);  // Set as client
 
                         // Perform handshake
-                        if (BIO_do_handshake(c_bio) <= 0) {
-                            std::cout << "SSL handshake failed"<< std::endl;
-                            BIO_free_all(c_bio); // this throws segmentation fault when called without any network connection
+                        if(BIO_do_handshake(c_bio) <= 0){
+                            std::cout<<"SSL handshake failed"<<std::endl;
                             strncpy(error_buffer, "SSL handshake failed", error_buffer_array_length);          
                             error = true;
                         }
                         else{
-                            std::cout << "SSL handshake successful"<< std::endl;
+                            std::cout<<"SSL handshake successful"<<std::endl;
                         }
 
                         // we fetch the path for this connection
@@ -1125,7 +1124,7 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url, in_addr* interface_a
                                 char char_remaining[] = "GET  HTTP/1.1\nHost: \nConnection: Upgrade\nPragma: no-cache\nUpgrade: websocket\nSec-WebSocket-Version: 13\nSec-WebSocket-Key: \n\n";
                                 int upgrade_request_len = strlen(char_remaining) + length_of_supplied_data;
                                 
-                                if( upgrade_request_len < upgrade_request_array_length ){ // static array is large enough
+                                if(upgrade_request_len < upgrade_request_array_length){ // static array is large enough
                                     
                                     // build the upgrade request
                                     strcpy(upgrade_request_static, "GET ");
@@ -1282,7 +1281,7 @@ lock_client_crtp<T>::lock_client_crtp(std::string_view url, in_addr* interface_a
                                         char key[] = "Sec";
                                         char* cursor = strtok(NULL, "\n");
                                         
-                                        while(!(cursor == NULL)){
+                                        while(cursor != NULL){
                                         // we keep looping through the HTTP upgrade request response till either cursor == NULL or we find our Sec-WebSocket-Key header
                                             
                                             // we use sizeof so we can get the length of key as a compile time constan, we subtract 1 from the result of sizeof() to account for the null byte that terminates the string
@@ -4770,7 +4769,6 @@ bool lock_client_crtp<T>::basic_read(){
                     }
 
                 }
-                
             
                 // build up the close frame response message
             
@@ -4977,26 +4975,14 @@ bool lock_client_crtp<T>::basic_read(){
 template <typename T>
 bool lock_client_crtp<T>::connect(std::string_view url){ // this is used to connect to connect to the url passed as a parameter, it can be used when a lock client object was created without establishing a websocket connection by using the parameterless constructor, or to connect an already established websocket connection and lock client instance to a different websocket server, it can also be used to retry connecting an instance that encountered an error during connection
     
-    if(client_state == CLOSED){
-        
-        // erase previous error message
-        memset(error_buffer, '\0', strlen(error_buffer));
-        
-        error = false;
-        
-    }
-    else{ // the lock client instance has a websocket connection in open state
-        
-        // erase any previous error message
-        memset(error_buffer, '\0', strlen(error_buffer));
-        
-        // close the open websocket connection 
-        close();
+    // we close the websocket connection - if this handle was connected before, if it wasn't close is still a safe operation
+    close(NORMAL_CLOSE);
 
-        // sets the error flag to false first so the close function can run 
-        error = false;
-            
-    }
+    // erase any previous error message
+    memset(error_buffer, '\0', strlen(error_buffer));
+
+    // we set our error flag to false
+    error = false;
   
     // check if url is a ws:// or wss:// endpoint, check case insensitively
     
@@ -5013,10 +4999,26 @@ bool lock_client_crtp<T>::connect(std::string_view url){ // this is used to conn
         int req_mem = base_url_length + 5; // we add an extra 5 bytes to the base url length to accomodate for the chance that this url was supplied without a port number so we have enough room to append port :443 to the base url
 
         // SSL members initialisations
-        c_bio = BIO_new_ssl_connect(ssl_ctx); // creates a new bio ssl object
-        BIO_get_ssl(c_bio, &c_ssl); // get the SSL structure component of the ssl bio for per instance SSL settings
-        if(c_ssl == NULL){
+
+        // we creates a new bio ssl object if one wasn't created before
+        if(c_bio == nullptr){
             
+            c_bio = BIO_new_ssl_connect(ssl_ctx);
+
+            // get the SSL structure component of the ssl bio for per instance SSL settings
+            if(c_bio != nullptr){
+            
+                BIO_get_ssl(c_bio, &c_ssl);
+
+                // we set our bio to no close
+                BIO_set_close(c_bio, BIO_NOCLOSE);
+
+            }
+
+        }
+
+        if(c_ssl == NULL){
+        
             strncpy(error_buffer, "Error fetching SSL structure pointer ", error_buffer_array_length);
                     
             error = true;
@@ -5244,7 +5246,7 @@ bool lock_client_crtp<T>::connect(std::string_view url){ // this is used to conn
         
         int host_name_len = (host_name_end_index == std::string_view::npos) ? url.size() - search_start_index : (int)host_name_end_index - search_start_index;
 
-        if( host_name_len < host_static_array_length ){ // static array is large enough
+        if(host_name_len < host_static_array_length){ // static array is large enough
         
             url.copy(c_host_static, host_name_len, search_start_index);
         
@@ -5253,8 +5255,8 @@ bool lock_client_crtp<T>::connect(std::string_view url){ // this is used to conn
             c_host = c_host_static;
         
         }
-        else if( host_name_len < size_of_allocated_host_memory){ // dynamic memory is large enough
-            
+        else if(host_name_len < size_of_allocated_host_memory){ // dynamic memory is large enough
+        
             url.copy(c_host_new, host_name_len, search_start_index);
         
             c_host_new[host_name_len] = '\0';
@@ -5267,7 +5269,6 @@ bool lock_client_crtp<T>::connect(std::string_view url){ // this is used to conn
             if(c_host_new == NULL){ // memory has not been allocated yet 
             
                 c_host_new = new(std::nothrow) char[host_name_len + 1]; // the nothrow parameter prevents an exception from being thrown by the C++ runtime should the heap allocation fail
-        
         
                 if(c_host_new == NULL){
             
@@ -5294,7 +5295,6 @@ bool lock_client_crtp<T>::connect(std::string_view url){ // this is used to conn
                 delete [] c_host_new; // delete the previously allocated memory
                 
                 c_host_new = new(std::nothrow) char[host_name_len + 1]; // the nothrow parameter prevents an exception from being thrown by the C++ runtime should the heap allocation fail
-        
         
                 if(c_host_new == NULL){
             
@@ -5323,7 +5323,7 @@ bool lock_client_crtp<T>::connect(std::string_view url){ // this is used to conn
         if(!error){ // only continue if no error
         
             // we set the host name we wish to connect to for server name identification(SNI) if the websocket address passed is a wss:// address. We test this by checking that the c_ssl pointer is non-null
-            if(!(c_ssl == NULL)){
+            if(c_ssl != NULL){
                 
                 if(!SSL_set_tlsext_host_name(c_ssl, c_host)){
                 // we test the return value. SSL_set_tlsext_host_name returns 0 on error and 1 on success
@@ -5423,7 +5423,7 @@ bool lock_client_crtp<T>::connect(std::string_view url){ // this is used to conn
 
                     // make the connection
                     if(BIO_do_connect(c_bio) <= 0){
-                        
+                    
                         strncpy(error_buffer, "Error connecting to WebSocket host ", error_buffer_array_length);
                         
                         error = true;
@@ -5436,7 +5436,7 @@ bool lock_client_crtp<T>::connect(std::string_view url){ // this is used to conn
                         // fill the random bytes array with 16 random bytes between 0 and 255
                         int upper_bound = 255;
                         for(int i = 0; i < rand_byte_array_len; i++){
-                            
+                        
                             rand_bytes[i] = (unsigned char)(rand() % upper_bound ); // we get a random byte between 0 and 255 and cast it into a one byte value
 
                         }
@@ -5451,7 +5451,7 @@ bool lock_client_crtp<T>::connect(std::string_view url){ // this is used to conn
                         char char_remaining[] = "GET  HTTP/1.1\nHost: \nConnection: Upgrade\nPragma: no-cache\nUpgrade: websocket\nSec-WebSocket-Version: 13\nSec-WebSocket-Key: \n\n";
                         int upgrade_request_len = strlen(char_remaining) + length_of_supplied_data;
                         
-                        if( upgrade_request_len < upgrade_request_array_length ){ // static array is large enough
+                        if(upgrade_request_len < upgrade_request_array_length){ // static array is large enough
                             
                             // build the upgrade request
                             strcpy(upgrade_request_static, "GET ");
@@ -5608,7 +5608,7 @@ bool lock_client_crtp<T>::connect(std::string_view url){ // this is used to conn
                                 char key[] = "Sec";
                                 char* cursor = strtok(NULL, "\n");
                                 
-                                while(!(cursor == NULL)){
+                                while(cursor != NULL){
                                 // we keep looping through the HTTP upgrade request response till either cursor == NULL or we find our Sec-WebSocket-Key header
                                     
                                     // we use sizeof so we can get the length of key as a compile time constan, we subtract 1 from the result of sizeof() to account for the null byte that terminates the string
@@ -5687,26 +5687,14 @@ bool lock_client_crtp<T>::connect(std::string_view url){ // this is used to conn
 template <typename T>
 bool lock_client_crtp<T>::interface_connect(std::string_view url, in_addr* interface_address, char* interface_name){
     
-    if(client_state == CLOSED){
-        
-        memset(error_buffer, '\0', strlen(error_buffer)); // erase previous error message
-        
-        error = false;
-        
-    }
-    else{ // the lock client instance has a websocket connection in open state
-        
-        memset(error_buffer, '\0', strlen(error_buffer)); // erase any previous error message
-        
-        error = false; // sets the error flag to false first so the close function can run 
-        
-        if(close()) // close the open websocket connection 
-            
-            error = false; // if the close function disconnects the connection because an unrecognised length was received, we need to set the error flag to 0 so that the rest of the connect function can proceed without hitch.
-          
-            // no need to memset since an unclean close sets the error flag but writes nothing to the error buffer
-            
-    }
+    // we close the websocket connection - if this handle was connected before, if it wasn't close is still a safe operation
+    close(NORMAL_CLOSE);
+
+    // erase any previous error message
+    memset(error_buffer, '\0', strlen(error_buffer));
+
+    // we set our error flag to false
+    error = false;
 
     // check if url is a ws:// or wss:// endpoint, check case insensitively
 
@@ -5786,7 +5774,7 @@ bool lock_client_crtp<T>::interface_connect(std::string_view url, in_addr* inter
                 else{
                     
                     size_of_allocated_url_memory = req_mem;    
-                        
+                    
                     url.copy(c_url_new, base_url_length, protocol_prefix_len); // the int protocol prefix specifies the starting point where the copy should begin, the url.copy copies the string view object into the allocated character array
             
                     c_url_new[base_url_length] = '\0';
@@ -5909,7 +5897,8 @@ bool lock_client_crtp<T>::interface_connect(std::string_view url, in_addr* inter
             // only continue if no error
 
                 // we create an SSL object for this lock client instance
-                SSL *c_ssl = SSL_new(ssl_ctx);
+                c_ssl = SSL_new(ssl_ctx);
+
                 if(c_ssl == NULL){
                     
                     strncpy(error_buffer, "Error creating SSL structure ", error_buffer_array_length);
@@ -5925,11 +5914,11 @@ bool lock_client_crtp<T>::interface_connect(std::string_view url, in_addr* inter
                     // set SSL mode to retry automatically should SSL connection fail
                     SSL_set_mode(c_ssl, SSL_MODE_AUTO_RETRY);
 
-                    // Create BIO for this socket
-                    BIO* sock_bio = BIO_new_socket(sock, BIO_NOCLOSE);
-                    if (!sock_bio) {
+                    // Create BIO for this socket. we create this bio with the BIO CLOSE flag so bio free closes the underlying socket
+                    BIO* sock_bio = BIO_new_socket(sock, BIO_CLOSE);
+                    if(!sock_bio){
                         SSL_free(c_ssl);
-                        close(sock);
+                        ::close(sock);
                         strncpy(error_buffer, "Error creating BIO structure from socket", error_buffer_array_length);          
                         error = true;
                     }
@@ -5939,7 +5928,9 @@ bool lock_client_crtp<T>::interface_connect(std::string_view url, in_addr* inter
 
                         // now we create an SSL BIO
                         BIO* ssl_bio = BIO_new(BIO_f_ssl());
-                        BIO_set_ssl(ssl_bio, c_ssl, BIO_CLOSE);
+
+                        // we create our ssl bio with the BIO_NOCLOSE flag so bio free does not free the underlying ssl pointer
+                        BIO_set_ssl(ssl_bio, c_ssl, BIO_NOCLOSE);
 
                         // Chain ssl_bio and sock_bio together
                         c_bio = BIO_push(ssl_bio, sock_bio);
@@ -5948,14 +5939,13 @@ bool lock_client_crtp<T>::interface_connect(std::string_view url, in_addr* inter
                         SSL_set_connect_state(c_ssl);  // Set as client
 
                         // Perform handshake
-                        if (BIO_do_handshake(c_bio) <= 0) {
-                            std::cout << "SSL handshake failed"<< std::endl;
-                            BIO_free_all(c_bio); // this throws segmentation fault when called without any network connection
+                        if(BIO_do_handshake(c_bio) <= 0){
+                            std::cout<<"SSL handshake failed"<<std::endl;
                             strncpy(error_buffer, "SSL handshake failed", error_buffer_array_length);          
                             error = true;
                         }
                         else{
-                            std::cout << "SSL handshake successful"<< std::endl;
+                            std::cout<<"SSL handshake successful"<<std::endl;
                         }
 
                         // we fetch the path for this connection
@@ -5970,7 +5960,7 @@ bool lock_client_crtp<T>::interface_connect(std::string_view url, in_addr* inter
                             int path_string_len = path.size();
                             
                             if(path_string_len < path_static_array_length){ // we can store the path in the static array if this condition is true
-                                
+                            
                                 path.copy(c_path_static, path_string_len); // copy the path into the static array
                                 c_path_static[path_string_len] = '\0'; // null-terminate the array
                                 
@@ -5978,7 +5968,7 @@ bool lock_client_crtp<T>::interface_connect(std::string_view url, in_addr* inter
                                 
                             }
                             else if(path_string_len < size_of_allocated_path_memory){ // allocated memory is large enough
-                                
+                            
                                 path.copy(c_path_new, path_string_len); // copy the path into the allocated array
                                 c_path_new[path_string_len] = '\0'; // null-terminate the array
                                 
@@ -5986,7 +5976,7 @@ bool lock_client_crtp<T>::interface_connect(std::string_view url, in_addr* inter
                                 
                             }
                             else{ // neither static or already allocated memory is large enough, we test the two possible cases 
-                                
+                            
                                 if(c_path_new == NULL){ //memory has not been allocated yet
                                 
                                     c_path_new = new(std::nothrow) char[path_string_len + 1]; // allocate memory for the path string with the std::nothrow parameter so C++ throws no exceptons even if memory allocation fails. We check for this below
@@ -5999,7 +5989,7 @@ bool lock_client_crtp<T>::interface_connect(std::string_view url, in_addr* inter
                                         
                                     }
                                     else{ 
-                                        
+                                    
                                         size_of_allocated_path_memory = path_string_len + 1;
                                         
                                         path.copy(c_path_new, path_string_len); // copy the path into the dynamically allocated array
@@ -6061,7 +6051,7 @@ bool lock_client_crtp<T>::interface_connect(std::string_view url, in_addr* inter
                                 char char_remaining[] = "GET  HTTP/1.1\nHost: \nConnection: Upgrade\nPragma: no-cache\nUpgrade: websocket\nSec-WebSocket-Version: 13\nSec-WebSocket-Key: \n\n";
                                 int upgrade_request_len = strlen(char_remaining) + length_of_supplied_data;
                                 
-                                if( upgrade_request_len < upgrade_request_array_length ){ // static array is large enough
+                                if(upgrade_request_len < upgrade_request_array_length){ // static array is large enough
                                     
                                     // build the upgrade request
                                     strcpy(upgrade_request_static, "GET ");
@@ -6218,7 +6208,7 @@ bool lock_client_crtp<T>::interface_connect(std::string_view url, in_addr* inter
                                         char key[] = "Sec";
                                         char* cursor = strtok(NULL, "\n");
                                         
-                                        while(!(cursor == NULL)){
+                                        while(cursor != NULL){
                                         // we keep looping through the HTTP upgrade request response till either cursor == NULL or we find our Sec-WebSocket-Key header
                                             
                                             // we use sizeof so we can get the length of key as a compile time constan, we subtract 1 from the result of sizeof() to account for the null byte that terminates the string
@@ -6391,6 +6381,7 @@ bool lock_client_crtp<T>::interface_connect(std::string_view url, in_addr* inter
 
 template <typename T>
 int lock_client_crtp<T>::connect_to_server(const char *hostname, const char *port, in_addr* interface_address, const char *interface_name){
+
     struct addrinfo hints, *res = NULL, *p = NULL;
 
     // we create the socket the BIO structure would use
@@ -6402,30 +6393,40 @@ int lock_client_crtp<T>::connect_to_server(const char *hostname, const char *por
         return -1;
     }
 
-    // Bind to a specific device
-    if (setsockopt(sock, SOL_SOCKET, SO_BINDTODEVICE, interface_name, strlen(interface_name)) < 0) {
-        std::cout<<"Error binding socket to device"<<std::endl;
-        perror("setsockopt(SO_BINDTODEVICE)");
-        strncpy(error_buffer, "Error binding socket to device", error_buffer_array_length);          
-        error = true;
-        close(sock);
-        return -1;
-    }
-    else{
-        std::cout<<"Successfully bound socket to device "<<interface_name<<std::endl;
+    // we bind to an interface if the supplied interface pointer is non null
+    if(interface_name != nullptr){
+
+        // Bind to a specific device
+        if(setsockopt(sock, SOL_SOCKET, SO_BINDTODEVICE, interface_name, strlen(interface_name)) < 0) {
+            std::cout<<"Error binding socket to device"<<std::endl;
+            perror("setsockopt(SO_BINDTODEVICE)");
+            strncpy(error_buffer, "Error binding socket to device", error_buffer_array_length);          
+            error = true;
+            close(sock);
+            return -1;
+        }
+        else{
+            std::cout<<"Successfully bound socket to device "<<interface_name<<std::endl;
+        }
+
     }
 
-    // Set up local address structure
-    struct sockaddr_in localaddr;
-    memset(&localaddr, 0, sizeof(localaddr));
-    localaddr.sin_family = AF_INET;
-    localaddr.sin_addr.s_addr = interface_address->s_addr;
-    localaddr.sin_port = 0;  // Lets the system choose port
+    // we bind to a specific interface address if the supplied interface address is non null
+    if(interface_address != nullptr){
 
-    // Bind socket to specific interface
-    if (bind(sock, (struct sockaddr*)&localaddr, sizeof(localaddr)) < 0) {
-        // if the binding fails the library does not set the error flag to true it just prints the error message, ignores the specified interface and attempts to make the connection with whatever network interface is available
-        std::cout<<"Lockws Error: Binding To Supplied Interface Address Failed...Connection Will Be Attempted With The Default Network Interface Address..."<<std::endl;
+        // Set up local address structure
+        struct sockaddr_in localaddr;
+        memset(&localaddr, 0, sizeof(localaddr));
+        localaddr.sin_family = AF_INET;
+        localaddr.sin_addr.s_addr = interface_address->s_addr;
+        localaddr.sin_port = 0;  // Lets the system choose port
+
+        // Bind socket to specific interface
+        if(bind(sock, (struct sockaddr*)&localaddr, sizeof(localaddr)) < 0) {
+            // if the binding fails the library does not set the error flag to true it just prints the error message, ignores the specified interface and attempts to make the connection with whatever network interface is available
+            std::cout<<"Lockws Error: Binding To Supplied Interface Address Failed...Connection Will Be Attempted With The Default Network Interface Address..."<<std::endl;
+        }
+
     }
 
     // Set up hints for getaddrinfo
@@ -6434,7 +6435,7 @@ int lock_client_crtp<T>::connect_to_server(const char *hostname, const char *por
     hints.ai_socktype = SOCK_STREAM; // TCP stream sockets
 
     // Perform DNS resolution
-    if (getaddrinfo(hostname, port, &hints, &res) != 0) {
+    if(getaddrinfo(hostname, port, &hints, &res) != 0){
         std::cout<<"Error resolving hostname: "<<hostname<<std::endl;
         strncpy(error_buffer, "Error resolving hostname", error_buffer_array_length);          
         error = true;
@@ -6458,7 +6459,7 @@ int lock_client_crtp<T>::connect_to_server(const char *hostname, const char *por
     if(res != NULL)
         freeaddrinfo(res); // Free the addrinfo structure if non null
 
-    if (sock < 0) {
+    if(sock < 0){
         std::cout<<"Failed to connect to "<<hostname<<':'<<port<<std::endl;
         strncpy(error_buffer, "Failed to connect to host", error_buffer_array_length);          
         error = true;
@@ -6565,73 +6566,76 @@ void lock_client_crtp<T>::fail_ws_connection(unsigned short status_code){
 
 template <typename T>
 bool lock_client_crtp<T>::close(unsigned short status_code){ // this closes an established websocket connection although the object itself still exists till it goes out of scope, the object can be connected to a different or the same websocket server using the connect function
-
-    if(!error){ // only continue if no error
+    
+    if(client_state == OPEN){ // only continue if client is in open state
+    
+        int i = 0; // variable for traversing the send array and building up the close data frame
+        unsigned short frame_len = (unsigned short)2; // holds the length of the close data frame - sizeof unsigned short
+        unsigned char close_payload[2]; // holds the close payload data which is basically the status code in network byte order
         
-        if(client_state == OPEN){ // only continue if client is in open state
+        send_data = (char*)send_data_static; // set the send data pointer to the send data static array
         
-            int i = 0; // variable for traversing the send array and building up the close data frame
-            unsigned short frame_len = (unsigned short)2; // holds the length of the close data frame - sizeof unsigned short
-            unsigned char close_payload[2]; // holds the close payload data which is basically the status code in network byte order
-            
-            send_data = (char*)send_data_static; // set the send data pointer to the send data static array
-            
-            send_data[i] = (unsigned char)(FIN_BIT_SET | RSV_BIT_UNSET_ALL | CONNECTION_CLOSE);
-            close_payload[i] = (unsigned char)(status_code >> 8); // store the high byte of the status code
-            i++;
-            
-            send_data[i] = MASK_BIT_SET | ((unsigned char)frame_len);
-            close_payload[i] = (unsigned char)(0x00FF & status_code); // store the low byte of the status code
-            i++;
+        send_data[i] = (unsigned char)(FIN_BIT_SET | RSV_BIT_UNSET_ALL | CONNECTION_CLOSE);
+        close_payload[i] = (unsigned char)(status_code >> 8); // store the high byte of the status code
+        i++;
+        
+        send_data[i] = MASK_BIT_SET | ((unsigned char)frame_len);
+        close_payload[i] = (unsigned char)(0x00FF & status_code); // store the low byte of the status code
+        i++;
 
-            for(int j = 0; j<mask_array_len; j++){
-                    
-                send_data[i] = mask[j]; // store the mask in the send data array
-                    
-                i++;
-                  
-            }
-            // mask storing end 
-                
-            // mask the data and store the masked data in the send data array 
-            int k = 0; // variable used to store the mask index of the exact byte in the mask array to mask with
-                
-            for(int j = 0; j<frame_len; j++){
-                    
-                k = j % 4;
-                    
-                send_data[i] = close_payload[j] ^ mask[k];  
-                    
-                i++;
-                    
-            }
-                
-            // block SIGPIPE signal before attempting to send data, just incase the connection is closed
-            block_sigpipe_signal();
-                
-            // send the close frame
-            BIO_write(c_bio, send_data, i);
-            
-            // unblock SIGPIPE signal
-            unblock_sigpipe_signal();
+        for(int j = 0; j<mask_array_len; j++){
 
-            // after sending the close frame we do not attempt to read any more data from the server we just disconnect the underlying network connection
-            BIO_reset(c_bio);
+            send_data[i] = mask[j]; // store the mask in the send data array
                 
-            client_state = CLOSED;
-     
+            i++;
+                
         }
-        else{
+        // mask storing end 
             
-            strncpy(error_buffer, "Lock Client not connected", error_buffer_array_length);
+        // mask the data and store the masked data in the send data array 
+        int k = 0; // variable used to store the mask index of the exact byte in the mask array to mask with
+            
+        for(int j = 0; j<frame_len; j++){
                 
-            error = true;
-            
+            k = j % 4;
+                
+            send_data[i] = close_payload[j] ^ mask[k];  
+                
+            i++;
+                
         }
-                
+            
+        // block SIGPIPE signal before attempting to send data, just incase the connection is closed
+        block_sigpipe_signal();
+            
+        // send the close frame
+        BIO_write(c_bio, send_data, i);
+        
+        // unblock SIGPIPE signal
+        unblock_sigpipe_signal();
+
+        // after sending the close frame we do not attempt to read any more data from the server we just disconnect the underlying network connection
+        BIO_reset(c_bio);
+            
+        client_state = CLOSED;
+    
     }
     
-    return error; // returning an error of 1 from the close function just means that the close was not a clean one but it was successful nonetheless, and the close function does not write any message to the error buffer
+    // we free our bio object chain if non null
+    if(c_bio != nullptr){
+
+        BIO_free_all(c_bio); // Frees ssl_bio and sock_bio safely
+        c_bio = nullptr;
+    }
+
+    // we free our ssl object
+    if(c_ssl != nullptr){
+
+        SSL_free(c_ssl);
+        c_ssl = nullptr;
+    }
+    
+    return error;
         
 }
 
@@ -6695,7 +6699,8 @@ lock_client_nb_crtp<T>::lock_client_nb_crtp(std::string_view url){
 
         // SSL members initialisations
         c_bio = BIO_new_ssl_connect(ssl_ctx); // creates a new bio ssl object
-        BIO_get_ssl(c_bio, &c_ssl); // get the SSL structure component of the ssl bio for per instance SSL settings
+        if(c_bio != NULL) BIO_get_ssl(c_bio, &c_ssl); // get the SSL structure component of the ssl bio for per instance SSL settings
+
         if(c_ssl == NULL){
             
             strncpy(error_buffer, "Error fetching SSL structure pointer ", error_buffer_array_length);
@@ -7004,7 +7009,7 @@ lock_client_nb_crtp<T>::lock_client_nb_crtp(std::string_view url){
         if(!error){ // only continue if no error
         
             // we set the host name we wish to connect to for server name identification(SNI) if the websocket address passed is a wss:// address. We test this by checking that the c_ssl pointer is non-null
-            if(!(c_ssl == NULL)){
+            if(c_ssl != NULL){
                 
                 if(!SSL_set_tlsext_host_name(c_ssl, c_host)){
                 // we test the return value. SSL_set_tlsext_host_name returns 0 on error and 1 on success
@@ -7351,7 +7356,7 @@ lock_client_nb_crtp<T>::lock_client_nb_crtp(std::string_view url){
                                         char key[] = "Sec";
                                         char* cursor = strtok(NULL, "\n");
                                         
-                                        while(!(cursor == NULL)){
+                                        while(cursor != NULL){
                                         // we keep looping through the HTTP upgrade request response till either cursor == NULL or we find our Sec-WebSocket-Key header
                                             
                                             // we use sizeof so we can get the length of key as a compile time constan, we subtract 1 from the result of sizeof() to account for the null byte that terminates the string
@@ -13646,7 +13651,7 @@ bool lock_client_nb_crtp<T>::close(unsigned short status_code){ // this closes a
         c_ssl = nullptr;
     }
     
-    return error; // returning an error of 1 from the close function just means that the close was not a clean one but it was successful nonetheless, and the close function does not write any message to the error buffer
+    return error;
 }
 
 #pragma GCC diagnostic pop
