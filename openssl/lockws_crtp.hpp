@@ -11804,26 +11804,14 @@ bool lock_client_nb_crtp<T>::basic_read(){
 template <typename T>
 bool lock_client_nb_crtp<T>::connect(std::string_view url){ // this is used to connect to connect to the url passed as a parameter, it can be used when a lock client object was created without establishing a websocket connection by using the parameterless constructor, or to connect an already established websocket connection and lock client instance to a different websocket server, it can also be used to retry connecting an instance that encountered an error during connection
     
-    if(client_state == CLOSED){
-        
-        // erase previous error message
-        memset(error_buffer, '\0', strlen(error_buffer));
-        
-        error = false;
-        
-    }
-    else{ // the lock client instance has a websocket connection in open state
-        
-        // erase any previous error message
-        memset(error_buffer, '\0', strlen(error_buffer));
-        
-        // close the open websocket connection 
-        close();
+    // we close the websocket connection - if this handle was connected before, if it wasn't close is still a safe operation
+    close(NORMAL_CLOSE);
 
-        // sets the error flag to false first so the close function can run 
-        error = false;
-            
-    }
+    // erase any previous error message
+    memset(error_buffer, '\0', strlen(error_buffer));
+
+    // we set our error flag to false
+    error = false;
   
     // check if url is a ws:// or wss:// endpoint, check case insensitively
     
@@ -11839,9 +11827,23 @@ bool lock_client_nb_crtp<T>::connect(std::string_view url){ // this is used to c
         // size of required memory in bytes to store the base url and the port number if it would be appended
         int req_mem = base_url_length + 5; // we add an extra 5 bytes to the base url length to accomodate for the chance that this url was supplied without a port number so we have enough room to append port :443 to the base url
 
-        // SSL members initialisations
-        c_bio = BIO_new_ssl_connect(ssl_ctx); // creates a new bio ssl object
-        BIO_get_ssl(c_bio, &c_ssl); // get the SSL structure component of the ssl bio for per instance SSL settings
+        // we creates a new bio ssl object if one wasn't created before
+        if(c_bio == nullptr){
+            
+            c_bio = BIO_new_ssl_connect(ssl_ctx);
+
+            // get the SSL structure component of the ssl bio for per instance SSL settings
+            if(c_bio != nullptr){
+            
+                BIO_get_ssl(c_bio, &c_ssl);
+
+                // we set our bio to no close
+                BIO_set_close(c_bio, BIO_NOCLOSE);
+
+            }
+
+        }
+
         if(c_ssl == NULL){
             
             strncpy(error_buffer, "Error fetching SSL structure pointer ", error_buffer_array_length);
@@ -12150,7 +12152,7 @@ bool lock_client_nb_crtp<T>::connect(std::string_view url){ // this is used to c
         if(!error){ // only continue if no error
         
             // we set the host name we wish to connect to for server name identification(SNI) if the websocket address passed is a wss:// address. We test this by checking that the c_ssl pointer is non-null
-            if(!(c_ssl == NULL)){
+            if(c_ssl != NULL){
                 
                 if(!SSL_set_tlsext_host_name(c_ssl, c_host)){
                 // we test the return value. SSL_set_tlsext_host_name returns 0 on error and 1 on success
@@ -12497,7 +12499,7 @@ bool lock_client_nb_crtp<T>::connect(std::string_view url){ // this is used to c
                                         char key[] = "Sec";
                                         char* cursor = strtok(NULL, "\n");
                                         
-                                        while(!(cursor == NULL)){
+                                        while(cursor != NULL){
                                         // we keep looping through the HTTP upgrade request response till either cursor == NULL or we find our Sec-WebSocket-Key header
                                             
                                             // we use sizeof so we can get the length of key as a compile time constan, we subtract 1 from the result of sizeof() to account for the null byte that terminates the string
@@ -13473,70 +13475,70 @@ void lock_client_nb_crtp<T>::fail_ws_connection(unsigned short status_code){
 
 template <typename T>
 bool lock_client_nb_crtp<T>::close(unsigned short status_code){ // this closes an established websocket connection although the object itself still exists till it goes out of scope, the object can be connected to a different or the same websocket server using the connect function
-
-    if(!error){ // only continue if no error
+    
+    if(client_state == OPEN){ // only continue if client is in open state
+    
+        int i = 0; // variable for traversing the send array and building up the close data frame
+        unsigned short frame_len = (unsigned short)2; // holds the length of the close data frame - sizeof unsigned short
+        unsigned char close_payload[2]; // holds the close payload data which is basically the status code in network byte order
         
-        if(client_state == OPEN){ // only continue if client is in open state
+        send_data = (char*)send_data_static; // set the send data pointer to the send data static array
         
-            int i = 0; // variable for traversing the send array and building up the close data frame
-            unsigned short frame_len = (unsigned short)2; // holds the length of the close data frame - sizeof unsigned short
-            unsigned char close_payload[2]; // holds the close payload data which is basically the status code in network byte order
-            
-            send_data = (char*)send_data_static; // set the send data pointer to the send data static array
-            
-            send_data[i] = (unsigned char)(FIN_BIT_SET | RSV_BIT_UNSET_ALL | CONNECTION_CLOSE);
-            close_payload[i] = (unsigned char)(status_code >> 8); // store the high byte of the status code
-            i++;
-            
-            send_data[i] = MASK_BIT_SET | ((unsigned char)frame_len);
-            close_payload[i] = (unsigned char)(0x00FF & status_code); // store the low byte of the status code
-            i++;
+        send_data[i] = (unsigned char)(FIN_BIT_SET | RSV_BIT_UNSET_ALL | CONNECTION_CLOSE);
+        close_payload[i] = (unsigned char)(status_code >> 8); // store the high byte of the status code
+        i++;
+        
+        send_data[i] = MASK_BIT_SET | ((unsigned char)frame_len);
+        close_payload[i] = (unsigned char)(0x00FF & status_code); // store the low byte of the status code
+        i++;
 
-            for(int j = 0; j<mask_array_len; j++){
-                    
-                send_data[i] = mask[j]; // store the mask in the send data array
-                    
-                i++;
-                  
-            }
-            // mask storing end 
-                
-            // mask the data and store the masked data in the send data array 
-            int k = 0; // variable used to store the mask index of the exact byte in the mask array to mask with
-                
-            for(int j = 0; j<frame_len; j++){
-                    
-                k = j % 4;
-                    
-                send_data[i] = close_payload[j] ^ mask[k];  
-                    
-                i++;
-                    
-            }
-                
-            // block SIGPIPE signal before attempting to send data, just incase the connection is closed
-            block_sigpipe_signal();
-                
-            // send the close frame
-            (void)BIO_write(c_bio, send_data, i); // no need checking whether it was successfully sent through we close the connection nonetheless
-            
-            // unblock SIGPIPE signal
-            unblock_sigpipe_signal();
+        for(int j = 0; j<mask_array_len; j++){
 
-            // after sending the close frame we do not attempt to read any more data from the server we just disconnect the underlying network connection
-            BIO_reset(c_bio);
+            send_data[i] = mask[j]; // store the mask in the send data array
                 
-            client_state = CLOSED;
-     
+            i++;
+                
         }
-        else{
+        // mask storing end 
             
-            strncpy(error_buffer, "Lock Client not connected", error_buffer_array_length);
+        // mask the data and store the masked data in the send data array 
+        int k = 0; // variable used to store the mask index of the exact byte in the mask array to mask with
+            
+        for(int j = 0; j<frame_len; j++){
                 
-            error = true;
-            
+            k = j % 4;
+                
+            send_data[i] = close_payload[j] ^ mask[k];  
+                
+            i++;
+                
         }
-                
+            
+        // block SIGPIPE signal before attempting to send data, just incase the connection is closed
+        block_sigpipe_signal();
+            
+        // send the close frame
+        (void)BIO_write(c_bio, send_data, i); // no need checking whether it was successfully sent through we close the connection nonetheless
+        
+        // unblock SIGPIPE signal
+        unblock_sigpipe_signal();
+            
+        client_state = CLOSED;
+    
+    }
+    
+    // we free our bio object chain if non null
+    if(c_bio != nullptr){
+
+        BIO_free_all(c_bio); // Frees ssl_bio and sock_bio safely
+        c_bio = nullptr;
+    }
+
+    // we free our ssl object
+    if(c_ssl != nullptr){
+
+        SSL_free(c_ssl);
+        c_ssl = nullptr;
     }
     
     return error; // returning an error of 1 from the close function just means that the close was not a clean one but it was successful nonetheless, and the close function does not write any message to the error buffer
