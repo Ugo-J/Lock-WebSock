@@ -1506,28 +1506,28 @@ lock_client_crtp<T>::~lock_client_crtp(){
     }
     
     // free url heap memory - this only runs if dynamic memory allocation is used to store the url
-    if(!(c_url_new == NULL)){
+    if(c_url_new != NULL){
         
         delete [] c_url_new;
         
     }
     
     // free path heap memory if the path string was stored in dynamic memory
-    if(!(c_path_new == NULL)){
+    if(c_path_new != NULL){
         
         delete [] c_path_new;
         
     }
     
     // free host heap memory if host string was stored in dynamic memory
-    if(!(c_host_new == NULL)){
+    if(c_host_new != NULL){
         
         delete [] c_host_new;
         
     }
     
     // free upgrade request string heap memory if upgrade request string was stored in dynamic memory
-    if(!(upgrade_request_new == NULL)){
+    if(upgrade_request_new != NULL){
         
         delete [] upgrade_request_new;
         
@@ -8273,28 +8273,28 @@ lock_client_nb_crtp<T>::~lock_client_nb_crtp(){
     }
     
     // free url heap memory - this only runs if dynamic memory allocation is used to store the url
-    if(!(c_url_new == NULL)){
+    if(c_url_new != NULL){
         
         delete [] c_url_new;
         
     }
     
     // free path heap memory if the path string was stored in dynamic memory
-    if(!(c_path_new == NULL)){
+    if(c_path_new != NULL){
         
         delete [] c_path_new;
         
     }
     
     // free host heap memory if host string was stored in dynamic memory
-    if(!(c_host_new == NULL)){
+    if(c_host_new != NULL){
         
         delete [] c_host_new;
         
     }
     
     // free upgrade request string heap memory if upgrade request string was stored in dynamic memory
-    if(!(upgrade_request_new == NULL)){
+    if(upgrade_request_new != NULL){
         
         delete [] upgrade_request_new;
         
