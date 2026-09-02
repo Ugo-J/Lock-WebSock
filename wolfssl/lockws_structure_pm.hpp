@@ -101,7 +101,35 @@ private:
     // for a poll mode lock client the error flag and client state variable are both atomic
     std::atomic<bool> error{false};
     std::atomic<unsigned char> client_state{CLOSED}; // this variable is used to store the lock client state, OPEN meaning there is an active websocket connection and CLOSED meaning that there isn't 
-    
+
+// poll read variables
+private:
+
+    // the poll thread instance
+    std::thread poll_thread;
+
+    // cache line size for aligning our last read and last write variables
+    static inline constexpr std::size_t CACHE_LINE_SIZE = 64;
+
+    // last read and last write variables are declared with size alignment to prevent false sharing
+    alignas(CACHE_LINE_SIZE) std::atomic<int> last_read{0};
+    alignas(CACHE_LINE_SIZE) std::atomic<int> last_write{0};
+
+    // pointer to our internal read buffer
+    unsigned char* read_buffer = nullptr;
+
+    // read buffer size, this is static and can be increased but the lockclient falls back to this size if the caller supplies a size smaller than this size - 16MB
+    static constexpr int READ_BUFFER_SIZE = 16 * 1024 * 1024;
+
+// poll read functions
+private:
+
+    // function that continuously polls for network data on the poll thread
+    bool poll_read();
+
+    // function to fetch data from the read buffer
+    int fetch_data(char* dest, int sz);
+
 // wolfssl Library instance variables    
 private:
         
