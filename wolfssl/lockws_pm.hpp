@@ -6657,21 +6657,22 @@ bool lock_client_pm::set_cpu_affinity(int core){
     CPU_SET(core, &cpuset);
     
     // now set the cpu affinity to the core specified above
-    int error = pthread_setaffinity_np(thread_id, sizeof(cpuset), &cpuset);
+    int set_affinity_error = pthread_setaffinity_np(thread_id, sizeof(cpuset), &cpuset);
     
-    // test that the cpu recaliberating actually worked
-    if(error == 0){
+    // we check if there was any error setting thr cpu affinity, we set our error flag if there was an error setting thr cpu affinity
+    if(set_affinity_error != 0){   
 
-        if(CPU_ISSET(core, &cpuset))
-            std::cout<<"Thread Pinned To CPU Core "<<core<<"\n";     
-    }
-    else{
+        strcpy(error_buffer, "Error Pinning Thread To CPU Core ");
 
-        std::cout<<"Error Pinning Thread To CPU Core "<<core<<"\n";
-        return 1;
+        // we convert our core number to a char, store it in our error buffer and null terminate our error buffer
+        *(std::to_chars(error_buffer + strlen(error_buffer), error_buffer + error_buffer_array_length - 1, core).ptr) = '\0';
+
+        // we set our error flag to true
+        error.store(true, std::memory_order_release);
+
     }
     
-    return 0;
+    return error;
 }
 
 bool lock_client_pm::increase_thread_priority(int p_policy, int priority){
@@ -6680,19 +6681,6 @@ bool lock_client_pm::increase_thread_priority(int p_policy, int priority){
     pthread_t thread_id = pthread_self();
     int policy = 0;
     sched_param param;
-    
-    // get scheduling parameters for this thread
-    int sched_error = pthread_getschedparam(thread_id, &policy, &param);
-        
-    if(sched_error == ESRCH){
-
-        strcpy(error_buffer, "No Thread With The Thread ID Could Be Found In Setting Scheduling Parameters\n");   
-
-        error.store(true, std::memory_order_release);
-            
-        return error;
-    
-    }
     
     // the policy will now be set to the value of policy and its priority set to the value of priority, understand that policies for which priorities can be set - SCHED_FIFO and SCHED_RR have a max priority of 99 and a min priority of 0
     
@@ -6703,67 +6691,32 @@ bool lock_client_pm::increase_thread_priority(int p_policy, int priority){
     param.sched_priority = priority;
     
     // we change our scheduling policy to scheduling policy supplied, the default is SCHED_FIFO and the default priority is 90
-    sched_error = pthread_setschedparam(thread_id, policy, &param);
+    int sched_error = pthread_setschedparam(thread_id, policy, &param);
     
     if(sched_error != 0) [[unlikely]] {
         
         if(sched_error == ESRCH){
         
-            std::cout<<"No Thread With The Thread ID Could Be Found In Setting Scheduling Parameters\n";
-            return 1;
+            strcpy(error_buffer, "No Thread With The Thread ID Could Be Found In Setting Scheduling Parameters\n");
+
         }
         else if(sched_error == EINVAL){
             
-            std::cout<<"Invalid Scheduling Policy\n";
-            return 1;
+            strcpy(error_buffer, "Invalid Scheduling Policy\n");
+
         }
         else if(sched_error == EPERM){
-            
-            std::cout<<"Permission Denied For Setting Scheduling Parameters\n";
-            return 1;
+
+            strcpy(error_buffer, "Permission Denied For Setting Scheduling Parameters\n");
+
         }
+
+        // we set our error flag to true
+        error.store(true, std::memory_order_release);
         
-    }
-    else [[likely]] {
-        
-        // we set our policy variable and sched_priority member variable back to 0 so we can be sure that whatever non 0 value written there is written by the pthread_getschedparam function
-        policy = 0;
-        param.sched_priority = 0;
-        
-        // get scheduling parameters for this thread
-        sched_error = pthread_getschedparam(thread_id, &policy, &param);
-        
-        if(sched_error == 0) [[likely]] {
-        
-            if(policy == SCHED_FIFO)
-            
-                std::cout<<"Thread Scheduling Policy Has Been Set To SCHED_FIFO With Thread Priority ";
-        
-            else if(policy == SCHED_RR)
-            
-                std::cout<<"Thread Scheduling Policy Has Been Set To SCHED_RR With Thread Priority ";
-        
-            else if(policy == SCHED_OTHER)
-            
-                std::cout<<"Thread Scheduling Policy Has Been Set To SCHED_OTHER With Thread Priority ";
-        
-        
-            std::cout<<param.sched_priority<<"\n";
-        
-        }
-        else [[unlikely]] {
-            
-            if(sched_error == ESRCH){
-        
-                std::cout<<"No Thread With The Thread ID Could Be Found In Setting Scheduling Parameters\n";
-                return 1;
-            }
-            
-        }
-            
     }
     
-    return 0;
+    return error.load(std::memory_order_acquire);
 
 }
 
