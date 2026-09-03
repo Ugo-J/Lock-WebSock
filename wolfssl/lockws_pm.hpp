@@ -1377,15 +1377,15 @@ lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address,
 
 }
 
-// parameterless constructor
-lock_client_pm::lock_client_pm(){
+// basic constructor
+lock_client_pm::lock_client_pm(int core){
     
     // initialisation of class wide variables
     if(!wolfssl_init){
 
         if(wolfSSL_Init() != WOLFSSL_SUCCESS){
 
-            strncpy(error_buffer, "Failed to initialize wolfSSL core runtime.", error_buffer_array_length);
+            strcpy(error_buffer, "Failed to initialize wolfSSL core runtime.");
                 
             error.store(true, std::memory_order_release);
 
@@ -1441,6 +1441,28 @@ lock_client_pm::lock_client_pm(){
             for(int j = 0; j<mask_array_len; j++){
             
                 mask[j] = (unsigned char)(rand() % upper_bound);
+
+            }
+
+            // we allocate our read buffer
+            read_buffer = new(std::nothrow) unsigned char[READ_BUFFER_SIZE];
+
+            // we check that our read buffer was successfully allocated if it wasn't we set our error flag
+            if(read_buffer != nullptr){
+
+                // getting here our read buffer was successfully allocated so we start our poll_thread
+                poll_thread = std::thread(&lock_client_pm::poll_read, this, core);
+
+                // we wait till the poll thread sets its init flag before we continue because then we can check the error flag to know if the poll thread encountered any error while setting up
+                while(!poll_init.load(std::memory_order_acquire));
+
+            }
+            else{
+
+                // getting here our allocation of our read buffer was unsuccessful so we set our error flag to true
+                strcpy(error_buffer, "Error Allocating Poll Read Buffer.");
+
+                error.store(true, std::memory_order_release);
 
             }
 
@@ -1516,6 +1538,12 @@ lock_client_pm::~lock_client_pm(){
     if(general_memory_pool != NULL){
 
         delete [] general_memory_pool;
+
+    }
+
+    if(read_buffer != NULL){
+
+        delete [] read_buffer;
 
     }
     

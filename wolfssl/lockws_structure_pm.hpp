@@ -8,7 +8,7 @@ public:
     //constructors
     lock_client_pm(std::string_view url);
     lock_client_pm(std::string_view url, in_addr* interface_address, char* interface_name); // constructor that binds to a particular interface before connection
-    lock_client_pm(); // parameterless constructor
+    lock_client_pm(int core); // basic constructor
     
     // destructor
     ~lock_client_pm();
@@ -119,10 +119,10 @@ private:
     unsigned char* read_buffer = nullptr;
 
     // read buffer size, this is static and can be increased but the lockclient falls back to this size if the caller supplies a size smaller than this size - 16MB
-    static constexpr int READ_BUFFER_SIZE = 16 * 1024 * 1024;
+    static inline int READ_BUFFER_SIZE = 16 * 1024 * 1024;
 
     // read chunk size, this variable defines how much data the poll thread polls for with every read call
-    static constexpr int READ_CHUNK_SIZE = 64 * 1024;
+    static inline int READ_CHUNK_SIZE = 64 * 1024;
 
     // poll init flag used to indicate to the main thread that the poll thread has finished initialisations so the main thread can check if there was any error in the poll thread initialisation
     std::atomic<bool> poll_init{false};
