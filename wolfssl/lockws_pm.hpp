@@ -17,11 +17,11 @@ lock_client_pm::lock_client_pm(std::string_view url){
 
             strncpy(error_buffer, "Failed to initialize wolfSSL core runtime.", error_buffer_array_length);
                 
-            error = true;
+            error.store(true, std::memory_order_release);
 
         }
         
-        if(!error){
+        if(!error.load(std::memory_order_acquire)){
 
             // we initialise our ssl ctx
             ssl_ctx = wolfSSL_CTX_new(wolfSSLv23_client_method());
@@ -30,7 +30,7 @@ lock_client_pm::lock_client_pm(std::string_view url){
 
                 strncpy(error_buffer, "Context creation failed.", error_buffer_array_length);
                     
-                error = true;
+                error.store(true, std::memory_order_release);
 
             }
 
@@ -41,7 +41,7 @@ lock_client_pm::lock_client_pm(std::string_view url){
 
                 strncpy(error_buffer, "Failed to load system CA bundle.", error_buffer_array_length);
 
-                error = true;
+                error.store(true, std::memory_order_release);
             }
 
             // we pre allocate memory for io & general operations so we don't allocate during operations
@@ -80,7 +80,7 @@ lock_client_pm::lock_client_pm(std::string_view url){
         
     }
 
-    if(!error){
+    if(!error.load(std::memory_order_acquire)){
     
         // check if url is a wss:// endpoint, check case insensitively - for thw wolfssl client we only implement the wss client
         
@@ -99,7 +99,7 @@ lock_client_pm::lock_client_pm(std::string_view url){
             // we create our ssl object
             c_ssl = wolfSSL_new(ssl_ctx);
         
-            if(!error){ // the constructor continues only if there was no error fetching the ssl pointer
+            if(!error.load(std::memory_order_acquire)){ // the constructor continues only if there was no error fetching the ssl pointer
 
                 // URL copy 
                 if(req_mem < url_static_array_length){ // static memory large enough
@@ -131,7 +131,7 @@ lock_client_pm::lock_client_pm(std::string_view url){
                             
                             strncpy(error_buffer, "Error allocating heap memory for lock_client url parameter ", error_buffer_array_length);
                             
-                            error = true;
+                            error.store(true, std::memory_order_release);
                             
                         }
                         else{
@@ -158,7 +158,7 @@ lock_client_pm::lock_client_pm(std::string_view url){
                             
                             strncpy(error_buffer, "Error allocating heap memory for lock_client url parameter ", error_buffer_array_length);
                             
-                            error = true;
+                            error.store(true, std::memory_order_release);
                             
                         }
                         else{
@@ -177,7 +177,7 @@ lock_client_pm::lock_client_pm(std::string_view url){
 
                 }
                 
-                if(!error){ // checks if there was any error allocating memory, that is if that part of the code was executed. The constructor only continues if there was no error 
+                if(!error.load(std::memory_order_acquire)){ // checks if there was any error allocating memory, that is if that part of the code was executed. The constructor only continues if there was no error 
                     
                     // we check if the supplied url has the port number appended if not we append it
                     if(strchr(c_url, ':') == NULL){
@@ -193,11 +193,11 @@ lock_client_pm::lock_client_pm(std::string_view url){
             
             strncpy(error_buffer, "Supplied URL parameter is not a valid/supported WebSocket endpoint", error_buffer_array_length);
                     
-            error = true;
+            error.store(true, std::memory_order_release);
             
         }
         
-        if(!error){ // only continue if no error
+        if(!error.load(std::memory_order_acquire)){ // only continue if no error
             
             int search_start_index = 6; // we store the index where we would begin the host name search from, we start searching from after the wss:// protocol prefix
 
@@ -235,7 +235,7 @@ lock_client_pm::lock_client_pm(std::string_view url){
                 
                         strncpy(error_buffer, "Error allocating heap memory for server host name ", error_buffer_array_length);
                     
-                        error = true;    
+                        error.store(true, std::memory_order_release);    
                 
                     }
                     else{
@@ -261,7 +261,7 @@ lock_client_pm::lock_client_pm(std::string_view url){
 
                         strncpy(error_buffer, "Error allocating heap memory for server host name ", error_buffer_array_length);
                     
-                        error = true;    
+                        error.store(true, std::memory_order_release);    
                 
                     }
                     else{
@@ -281,7 +281,7 @@ lock_client_pm::lock_client_pm(std::string_view url){
                 
             }
             
-            if(!error){ // only continue if no error
+            if(!error.load(std::memory_order_acquire)){ // only continue if no error
             
                 // we set the host name we wish to connect to for server name identification(SNI) if the websocket address passed is a wss:// address. We test this by checking that the c_ssl pointer is non-null
                 if(c_ssl != NULL){
@@ -291,13 +291,13 @@ lock_client_pm::lock_client_pm(std::string_view url){
                         
                         strncpy(error_buffer, "Error setting up Lock client for SNI TLS extension", error_buffer_array_length);
                             
-                        error = true;
+                        error.store(true, std::memory_order_release);
                     
                     }
                     
                 }
                 
-                if(!error){
+                if(!error.load(std::memory_order_acquire)){
                 // only continue if no error
                 
                     // we store the start index of the path from the supplied url - we search for the next forward slash after the last colon, that is the start of the path in the supplied url string view
@@ -335,7 +335,7 @@ lock_client_pm::lock_client_pm(std::string_view url){
                             
                                 strncpy(error_buffer, "Error allocating heap memory for lock_client channel path ", error_buffer_array_length);
                                 
-                                error = true;
+                                error.store(true, std::memory_order_release);
                                 
                             }
                             else{ 
@@ -361,7 +361,7 @@ lock_client_pm::lock_client_pm(std::string_view url){
                             
                                 strncpy(error_buffer, "Error allocating heap memory for lock_client channel path ", error_buffer_array_length);
                                 
-                                error = true;
+                                error.store(true, std::memory_order_release);
                                 
                             }
                             else{ 
@@ -380,7 +380,7 @@ lock_client_pm::lock_client_pm(std::string_view url){
                         
                     }
                     
-                    if(!error){ // only continue if no error
+                    if(!error.load(std::memory_order_acquire)){ // only continue if no error
 
                         // we create a local char array to hold the port extracted from the url
                         const int MAX_CHAR_FOR_PORT = 8; // a port number can have a maximum of 5 characters because port numbers are 16 bit integers
@@ -400,7 +400,7 @@ lock_client_pm::lock_client_pm(std::string_view url){
                         // we call our connect to server function with the interface parameters set to null
                         int sockfd = connect_to_server(c_host, c_port, nullptr, nullptr);
                         
-                        if(!error){ // only continue if no error
+                        if(!error.load(std::memory_order_acquire)){ // only continue if no error
 
                             // getting here the connect to server function returned successfully so now we bind the returned socket fd to our c_ssl object
                             wolfSSL_set_fd(c_ssl, sockfd);
@@ -424,7 +424,7 @@ lock_client_pm::lock_client_pm(std::string_view url){
                                     // getting here we got a actual error so we set our error flag
                                     strncpy(error_buffer, "Error performing tls handshake ", error_buffer_array_length);
                                 
-                                    error = true;
+                                    error.store(true, std::memory_order_release);
 
                                     // we break out of this loop
                                     break;
@@ -506,7 +506,7 @@ lock_client_pm::lock_client_pm(std::string_view url){
                                     
                                         strncpy(error_buffer, "Error allocating heap memory for upgrade request string, supplied URL or channel path too long  ", error_buffer_array_length);
                                         
-                                        error = true;
+                                        error.store(true, std::memory_order_release);
                                         
                                         reset(); // disconnect the underlying wolfssl object
                                         
@@ -546,7 +546,7 @@ lock_client_pm::lock_client_pm(std::string_view url){
                                 
                                         strncpy(error_buffer, "Error allocating heap memory for upgrade request string, supplied URL or channel path too long  ", error_buffer_array_length);
                                     
-                                        error = true;
+                                        error.store(true, std::memory_order_release);
                                         
                                         reset(); // disconnect the underlying wolfssl object
                                     
@@ -579,7 +579,7 @@ lock_client_pm::lock_client_pm(std::string_view url){
                             
                             }
                         
-                            if(!error){ // only continue if no error
+                            if(!error.load(std::memory_order_acquire)){ // only continue if no error
                                 
                                 data_array = data_array_static;
 
@@ -600,7 +600,7 @@ lock_client_pm::lock_client_pm(std::string_view url){
                                         // getting here we got a actual error so we set our error flag
                                         strncpy(error_buffer, "Error sending websocket upgrade request ", error_buffer_array_length);
                                     
-                                        error = true;
+                                        error.store(true, std::memory_order_release);
 
                                         // we break out of this loop
                                         break;
@@ -609,7 +609,7 @@ lock_client_pm::lock_client_pm(std::string_view url){
 
                                 }
                                 
-                                if(!error){
+                                if(!error.load(std::memory_order_acquire)){
 
                                     // non blocking call to wolfssl read
                                     while((len = wolfSSL_read(c_ssl, data_array, static_data_array_length)) <= 0){
@@ -628,7 +628,7 @@ lock_client_pm::lock_client_pm(std::string_view url){
                                             // getting here we got a actual error so we set our error flag
                                             strncpy(error_buffer, "Error reading websocket upgrade response ", error_buffer_array_length);
                                         
-                                            error = true;
+                                            error.store(true, std::memory_order_release);
 
                                             // we break out of this loop
                                             break;
@@ -637,7 +637,7 @@ lock_client_pm::lock_client_pm(std::string_view url){
 
                                     }
 
-                                    if(!error){
+                                    if(!error.load(std::memory_order_acquire)){
 
                                         data_array[len] = '\0'; // null terminate the received bytes
 
@@ -685,7 +685,7 @@ lock_client_pm::lock_client_pm(std::string_view url){
                                                     // compare server's response with our calculation
                                                     if(strncmp(local_sec_ws_accept_key, cursor, strlen(local_sec_ws_accept_key)) == 0){
                                                         
-                                                        client_state = OPEN;
+                                                        client_state.store(OPEN, std::memory_order_release);
 
                                                         break; // break if the server sec websocket key matches what we calculated. Connection authorised
                                                             
@@ -696,7 +696,7 @@ lock_client_pm::lock_client_pm(std::string_view url){
                                                             
                                                         reset(); // reset session and disconnect the underlying connection
                                                             
-                                                        error = true;
+                                                        error.store(true, std::memory_order_release);
                                                             
                                                         break;
                                                             
@@ -715,7 +715,7 @@ lock_client_pm::lock_client_pm(std::string_view url){
                                                 
                                                 reset(); // reset session and disconnect the underlying connection
                                                 
-                                                error = true;
+                                                error.store(true, std::memory_order_release);
                                             
                                             }
                                             
@@ -726,7 +726,7 @@ lock_client_pm::lock_client_pm(std::string_view url){
                                             
                                             reset(); // reset session and disconnect the underlying connection
                                             
-                                            error = true;
+                                            error.store(true, std::memory_order_release);
                                             
                                         }
                                                             
@@ -764,11 +764,11 @@ lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address,
 
             strncpy(error_buffer, "Failed to initialize wolfSSL core runtime.", error_buffer_array_length);
                 
-            error = true;
+            error.store(true, std::memory_order_release);
 
         }
         
-        if(!error){
+        if(!error.load(std::memory_order_acquire)){
 
             // we initialise our ssl ctx
             ssl_ctx = wolfSSL_CTX_new(wolfSSLv23_client_method());
@@ -777,7 +777,7 @@ lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address,
 
                 strncpy(error_buffer, "Context creation failed.", error_buffer_array_length);
                     
-                error = true;
+                error.store(true, std::memory_order_release);
 
             }
 
@@ -788,7 +788,7 @@ lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address,
 
                 strncpy(error_buffer, "Failed to load system CA bundle.", error_buffer_array_length);
 
-                error = true;
+                error.store(true, std::memory_order_release);
             }
 
             // we pre allocate memory for io & general operations so we don't allocate during operations
@@ -827,7 +827,7 @@ lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address,
         
     }
     
-    if(!error){
+    if(!error.load(std::memory_order_acquire)){
 
         // check if url is a wss:// endpoint, check case insensitively
 
@@ -873,7 +873,7 @@ lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address,
                         
                         strncpy(error_buffer, "Error allocating heap memory for lock_client url parameter ", error_buffer_array_length);
                         
-                        error = true;
+                        error.store(true, std::memory_order_release);
                         
                     }
                     else{
@@ -900,7 +900,7 @@ lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address,
                         
                         strncpy(error_buffer, "Error allocating heap memory for lock_client url parameter ", error_buffer_array_length);
                         
-                        error = true;
+                        error.store(true, std::memory_order_release);
                         
                     }
                     else{
@@ -919,7 +919,7 @@ lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address,
 
             }
 
-            if(!error){
+            if(!error.load(std::memory_order_acquire)){
 
                 // we check if the supplied url has the port number appended if not we append it
                 if(strchr(c_url, ':') == NULL){
@@ -959,7 +959,7 @@ lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address,
                     
                             strncpy(error_buffer, "Error allocating heap memory for server host name ", error_buffer_array_length);
                         
-                            error = true;    
+                            error.store(true, std::memory_order_release);    
                     
                         }
                         else{
@@ -985,7 +985,7 @@ lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address,
                     
                             strncpy(error_buffer, "Error allocating heap memory for server host name ", error_buffer_array_length);
                         
-                            error = true;    
+                            error.store(true, std::memory_order_release);    
                     
                         }
                         else{
@@ -1022,7 +1022,7 @@ lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address,
                 // now we can call the connect to server function that would return the configured socket file descriptor
                 int sockfd = connect_to_server(c_host, c_port, interface_address, interface_name);
 
-                if(!error){ // only continue if no error
+                if(!error.load(std::memory_order_acquire)){ // only continue if no error
 
                     // getting here the connect to server function returned successfully so now we bind the returned socket fd to our c_ssl object
                     wolfSSL_set_fd(c_ssl, sockfd);
@@ -1046,7 +1046,7 @@ lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address,
                             // getting here we got a actual error so we set our error flag
                             strncpy(error_buffer, "Error performing tls handshake ", error_buffer_array_length);
                         
-                            error = true;
+                            error.store(true, std::memory_order_release);
 
                             // we break out of this loop
                             break;
@@ -1128,7 +1128,7 @@ lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address,
                             
                                 strncpy(error_buffer, "Error allocating heap memory for upgrade request string, supplied URL or channel path too long  ", error_buffer_array_length);
                                 
-                                error = true;
+                                error.store(true, std::memory_order_release);
                                 
                                 reset(); // disconnect the underlying wolfssl object
                                 
@@ -1168,7 +1168,7 @@ lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address,
                         
                                 strncpy(error_buffer, "Error allocating heap memory for upgrade request string, supplied URL or channel path too long  ", error_buffer_array_length);
                             
-                                error = true;
+                                error.store(true, std::memory_order_release);
                                 
                                 reset(); // disconnect the underlying wolfssl object
                             
@@ -1201,7 +1201,7 @@ lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address,
                     
                     }
                 
-                    if(!error){ // only continue if no error
+                    if(!error.load(std::memory_order_acquire)){ // only continue if no error
                         
                         data_array = data_array_static;
 
@@ -1222,7 +1222,7 @@ lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address,
                                 // getting here we got a actual error so we set our error flag
                                 strncpy(error_buffer, "Error sending websocket upgrade request ", error_buffer_array_length);
                             
-                                error = true;
+                                error.store(true, std::memory_order_release);
 
                                 // we break out of this loop
                                 break;
@@ -1231,7 +1231,7 @@ lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address,
 
                         }
                         
-                        if(!error){
+                        if(!error.load(std::memory_order_acquire)){
 
                             // non blocking call to wolfssl read
                             while((len = wolfSSL_read(c_ssl, data_array, static_data_array_length)) <= 0){
@@ -1250,7 +1250,7 @@ lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address,
                                     // getting here we got a actual error so we set our error flag
                                     strncpy(error_buffer, "Error reading websocket upgrade response ", error_buffer_array_length);
                                 
-                                    error = true;
+                                    error.store(true, std::memory_order_release);
 
                                     // we break out of this loop
                                     break;
@@ -1259,7 +1259,7 @@ lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address,
 
                             }
 
-                            if(!error){
+                            if(!error.load(std::memory_order_acquire)){
 
                                 data_array[len] = '\0'; // null terminate the received bytes
 
@@ -1307,7 +1307,7 @@ lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address,
                                             // compare server's response with our calculation
                                             if(strncmp(local_sec_ws_accept_key, cursor, strlen(local_sec_ws_accept_key)) == 0){
                                                 
-                                                client_state = OPEN;
+                                                client_state.store(OPEN, std::memory_order_release);
 
                                                 break; // break if the server sec websocket key matches what we calculated. Connection authorised
                                                     
@@ -1318,7 +1318,7 @@ lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address,
                                                     
                                                 reset(); // reset session and disconnect the underlying connection
                                                     
-                                                error = true;
+                                                error.store(true, std::memory_order_release);
                                                     
                                                 break;
                                                     
@@ -1337,7 +1337,7 @@ lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address,
                                         
                                         reset(); // reset session and disconnect the underlying connection
                                         
-                                        error = true;
+                                        error.store(true, std::memory_order_release);
                                     
                                     }
                                     
@@ -1348,7 +1348,7 @@ lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address,
                                     
                                     reset(); // reset session and disconnect the underlying connection
                                     
-                                    error = true;
+                                    error.store(true, std::memory_order_release);
                                     
                                 }
                                                     
@@ -1369,7 +1369,7 @@ lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address,
             
             strncpy(error_buffer, "Supplied URL parameter is not a valid/supported WebSocket endpoint", error_buffer_array_length);
                     
-            error = true;
+            error.store(true, std::memory_order_release);
             
         }
 
@@ -1387,11 +1387,11 @@ lock_client_pm::lock_client_pm(){
 
             strncpy(error_buffer, "Failed to initialize wolfSSL core runtime.", error_buffer_array_length);
                 
-            error = true;
+            error.store(true, std::memory_order_release);
 
         }
         
-        if(!error){
+        if(!error.load(std::memory_order_acquire)){
 
             // we initialise our ssl ctx
             ssl_ctx = wolfSSL_CTX_new(wolfSSLv23_client_method());
@@ -1400,7 +1400,7 @@ lock_client_pm::lock_client_pm(){
 
                 strncpy(error_buffer, "Context creation failed.", error_buffer_array_length);
                     
-                error = true;
+                error.store(true, std::memory_order_release);
 
             }
 
@@ -1411,7 +1411,7 @@ lock_client_pm::lock_client_pm(){
 
                 strncpy(error_buffer, "Failed to load system CA bundle.", error_buffer_array_length);
 
-                error = true;
+                error.store(true, std::memory_order_release);
             }
 
             // we pre allocate memory for io & general operations so we don't allocate during operations
@@ -1456,7 +1456,7 @@ lock_client_pm::lock_client_pm(){
 lock_client_pm::~lock_client_pm(){
     
     // close the websocket connection if any
-    if(client_state == OPEN){
+    if(client_state.load(std::memory_order_acquire) == OPEN){
         
         close();
 
@@ -1523,7 +1523,7 @@ lock_client_pm::~lock_client_pm(){
 
 inline bool lock_client_pm::status(){ // returns the error status of a lock_client instance
     
-    return error;
+    return error.load(std::memory_order_acquire);
     
 }
 
@@ -1535,15 +1535,15 @@ inline char* lock_client_pm::get_error_message(){ // returns the error message: 
 
 inline bool lock_client_pm::is_open(){
 
-    return client_state == OPEN ? true : false;
+    return client_state.load(std::memory_order_acquire) == OPEN ? true : false;
     
 }
 
 bool lock_client_pm::ping(){ // sends a ping on an established websocket connection
     
-    if(!error){ // only continue if no error
+    if(!error.load(std::memory_order_acquire)){ // only continue if no error
         
-        if(client_state == OPEN){ // continue if client is in open state
+        if(client_state.load(std::memory_order_acquire) == OPEN){ // continue if client is in open state
             
             int i = 0; // variable for traversing the send data array
             
@@ -1596,7 +1596,7 @@ bool lock_client_pm::ping(){ // sends a ping on an established websocket connect
                         // here wolfssl_read couldn't fetch any extra data
                         strncpy(error_buffer, "Websocket Connection Lost", error_buffer_array_length);
 
-                        error = true;
+                        error.store(true, std::memory_order_release);
                         
                         unblock_sigpipe_signal();
 
@@ -1605,7 +1605,7 @@ bool lock_client_pm::ping(){ // sends a ping on an established websocket connect
                         // the connection getting lost isn't in itself an error it just puts the lock client in a closed state
 
                         // we return from this function
-                        return error;
+                        return error.load(std::memory_order_acquire);
                         
                     }
 
@@ -1622,21 +1622,21 @@ bool lock_client_pm::ping(){ // sends a ping on an established websocket connect
             
             strncpy(error_buffer, "Lock Client not connected", error_buffer_array_length);
                 
-            error = true;
+            error.store(true, std::memory_order_release);
             
         }
         
     }
     
-    return error;
+    return error.load(std::memory_order_acquire);
     
 }
 
 bool lock_client_pm::pong(int ping_data_len){ // sends out a pong frame unsolicited or in response to a received ping frame
     
-    if(!error){ // only continue if no error
+    if(!error.load(std::memory_order_acquire)){ // only continue if no error
         
-        if(client_state == OPEN){ // continue if client is in open state
+        if(client_state.load(std::memory_order_acquire) == OPEN){ // continue if client is in open state
             
             int i = 0; // variable for traversing the send data array
             
@@ -1702,7 +1702,7 @@ bool lock_client_pm::pong(int ping_data_len){ // sends out a pong frame unsolici
                         // here wolfssl_read couldn't fetch any extra data
                         strncpy(error_buffer, "Websocket Connection Lost", error_buffer_array_length);
 
-                        error = true;
+                        error.store(true, std::memory_order_release);
                         
                         unblock_sigpipe_signal();
 
@@ -1711,7 +1711,7 @@ bool lock_client_pm::pong(int ping_data_len){ // sends out a pong frame unsolici
                         // the connection getting lost isn't in itself an error it just puts the lock client in a closed state
 
                         // we return from this function
-                        return error;
+                        return error.load(std::memory_order_acquire);
                         
                     }
 
@@ -1735,48 +1735,48 @@ bool lock_client_pm::pong(int ping_data_len){ // sends out a pong frame unsolici
             
             strncpy(error_buffer, "Lock Client not connected", error_buffer_array_length);
                 
-            error = true;
+            error.store(true, std::memory_order_release);
             
         }
         
     }
     
-    return error;
+    return error.load(std::memory_order_acquire);
     
 }
 
 inline bool lock_client_pm::set_ping_backlog(int backlog_num){
     
-    if(!error){ // only continue if no error
+    if(!error.load(std::memory_order_acquire)){ // only continue if no error
         
         // this can be set with a client in closed state
         ping_backlog = backlog_num;
         
     }
     
-    return error;
+    return error.load(std::memory_order_acquire);
     
 }
 
 inline bool lock_client_pm::clear(){ // clear the error flag of a lock client in open state
 
-    if(client_state == OPEN){
+    if(client_state.load(std::memory_order_acquire) == OPEN){
     
         memset(error_buffer, '\0', strlen(error_buffer));
             
-        error = false;
+        error.store(false, std::memory_order_release);
             
     }
         
-    return error;
+    return error.load(std::memory_order_acquire);
     
 }
 
 bool lock_client_pm::send(std::string_view payload_data){ // sends data passed as parameter along an established websocket connection
 
-    if(!error){ // only continue if no error
+    if(!error.load(std::memory_order_acquire)){ // only continue if no error
         
-        if(client_state == OPEN){ // only continue if client is in open state
+        if(client_state.load(std::memory_order_acquire) == OPEN){ // only continue if client is in open state
         
             uint64_t payload_data_len = payload_data.size();
             int i = 0; // variable for traversing the send data array
@@ -1844,11 +1844,11 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
                 
                     strncpy(error_buffer, "Send data length too large", error_buffer_array_length);
                     
-                    error = true;
+                    error.store(true, std::memory_order_release);
                     
                 }
 
-                if(!error){ // only continue if no error
+                if(!error.load(std::memory_order_acquire)){ // only continue if no error
                     
                     for(int j = 0; j<mask_array_len; j++){
                     
@@ -1904,7 +1904,7 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
                                 // here wolfssl_read couldn't fetch any extra data
                                 strncpy(error_buffer, "Websocket Connection Lost", error_buffer_array_length);
 
-                                error = true;
+                                error.store(true, std::memory_order_release);
                                 
                                 unblock_sigpipe_signal();
 
@@ -1913,7 +1913,7 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
                                 // the connection getting lost isn't in itself an error it just puts the lock client in a closed state
 
                                 // we return from this function
-                                return error;
+                                return error.load(std::memory_order_acquire);
                                 
                             }
 
@@ -2053,7 +2053,7 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
                             // here wolfssl_read couldn't fetch any extra data
                             strncpy(error_buffer, "Websocket Connection Lost", error_buffer_array_length);
 
-                            error = true;
+                            error.store(true, std::memory_order_release);
                             
                             unblock_sigpipe_signal();
 
@@ -2062,7 +2062,7 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
                             // the connection getting lost isn't in itself an error it just puts the lock client in a closed state
 
                             // we return from this function
-                            return error;
+                            return error.load(std::memory_order_acquire);
                             
                         }
 
@@ -2201,7 +2201,7 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
                                     // here wolfssl_read couldn't fetch any extra data
                                     strncpy(error_buffer, "Websocket Connection Lost", error_buffer_array_length);
 
-                                    error = true;
+                                    error.store(true, std::memory_order_release);
                                     
                                     unblock_sigpipe_signal();
 
@@ -2210,7 +2210,7 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
                                     // the connection getting lost isn't in itself an error it just puts the lock client in a closed state
 
                                     // we return from this function
-                                    return error;
+                                    return error.load(std::memory_order_acquire);
                                     
                                 }
 
@@ -2343,7 +2343,7 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
                                     // here wolfssl_read couldn't fetch any extra data
                                     strncpy(error_buffer, "Websocket Connection Lost", error_buffer_array_length);
 
-                                    error = true;
+                                    error.store(true, std::memory_order_release);
                                     
                                     unblock_sigpipe_signal();
 
@@ -2352,7 +2352,7 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
                                     // the connection getting lost isn't in itself an error it just puts the lock client in a closed state
 
                                     // we return from this function
-                                    return error;
+                                    return error.load(std::memory_order_acquire);
                                     
                                 }
 
@@ -2379,13 +2379,13 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
             
             strncpy(error_buffer, "Lock Client not connected", error_buffer_array_length);
             
-            error = true;
+            error.store(true, std::memory_order_release);
             
         }
     
     }
         
-    return error;
+    return error.load(std::memory_order_acquire);
     
 }
     
@@ -2417,11 +2417,34 @@ void lock_client_pm::set_pong_function(lock_function fn){
     
 }
 
+bool lock_client_pm::poll_read(int core){
+
+    // we keep polling till our stop poll flag is set
+    while(!stop_poll.load(std::memory_order_acquire)){
+
+        // we check that the client has no error
+        if(error.load(std::memory_order_acquire)){
+
+            // we check that the client has an open websocket connection
+            if(client_state.load(std::memory_order_acquire) == OPEN){
+
+
+
+            }
+
+        }
+
+    }
+
+    return error.load(std::memory_order_acquire);
+
+}
+
 bool lock_client_pm::basic_read(){
 
-    if(!error){ // only continue if no error
+    if(!error.load(std::memory_order_acquire)){ // only continue if no error
         
-        if(client_state == OPEN){ // only continue if lock client is in open state
+        if(client_state.load(std::memory_order_acquire) == OPEN){ // only continue if lock client is in open state
         
             uint64_t frame_data_len = 0; // stores the length of the data frame received
             
@@ -2468,7 +2491,7 @@ bool lock_client_pm::basic_read(){
                             unblock_sigpipe_signal();
 
                             // we return error at this point because it is still 0 and it signals that basic read didn't fail there just is no data to read
-                            return error;
+                            return error.load(std::memory_order_acquire);
 
                         }
 
@@ -2480,7 +2503,7 @@ bool lock_client_pm::basic_read(){
                         // here wolfssl_read couldn't fetch any data
                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
-                        error = true;
+                        error.store(true, std::memory_order_release);
 
                         // we unblock the sigpipe signal because fail_ws_connection internally blocks it
                         unblock_sigpipe_signal();
@@ -2488,7 +2511,7 @@ bool lock_client_pm::basic_read(){
                         fail_ws_connection(GOING_AWAY);
                         // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
                         
-                        return error;
+                        return error.load(std::memory_order_acquire);
 
                     }
 
@@ -2553,7 +2576,7 @@ bool lock_client_pm::basic_read(){
                                     unblock_sigpipe_signal();
 
                                     // we return error at this point because it is still 0 and it signals that basic read didn't fail there just is no data to read
-                                    return error;
+                                    return error.load(std::memory_order_acquire);
 
                                 }
 
@@ -2565,7 +2588,7 @@ bool lock_client_pm::basic_read(){
                                 // here wolfssl_read couldn't fetch any data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
-                                error = true;
+                                error.store(true, std::memory_order_release);
 
                                 // we unblock the sigpipe signal because fail_ws_connection internally blocks it
                                 unblock_sigpipe_signal();
@@ -2573,7 +2596,7 @@ bool lock_client_pm::basic_read(){
                                 fail_ws_connection(GOING_AWAY);
                                 // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
                                 
-                                return error;
+                                return error.load(std::memory_order_acquire);
 
                             }
 
@@ -2633,7 +2656,7 @@ bool lock_client_pm::basic_read(){
                                     unblock_sigpipe_signal();
 
                                     // we return error at this point because it is still 0 and it signals that basic read didn't fail there just is no data to read
-                                    return error;
+                                    return error.load(std::memory_order_acquire);
 
                                 }
 
@@ -2645,7 +2668,7 @@ bool lock_client_pm::basic_read(){
                                 // here wolfssl_read couldn't fetch any data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
-                                error = true;
+                                error.store(true, std::memory_order_release);
 
                                 // we unblock the sigpipe signal because fail_ws_connection internally blocks it
                                 unblock_sigpipe_signal();
@@ -2653,7 +2676,7 @@ bool lock_client_pm::basic_read(){
                                 fail_ws_connection(GOING_AWAY);
                                 // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
                                 
-                                return error;
+                                return error.load(std::memory_order_acquire);
 
                             }
 
@@ -2670,14 +2693,14 @@ bool lock_client_pm::basic_read(){
                         
                         strncpy(error_buffer, "Protocol error: Most significant bit of 64-bit frame length set", error_buffer_array_length);
                         
-                        error = true;
+                        error.store(true, std::memory_order_release);
 
                         // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                         unblock_sigpipe_signal();
                         
                         fail_ws_connection(PROTOCOL_ERROR); // fail the websocket connection
 
-                        return error;
+                        return error.load(std::memory_order_acquire);
                         
                     }
 
@@ -2692,14 +2715,14 @@ bool lock_client_pm::basic_read(){
                     
                     strncpy(error_buffer, "Unrecognised data length received...WebSocket connection closed ", error_buffer_array_length);
                     
-                    error = true;
+                    error.store(true, std::memory_order_release);
 
                     // we unblock the sigpipe signal because fail_ws_connection internally blocks it
                     unblock_sigpipe_signal();
                     
                     fail_ws_connection(PROTOCOL_ERROR); // fail the websocket connection
 
-                    return error;
+                    return error.load(std::memory_order_acquire);
                     
                 }
                 
@@ -2753,11 +2776,11 @@ bool lock_client_pm::basic_read(){
                                 // here wolfssl_read couldn't fetch any extra data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
-                                error = true;
+                                error.store(true, std::memory_order_release);
 
                                 fail_ws_connection(GOING_AWAY);
 
-                                return error;
+                                return error.load(std::memory_order_acquire);
                                 
                             }
 
@@ -2820,11 +2843,11 @@ bool lock_client_pm::basic_read(){
                                 // here wolfssl_read couldn't fetch any extra data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
-                                error = true;
+                                error.store(true, std::memory_order_release);
 
                                 fail_ws_connection(GOING_AWAY);
 
-                                return error;
+                                return error.load(std::memory_order_acquire);
                                 
                             }
 
@@ -2856,9 +2879,9 @@ bool lock_client_pm::basic_read(){
                             
                             strncpy(error_buffer, "Error allocating heap memory for receiving single frame data...frame too large ", error_buffer_array_length);
                     
-                            error = true;
+                            error.store(true, std::memory_order_release);
 
-                            return error;
+                            return error.load(std::memory_order_acquire);
                     
                         }
                         else{
@@ -2907,11 +2930,11 @@ bool lock_client_pm::basic_read(){
                                         // here wolfssl_read couldn't fetch any extra data
                                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
-                                        error = true;
+                                        error.store(true, std::memory_order_release);
 
                                         fail_ws_connection(GOING_AWAY);
 
-                                        return error;
+                                        return error.load(std::memory_order_acquire);
                                         
                                     }
 
@@ -2945,9 +2968,9 @@ bool lock_client_pm::basic_read(){
                             
                             strncpy(error_buffer, "Error allocating heap memory for receiving single frame data after deleting previously allocated memory...frame too large", error_buffer_array_length);
                         
-                            error = true;
+                            error.store(true, std::memory_order_release);
 
-                            return error;
+                            return error.load(std::memory_order_acquire);
                         
                         }
                         else{
@@ -2996,11 +3019,11 @@ bool lock_client_pm::basic_read(){
                                         // here wolfssl_read couldn't fetch any extra data
                                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
-                                        error = true;
+                                        error.store(true, std::memory_order_release);
 
                                         fail_ws_connection(GOING_AWAY);
 
-                                        return error;
+                                        return error.load(std::memory_order_acquire);
                                         
                                     }
 
@@ -3076,7 +3099,7 @@ bool lock_client_pm::basic_read(){
                                     unblock_sigpipe_signal();
 
                                     // we return error at this point because it is still 0 and it signals that basic read didn't fail there just is no data to read
-                                    return error;
+                                    return error.load(std::memory_order_acquire);
 
                                 }
 
@@ -3088,7 +3111,7 @@ bool lock_client_pm::basic_read(){
                                 // here wolfssl_read couldn't fetch any data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
-                                error = true;
+                                error.store(true, std::memory_order_release);
 
                                 // we unblock the sigpipe signal because fail_ws_connection internally blocks it
                                 unblock_sigpipe_signal();
@@ -3096,7 +3119,7 @@ bool lock_client_pm::basic_read(){
                                 fail_ws_connection(GOING_AWAY);
                                 // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
                                 
-                                return error;
+                                return error.load(std::memory_order_acquire);
 
                             }
 
@@ -3156,7 +3179,7 @@ bool lock_client_pm::basic_read(){
                                     unblock_sigpipe_signal();
 
                                     // we return error at this point because it is still 0 and it signals that basic read didn't fail there just is no data to read
-                                    return error;
+                                    return error.load(std::memory_order_acquire);
 
                                 }
 
@@ -3168,7 +3191,7 @@ bool lock_client_pm::basic_read(){
                                 // here wolfssl_read couldn't fetch any data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
-                                error = true;
+                                error.store(true, std::memory_order_release);
 
                                 // we unblock the sigpipe signal because fail_ws_connection internally blocks it
                                 unblock_sigpipe_signal();
@@ -3176,7 +3199,7 @@ bool lock_client_pm::basic_read(){
                                 fail_ws_connection(GOING_AWAY);
                                 // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
                                 
-                                return error;
+                                return error.load(std::memory_order_acquire);
 
                             }
 
@@ -3193,14 +3216,14 @@ bool lock_client_pm::basic_read(){
                         
                         strncpy(error_buffer, "Protocol error: Most significant bit of 64-bit frame length set", error_buffer_array_length);
                         
-                        error = true;
+                        error.store(true, std::memory_order_release);
 
                         // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                         unblock_sigpipe_signal();
                         
                         fail_ws_connection(PROTOCOL_ERROR); // fail the websocket connection
 
-                        return error;
+                        return error.load(std::memory_order_acquire);
                         
                     }
 
@@ -3215,14 +3238,14 @@ bool lock_client_pm::basic_read(){
                     
                     strncpy(error_buffer, "Unrecognised data length received...WebSocket connection closed ", error_buffer_array_length);
                     
-                    error = true;
+                    error.store(true, std::memory_order_release);
 
                     // we unblock the sigpipe signal because fail_ws_connection internally blocks it
                     unblock_sigpipe_signal();
                     
                     fail_ws_connection(PROTOCOL_ERROR); // fail the websocket connection
 
-                    return error;
+                    return error.load(std::memory_order_acquire);
                     
                 }
                 
@@ -3273,11 +3296,11 @@ bool lock_client_pm::basic_read(){
                                 // here wolfssl_read couldn't fetch any extra data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
-                                error = true;
+                                error.store(true, std::memory_order_release);
 
                                 fail_ws_connection(GOING_AWAY);
 
-                                return error;
+                                return error.load(std::memory_order_acquire);
                                 
                             }
 
@@ -3337,11 +3360,11 @@ bool lock_client_pm::basic_read(){
                                 // here wolfssl_read couldn't fetch any extra data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
-                                error = true;
+                                error.store(true, std::memory_order_release);
 
                                 fail_ws_connection(GOING_AWAY);
 
-                                return error;
+                                return error.load(std::memory_order_acquire);
                                 
                             }
 
@@ -3371,9 +3394,9 @@ bool lock_client_pm::basic_read(){
                             
                             strncpy(error_buffer, "Error allocating heap memory for receiving single frame data...frame too large ", error_buffer_array_length);
                     
-                            error = true;
+                            error.store(true, std::memory_order_release);
 
-                            return error;
+                            return error.load(std::memory_order_acquire);
                     
                         }
                         else{
@@ -3421,11 +3444,11 @@ bool lock_client_pm::basic_read(){
                                         // here wolfssl_read couldn't fetch any extra data
                                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
-                                        error = true;
+                                        error.store(true, std::memory_order_release);
 
                                         fail_ws_connection(GOING_AWAY);
 
-                                        return error;
+                                        return error.load(std::memory_order_acquire);
                                         
                                     }
 
@@ -3457,9 +3480,9 @@ bool lock_client_pm::basic_read(){
                             
                             strncpy(error_buffer, "Error allocating heap memory for receiving single frame data after deleting previously allocated memory...frame too large", error_buffer_array_length);
                         
-                            error = true;
+                            error.store(true, std::memory_order_release);
 
-                            return error;
+                            return error.load(std::memory_order_acquire);
                         
                         }
                         else{
@@ -3507,11 +3530,11 @@ bool lock_client_pm::basic_read(){
                                         // here wolfssl_read couldn't fetch any extra data
                                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
-                                        error = true;
+                                        error.store(true, std::memory_order_release);
 
                                         fail_ws_connection(GOING_AWAY);
 
-                                        return error;
+                                        return error.load(std::memory_order_acquire);
                                         
                                     }
 
@@ -3585,7 +3608,7 @@ bool lock_client_pm::basic_read(){
                                     unblock_sigpipe_signal();
 
                                     // we return error at this point because it is still 0 and it signals that basic read didn't fail there just is no data to read
-                                    return error;
+                                    return error.load(std::memory_order_acquire);
 
                                 }
 
@@ -3597,7 +3620,7 @@ bool lock_client_pm::basic_read(){
                                 // here wolfssl_read couldn't fetch any data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
-                                error = true;
+                                error.store(true, std::memory_order_release);
 
                                 // we unblock the sigpipe signal because fail_ws_connection internally blocks it
                                 unblock_sigpipe_signal();
@@ -3605,7 +3628,7 @@ bool lock_client_pm::basic_read(){
                                 fail_ws_connection(GOING_AWAY);
                                 // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
                                 
-                                return error;
+                                return error.load(std::memory_order_acquire);
 
                             }
 
@@ -3665,7 +3688,7 @@ bool lock_client_pm::basic_read(){
                                     unblock_sigpipe_signal();
 
                                     // we return error at this point because it is still 0 and it signals that basic read didn't fail there just is no data to read
-                                    return error;
+                                    return error.load(std::memory_order_acquire);
 
                                 }
 
@@ -3677,7 +3700,7 @@ bool lock_client_pm::basic_read(){
                                 // here wolfssl_read couldn't fetch any data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
-                                error = true;
+                                error.store(true, std::memory_order_release);
 
                                 // we unblock the sigpipe signal because fail_ws_connection internally blocks it
                                 unblock_sigpipe_signal();
@@ -3685,7 +3708,7 @@ bool lock_client_pm::basic_read(){
                                 fail_ws_connection(GOING_AWAY);
                                 // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
                                 
-                                return error;
+                                return error.load(std::memory_order_acquire);
 
                             }
 
@@ -3702,14 +3725,14 @@ bool lock_client_pm::basic_read(){
                         
                         strncpy(error_buffer, "Protocol error: Most significant bit of 64-bit frame length set", error_buffer_array_length);
                         
-                        error = true;
+                        error.store(true, std::memory_order_release);
 
                         // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                         unblock_sigpipe_signal();
                         
                         fail_ws_connection(PROTOCOL_ERROR); // fail the websocket connection
 
-                        return error;
+                        return error.load(std::memory_order_acquire);
                         
                     }
 
@@ -3724,14 +3747,14 @@ bool lock_client_pm::basic_read(){
                     
                     strncpy(error_buffer, "Unrecognised data length received...WebSocket connection closed ", error_buffer_array_length);
                     
-                    error = true;
+                    error.store(true, std::memory_order_release);
 
                     // we unblock the sigpipe signal because fail_ws_connection internally blocks it
                     unblock_sigpipe_signal();
                     
                     fail_ws_connection(PROTOCOL_ERROR); // fail the websocket connection
 
-                    return error;
+                    return error.load(std::memory_order_acquire);
                     
                 }
                 
@@ -3779,11 +3802,11 @@ bool lock_client_pm::basic_read(){
                                 // here wolfssl_read couldn't fetch any extra data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
-                                error = true;
+                                error.store(true, std::memory_order_release);
 
                                 fail_ws_connection(GOING_AWAY);
 
-                                return error;
+                                return error.load(std::memory_order_acquire);
                                 
                             }
 
@@ -3850,11 +3873,11 @@ bool lock_client_pm::basic_read(){
                                 // here wolfssl_read couldn't fetch any extra data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
-                                error = true;
+                                error.store(true, std::memory_order_release);
 
                                 fail_ws_connection(GOING_AWAY);
 
-                                return error;
+                                return error.load(std::memory_order_acquire);
                                 
                             }
 
@@ -3886,9 +3909,9 @@ bool lock_client_pm::basic_read(){
                             
                             strncpy(error_buffer, "Error allocating heap memory for receiving non fin continuation frame data...frame too large ", error_buffer_array_length);
                     
-                            error = true;
+                            error.store(true, std::memory_order_release);
 
-                            return error;
+                            return error.load(std::memory_order_acquire);
                     
                         }
                         else{
@@ -3942,11 +3965,11 @@ bool lock_client_pm::basic_read(){
                                         // here wolfssl_read couldn't fetch any extra data
                                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
-                                        error = true;
+                                        error.store(true, std::memory_order_release);
 
                                         fail_ws_connection(GOING_AWAY);
 
-                                        return error;
+                                        return error.load(std::memory_order_acquire);
                                         
                                     }
 
@@ -3980,9 +4003,9 @@ bool lock_client_pm::basic_read(){
                                 
                             strncpy(error_buffer, "Error allocating heap memory for receiving non fin continuation frame data...frame too large ", error_buffer_array_length);
                         
-                            error = true;
+                            error.store(true, std::memory_order_release);
 
-                            return error;
+                            return error.load(std::memory_order_acquire);
                         
                         }
                         else{
@@ -4036,11 +4059,11 @@ bool lock_client_pm::basic_read(){
                                         // here wolfssl_read couldn't fetch any extra data
                                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
-                                        error = true;
+                                        error.store(true, std::memory_order_release);
 
                                         fail_ws_connection(GOING_AWAY);
 
-                                        return error;
+                                        return error.load(std::memory_order_acquire);
                                         
                                     }
 
@@ -4074,9 +4097,9 @@ bool lock_client_pm::basic_read(){
                             
                         strncpy(error_buffer, "Error allocating heap memory for receiving non fin continuation frame data...frame too large ", error_buffer_array_length);
                     
-                        error = true;
+                        error.store(true, std::memory_order_release);
 
-                        return error;
+                        return error.load(std::memory_order_acquire);
                     
                     }
                     else{
@@ -4131,11 +4154,11 @@ bool lock_client_pm::basic_read(){
                                     // here wolfssl_read couldn't fetch any extra data
                                     strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
-                                    error = true;
+                                    error.store(true, std::memory_order_release);
 
                                     fail_ws_connection(GOING_AWAY);
 
-                                    return error;
+                                    return error.load(std::memory_order_acquire);
                                     
                                 }
 
@@ -4207,7 +4230,7 @@ bool lock_client_pm::basic_read(){
                                     unblock_sigpipe_signal();
 
                                     // we return error at this point because it is still 0 and it signals that basic read didn't fail there just is no data to read
-                                    return error;
+                                    return error.load(std::memory_order_acquire);
 
                                 }
 
@@ -4219,7 +4242,7 @@ bool lock_client_pm::basic_read(){
                                 // here wolfssl_read couldn't fetch any data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
-                                error = true;
+                                error.store(true, std::memory_order_release);
 
                                 // we unblock the sigpipe signal because fail_ws_connection internally blocks it
                                 unblock_sigpipe_signal();
@@ -4227,7 +4250,7 @@ bool lock_client_pm::basic_read(){
                                 fail_ws_connection(GOING_AWAY);
                                 // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
                                 
-                                return error;
+                                return error.load(std::memory_order_acquire);
 
                             }
 
@@ -4287,7 +4310,7 @@ bool lock_client_pm::basic_read(){
                                     unblock_sigpipe_signal();
 
                                     // we return error at this point because it is still 0 and it signals that basic read didn't fail there just is no data to read
-                                    return error;
+                                    return error.load(std::memory_order_acquire);
 
                                 }
 
@@ -4299,7 +4322,7 @@ bool lock_client_pm::basic_read(){
                                 // here wolfssl_read couldn't fetch any data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
-                                error = true;
+                                error.store(true, std::memory_order_release);
 
                                 // we unblock the sigpipe signal because fail_ws_connection internally blocks it
                                 unblock_sigpipe_signal();
@@ -4307,7 +4330,7 @@ bool lock_client_pm::basic_read(){
                                 fail_ws_connection(GOING_AWAY);
                                 // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
                                 
-                                return error;
+                                return error.load(std::memory_order_acquire);
 
                             }
 
@@ -4324,14 +4347,14 @@ bool lock_client_pm::basic_read(){
                         
                         strncpy(error_buffer, "Protocol error: Most significant bit of 64-bit frame length set", error_buffer_array_length);
                         
-                        error = true;
+                        error.store(true, std::memory_order_release);
 
                         // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
                         unblock_sigpipe_signal();
                         
                         fail_ws_connection(PROTOCOL_ERROR); // fail the websocket connection
 
-                        return error;
+                        return error.load(std::memory_order_acquire);
                         
                     }
 
@@ -4346,14 +4369,14 @@ bool lock_client_pm::basic_read(){
                     
                     strncpy(error_buffer, "Unrecognised data length received...WebSocket connection closed ", error_buffer_array_length);
                     
-                    error = true;
+                    error.store(true, std::memory_order_release);
 
                     // we unblock the sigpipe signal because fail_ws_connection internally blocks it
                     unblock_sigpipe_signal();
                     
                     fail_ws_connection(PROTOCOL_ERROR); // fail the websocket connection
 
-                    return error;
+                    return error.load(std::memory_order_acquire);
                     
                 }
                 
@@ -4399,11 +4422,11 @@ bool lock_client_pm::basic_read(){
                                 // here wolfssl_read couldn't fetch any extra data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
-                                error = true;
+                                error.store(true, std::memory_order_release);
 
                                 fail_ws_connection(GOING_AWAY);
 
-                                return error;
+                                return error.load(std::memory_order_acquire);
                                 
                             }
 
@@ -4476,11 +4499,11 @@ bool lock_client_pm::basic_read(){
                                 // here wolfssl_read couldn't fetch any extra data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
-                                error = true;
+                                error.store(true, std::memory_order_release);
 
                                 fail_ws_connection(GOING_AWAY);
 
-                                return error;
+                                return error.load(std::memory_order_acquire);
                                 
                             }
 
@@ -4519,9 +4542,9 @@ bool lock_client_pm::basic_read(){
                             
                             strncpy(error_buffer, "Error allocating heap memory for receiving non fin continuation frame data...frame too large ", error_buffer_array_length);
                     
-                            error = true;
+                            error.store(true, std::memory_order_release);
 
-                            return error;
+                            return error.load(std::memory_order_acquire);
                     
                         }
                         else{
@@ -4575,11 +4598,11 @@ bool lock_client_pm::basic_read(){
                                         // here wolfssl_read couldn't fetch any extra data
                                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
-                                        error = true;
+                                        error.store(true, std::memory_order_release);
 
                                         fail_ws_connection(GOING_AWAY);
 
-                                        return error;
+                                        return error.load(std::memory_order_acquire);
                                         
                                     }
 
@@ -4620,9 +4643,9 @@ bool lock_client_pm::basic_read(){
                                 
                             strncpy(error_buffer, "Error allocating heap memory for receiving non fin continuation frame data...total frame too large ", error_buffer_array_length);
                         
-                            error = true;
+                            error.store(true, std::memory_order_release);
 
-                            return error;
+                            return error.load(std::memory_order_acquire);
                         
                         }
                         else{
@@ -4676,11 +4699,11 @@ bool lock_client_pm::basic_read(){
                                         // here wolfssl_read couldn't fetch any extra data
                                         strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
-                                        error = true;
+                                        error.store(true, std::memory_order_release);
 
                                         fail_ws_connection(GOING_AWAY);
 
-                                        return error;
+                                        return error.load(std::memory_order_acquire);
                                         
                                     }
 
@@ -4720,9 +4743,9 @@ bool lock_client_pm::basic_read(){
                             
                         strncpy(error_buffer, "Error allocating heap memory for receiving non fin continuation frame data...total frame too large ", error_buffer_array_length);
                     
-                        error = true;
+                        error.store(true, std::memory_order_release);
 
-                        return error;
+                        return error.load(std::memory_order_acquire);
                     
                     }
                     else{
@@ -4777,11 +4800,11 @@ bool lock_client_pm::basic_read(){
                                     // here wolfssl_read couldn't fetch any extra data
                                     strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
-                                    error = true;
+                                    error.store(true, std::memory_order_release);
 
                                     fail_ws_connection(GOING_AWAY);
 
-                                    return error;
+                                    return error.load(std::memory_order_acquire);
                                     
                                 }
 
@@ -4816,7 +4839,7 @@ bool lock_client_pm::basic_read(){
                     
                         strncpy(error_buffer, "Protocol error: Ping frame received with length greater than 125 bytes", error_buffer_array_length);
                     
-                        error = true;
+                        error.store(true, std::memory_order_release);
                         
                         memset(data_array, '\0', (cursor - data_array) ); // zero out the data possibly already written to the data array if the faulty ping frame is received when a fragmented message is still being transmitted.
                         
@@ -4827,7 +4850,7 @@ bool lock_client_pm::basic_read(){
                         
                         fail_ws_connection(PROTOCOL_ERROR); // fail the websocket connection
 
-                        return error;
+                        return error.load(std::memory_order_acquire);
                 
                     }
                 
@@ -4876,11 +4899,11 @@ bool lock_client_pm::basic_read(){
                                 // here wolfssl_read couldn't fetch any extra data
                                 strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
-                                error = true;
+                                error.store(true, std::memory_order_release);
 
                                 fail_ws_connection(GOING_AWAY);
 
-                                return error;
+                                return error.load(std::memory_order_acquire);
                                 
                             }
 
@@ -4913,14 +4936,14 @@ bool lock_client_pm::basic_read(){
                     
                     strncpy(error_buffer, "Protocol error: Close frame received with length greater than 125 bytes", error_buffer_array_length);
                     
-                    error = true;
+                    error.store(true, std::memory_order_release);
 
                     // we unblock the sigpipe signal because fail_ws_connection internally blocks it
                     unblock_sigpipe_signal();
                     
                     fail_ws_connection(PROTOCOL_ERROR); // fail the websocket connection
 
-                    return error;
+                    return error.load(std::memory_order_acquire);
                 
                 }
                 
@@ -4969,11 +4992,11 @@ bool lock_client_pm::basic_read(){
                             // here wolfssl_read couldn't fetch any extra data
                             strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
-                            error = true;
+                            error.store(true, std::memory_order_release);
 
                             fail_ws_connection(GOING_AWAY);
 
-                            return error;
+                            return error.load(std::memory_order_acquire);
                             
                         }
 
@@ -5053,9 +5076,9 @@ bool lock_client_pm::basic_read(){
                 
                 cursor = data_array; // set cursor to point back to data array
                 
-                error = true;
+                error.store(true, std::memory_order_release);
                 
-                client_state = CLOSED;
+                client_state.store(CLOSED, std::memory_order_release);
                 
             }
             else if( rand_bytes[0] == (FIN_BIT_SET | RSV_BIT_UNSET_ALL | PONG) ){
@@ -5064,7 +5087,7 @@ bool lock_client_pm::basic_read(){
                     
                     strncpy(error_buffer, "Protocol error: Pong frame received with length greater than 125 bytes", error_buffer_array_length);
                     
-                    error = true;
+                    error.store(true, std::memory_order_release);
                     
                     memset(data_array, '\0', (cursor - data_array) ); // zero out the data possibly already written to the data array if a faulty pong frame is received when a fragmented message is still being transmitted.
                     
@@ -5072,7 +5095,7 @@ bool lock_client_pm::basic_read(){
                     
                     fail_ws_connection(PROTOCOL_ERROR); // fail the websocket connection
 
-                    return error; 
+                    return error.load(std::memory_order_acquire); 
                 
                 }
                 
@@ -5121,11 +5144,11 @@ bool lock_client_pm::basic_read(){
                             // here wolfssl_read couldn't fetch any extra data
                             strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
 
-                            error = true;
+                            error.store(true, std::memory_order_release);
 
                             fail_ws_connection(GOING_AWAY);
 
-                            return error;
+                            return error.load(std::memory_order_acquire);
                             
                         }
 
@@ -5147,7 +5170,7 @@ bool lock_client_pm::basic_read(){
                 
                 strncpy(error_buffer, "Unrecognised data frame received ", error_buffer_array_length);
                 
-                error = true;
+                error.store(true, std::memory_order_release);
                 
                 memset(data_array, '\0', (cursor - data_array) ); // zero out the data possibly already written to the data array if the an unrecognised frame is received when a fragmented message is still being transmitted.
                 
@@ -5162,13 +5185,13 @@ bool lock_client_pm::basic_read(){
             
             strncpy(error_buffer, "Lock Client not connected yet", error_buffer_array_length);
                 
-            error = true;
+            error.store(true, std::memory_order_release);
             
         }
         
     }
         
-    return error;
+    return error.load(std::memory_order_acquire);
         
 }
        
@@ -5181,7 +5204,7 @@ bool lock_client_pm::connect(std::string_view url){ // this is used to connect t
     memset(error_buffer, '\0', strlen(error_buffer));
 
     // we set our error flag to false
-    error = false;
+    error.store(false, std::memory_order_release);
   
     // check if url is a wss:// endpoint, check case insensitively - for thw wolfssl client we only implement the wss client
         
@@ -5200,7 +5223,7 @@ bool lock_client_pm::connect(std::string_view url){ // this is used to connect t
         // we create our ssl object - we call close before calling wolfssl new and close frees the previous wolfssl object so for every connect call we create a new wolfssl object
         c_ssl = wolfSSL_new(ssl_ctx);
     
-        if(!error){ // the constructor continues only if there was no error fetching the ssl pointer
+        if(!error.load(std::memory_order_acquire)){ // the constructor continues only if there was no error fetching the ssl pointer
 
             // URL copy 
             if(req_mem < url_static_array_length){ // static memory large enough
@@ -5233,7 +5256,7 @@ bool lock_client_pm::connect(std::string_view url){ // this is used to connect t
                         
                         strncpy(error_buffer, "Error allocating heap memory for lock_client url parameter ", error_buffer_array_length);
                         
-                        error = true;
+                        error.store(true, std::memory_order_release);
                         
                     }
                     else{
@@ -5261,7 +5284,7 @@ bool lock_client_pm::connect(std::string_view url){ // this is used to connect t
                         
                         strncpy(error_buffer, "Error allocating heap memory for lock_client url parameter ", error_buffer_array_length);
                         
-                        error = true;
+                        error.store(true, std::memory_order_release);
                         
                     }
                     else{
@@ -5280,7 +5303,7 @@ bool lock_client_pm::connect(std::string_view url){ // this is used to connect t
 
             }
             
-            if(!error){ // checks if there was any error allocating memory, that is if that part of the code was executed. The constructor only continues if there was no error 
+            if(!error.load(std::memory_order_acquire)){ // checks if there was any error allocating memory, that is if that part of the code was executed. The constructor only continues if there was no error 
                 
                 // we check if the supplied url has the port number appended if not we append it
                 if(strchr(c_url, ':') == NULL){
@@ -5296,11 +5319,11 @@ bool lock_client_pm::connect(std::string_view url){ // this is used to connect t
         
         strncpy(error_buffer, "Supplied URL parameter is not a valid/supported WebSocket endpoint", error_buffer_array_length);
                 
-        error = true;
+        error.store(true, std::memory_order_release);
         
     }
     
-    if(!error){ // only continue if no error
+    if(!error.load(std::memory_order_acquire)){ // only continue if no error
         
         int search_start_index = 6; // we store the index where we would begin the host name search from, we start searching from after the wss:// protocol prefix
 
@@ -5337,7 +5360,7 @@ bool lock_client_pm::connect(std::string_view url){ // this is used to connect t
             
                     strncpy(error_buffer, "Error allocating heap memory for server host name ", error_buffer_array_length);
                 
-                    error = true;    
+                    error.store(true, std::memory_order_release);    
             
                 }
                 else{
@@ -5363,7 +5386,7 @@ bool lock_client_pm::connect(std::string_view url){ // this is used to connect t
             
                     strncpy(error_buffer, "Error allocating heap memory for server host name ", error_buffer_array_length);
                 
-                    error = true;    
+                    error.store(true, std::memory_order_release);    
             
                 }
                 else{
@@ -5382,7 +5405,7 @@ bool lock_client_pm::connect(std::string_view url){ // this is used to connect t
             
         }
         
-        if(!error){ // only continue if no error
+        if(!error.load(std::memory_order_acquire)){ // only continue if no error
         
             // we set the host name we wish to connect to for server name identification(SNI) if the websocket address passed is a wss:// address. We test this by checking that the c_ssl pointer is non-null
             if(c_ssl != NULL){
@@ -5392,13 +5415,13 @@ bool lock_client_pm::connect(std::string_view url){ // this is used to connect t
                     
                     strncpy(error_buffer, "Error setting up Lock client for SNI TLS extension", error_buffer_array_length);
                         
-                    error = true;
+                    error.store(true, std::memory_order_release);
                 
                 }
                 
             }
             
-            if(!error){
+            if(!error.load(std::memory_order_acquire)){
             // only continue if no error
             
                 // we store the start index of the path from the supplied url - we search for the next forward slash after the last colon, that is the start of the path in the supplied url string view
@@ -5436,7 +5459,7 @@ bool lock_client_pm::connect(std::string_view url){ // this is used to connect t
                         
                             strncpy(error_buffer, "Error allocating heap memory for lock_client channel path ", error_buffer_array_length);
                             
-                            error = true;
+                            error.store(true, std::memory_order_release);
                             
                         }
                         else{ 
@@ -5462,7 +5485,7 @@ bool lock_client_pm::connect(std::string_view url){ // this is used to connect t
                         
                             strncpy(error_buffer, "Error allocating heap memory for lock_client channel path ", error_buffer_array_length);
                             
-                            error = true;
+                            error.store(true, std::memory_order_release);
                             
                         }
                         else{ 
@@ -5481,7 +5504,7 @@ bool lock_client_pm::connect(std::string_view url){ // this is used to connect t
                     
                 }
                 
-                if(!error){ // only continue if no error
+                if(!error.load(std::memory_order_acquire)){ // only continue if no error
 
                     // we create a local char array to hold the port extracted from the url
                     const int MAX_CHAR_FOR_PORT = 8; // a port number can have a maximum of 5 characters because port numbers are 16 bit integers
@@ -5501,7 +5524,7 @@ bool lock_client_pm::connect(std::string_view url){ // this is used to connect t
                     // we call our connect to server function with the interface parameters set to null
                     int sockfd = connect_to_server(c_host, c_port, nullptr, nullptr);
                     
-                    if(!error){ // only continue if no error
+                    if(!error.load(std::memory_order_acquire)){ // only continue if no error
 
                         // getting here the connect to server function returned successfully so now we bind the returned socket fd to our c_ssl object
                         wolfSSL_set_fd(c_ssl, sockfd);
@@ -5525,7 +5548,7 @@ bool lock_client_pm::connect(std::string_view url){ // this is used to connect t
                                 // getting here we got a actual error so we set our error flag
                                 strncpy(error_buffer, "Error performing tls handshake ", error_buffer_array_length);
                             
-                                error = true;
+                                error.store(true, std::memory_order_release);
 
                                 // we break out of this loop
                                 break;
@@ -5607,7 +5630,7 @@ bool lock_client_pm::connect(std::string_view url){ // this is used to connect t
                                 
                                     strncpy(error_buffer, "Error allocating heap memory for upgrade request string, supplied URL or channel path too long  ", error_buffer_array_length);
                                     
-                                    error = true;
+                                    error.store(true, std::memory_order_release);
                                     
                                     reset(); // disconnect the underlying wolfssl object
                                     
@@ -5647,7 +5670,7 @@ bool lock_client_pm::connect(std::string_view url){ // this is used to connect t
                             
                                     strncpy(error_buffer, "Error allocating heap memory for upgrade request string, supplied URL or channel path too long  ", error_buffer_array_length);
                                 
-                                    error = true;
+                                    error.store(true, std::memory_order_release);
                                     
                                     reset(); // disconnect the underlying wolfssl object
                                 
@@ -5680,7 +5703,7 @@ bool lock_client_pm::connect(std::string_view url){ // this is used to connect t
                         
                         }
                     
-                        if(!error){ // only continue if no error
+                        if(!error.load(std::memory_order_acquire)){ // only continue if no error
                             
                             data_array = data_array_static;
 
@@ -5701,7 +5724,7 @@ bool lock_client_pm::connect(std::string_view url){ // this is used to connect t
                                     // getting here we got a actual error so we set our error flag
                                     strncpy(error_buffer, "Error sending websocket upgrade request ", error_buffer_array_length);
                                 
-                                    error = true;
+                                    error.store(true, std::memory_order_release);
 
                                     // we break out of this loop
                                     break;
@@ -5710,7 +5733,7 @@ bool lock_client_pm::connect(std::string_view url){ // this is used to connect t
 
                             }
                             
-                            if(!error){
+                            if(!error.load(std::memory_order_acquire)){
 
                                 // non blocking call to wolfssl read
                                 while((len = wolfSSL_read(c_ssl, data_array, static_data_array_length)) <= 0){
@@ -5729,7 +5752,7 @@ bool lock_client_pm::connect(std::string_view url){ // this is used to connect t
                                         // getting here we got a actual error so we set our error flag
                                         strncpy(error_buffer, "Error reading websocket upgrade response ", error_buffer_array_length);
                                     
-                                        error = true;
+                                        error.store(true, std::memory_order_release);
 
                                         // we break out of this loop
                                         break;
@@ -5738,7 +5761,7 @@ bool lock_client_pm::connect(std::string_view url){ // this is used to connect t
 
                                 }
 
-                                if(!error){
+                                if(!error.load(std::memory_order_acquire)){
 
                                     data_array[len] = '\0'; // null terminate the received bytes
 
@@ -5786,7 +5809,7 @@ bool lock_client_pm::connect(std::string_view url){ // this is used to connect t
                                                 // compare server's response with our calculation
                                                 if(strncmp(local_sec_ws_accept_key, cursor, strlen(local_sec_ws_accept_key)) == 0){
                                                     
-                                                    client_state = OPEN;
+                                                    client_state.store(OPEN, std::memory_order_release);
 
                                                     break; // break if the server sec websocket key matches what we calculated. Connection authorised
                                                         
@@ -5797,7 +5820,7 @@ bool lock_client_pm::connect(std::string_view url){ // this is used to connect t
                                                         
                                                     reset(); // reset session and disconnect the underlying connection
                                                         
-                                                    error = true;
+                                                    error.store(true, std::memory_order_release);
                                                         
                                                     break;
                                                         
@@ -5816,7 +5839,7 @@ bool lock_client_pm::connect(std::string_view url){ // this is used to connect t
                                             
                                             reset(); // reset session and disconnect the underlying connection
                                             
-                                            error = true;
+                                            error.store(true, std::memory_order_release);
                                         
                                         }
                                         
@@ -5827,7 +5850,7 @@ bool lock_client_pm::connect(std::string_view url){ // this is used to connect t
                                         
                                         reset(); // reset session and disconnect the underlying connection
                                         
-                                        error = true;
+                                        error.store(true, std::memory_order_release);
                                         
                                     }
                                                         
@@ -5851,7 +5874,7 @@ bool lock_client_pm::connect(std::string_view url){ // this is used to connect t
     
     }
 
-    return error;
+    return error.load(std::memory_order_acquire);
         
 }
 
@@ -5864,7 +5887,7 @@ bool lock_client_pm::interface_connect(std::string_view url, in_addr* interface_
     memset(error_buffer, '\0', strlen(error_buffer));
 
     // we set our error flag to false
-    error = false;
+    error.store(false, std::memory_order_release);
 
     // check if url is a wss:// endpoint, check case insensitively
 
@@ -5910,7 +5933,7 @@ bool lock_client_pm::interface_connect(std::string_view url, in_addr* interface_
                     
                     strncpy(error_buffer, "Error allocating heap memory for lock_client url parameter ", error_buffer_array_length);
                     
-                    error = true;
+                    error.store(true, std::memory_order_release);
                     
                 }
                 else{
@@ -5937,7 +5960,7 @@ bool lock_client_pm::interface_connect(std::string_view url, in_addr* interface_
                     
                     strncpy(error_buffer, "Error allocating heap memory for lock_client url parameter ", error_buffer_array_length);
                     
-                    error = true;
+                    error.store(true, std::memory_order_release);
                     
                 }
                 else{
@@ -5956,7 +5979,7 @@ bool lock_client_pm::interface_connect(std::string_view url, in_addr* interface_
 
         }
 
-        if(!error){
+        if(!error.load(std::memory_order_acquire)){
 
             // we check if the supplied url has the port number appended if not we append it
             if(strchr(c_url, ':') == NULL){
@@ -5996,7 +6019,7 @@ bool lock_client_pm::interface_connect(std::string_view url, in_addr* interface_
                 
                         strncpy(error_buffer, "Error allocating heap memory for server host name ", error_buffer_array_length);
                     
-                        error = true;    
+                        error.store(true, std::memory_order_release);    
                 
                     }
                     else{
@@ -6022,7 +6045,7 @@ bool lock_client_pm::interface_connect(std::string_view url, in_addr* interface_
                 
                         strncpy(error_buffer, "Error allocating heap memory for server host name ", error_buffer_array_length);
                     
-                        error = true;    
+                        error.store(true, std::memory_order_release);    
                 
                     }
                     else{
@@ -6060,7 +6083,7 @@ bool lock_client_pm::interface_connect(std::string_view url, in_addr* interface_
             // now we can call the connect to server function that would return the configured socket file descriptor
             int sockfd = connect_to_server(c_host, c_port, interface_address, interface_name);
 
-            if(!error){ // only continue if no error
+            if(!error.load(std::memory_order_acquire)){ // only continue if no error
 
                 // getting here the connect to server function returned successfully so now we bind the returned socket fd to our c_ssl object
                 wolfSSL_set_fd(c_ssl, sockfd);
@@ -6084,7 +6107,7 @@ bool lock_client_pm::interface_connect(std::string_view url, in_addr* interface_
                         // getting here we got a actual error so we set our error flag
                         strncpy(error_buffer, "Error performing tls handshake ", error_buffer_array_length);
                     
-                        error = true;
+                        error.store(true, std::memory_order_release);
 
                         // we break out of this loop
                         break;
@@ -6166,7 +6189,7 @@ bool lock_client_pm::interface_connect(std::string_view url, in_addr* interface_
                         
                             strncpy(error_buffer, "Error allocating heap memory for upgrade request string, supplied URL or channel path too long  ", error_buffer_array_length);
                             
-                            error = true;
+                            error.store(true, std::memory_order_release);
                             
                             reset(); // disconnect the underlying wolfssl object
                             
@@ -6206,7 +6229,7 @@ bool lock_client_pm::interface_connect(std::string_view url, in_addr* interface_
                     
                             strncpy(error_buffer, "Error allocating heap memory for upgrade request string, supplied URL or channel path too long  ", error_buffer_array_length);
                         
-                            error = true;
+                            error.store(true, std::memory_order_release);
                             
                             reset(); // disconnect the underlying wolfssl object
                         
@@ -6239,7 +6262,7 @@ bool lock_client_pm::interface_connect(std::string_view url, in_addr* interface_
                 
                 }
             
-                if(!error){ // only continue if no error
+                if(!error.load(std::memory_order_acquire)){ // only continue if no error
                     
                     data_array = data_array_static;
 
@@ -6260,7 +6283,7 @@ bool lock_client_pm::interface_connect(std::string_view url, in_addr* interface_
                             // getting here we got a actual error so we set our error flag
                             strncpy(error_buffer, "Error sending websocket upgrade request ", error_buffer_array_length);
                         
-                            error = true;
+                            error.store(true, std::memory_order_release);
 
                             // we break out of this loop
                             break;
@@ -6269,7 +6292,7 @@ bool lock_client_pm::interface_connect(std::string_view url, in_addr* interface_
 
                     }
                     
-                    if(!error){
+                    if(!error.load(std::memory_order_acquire)){
 
                         // non blocking call to wolfssl read
                         while((len = wolfSSL_read(c_ssl, data_array, static_data_array_length)) <= 0){
@@ -6288,7 +6311,7 @@ bool lock_client_pm::interface_connect(std::string_view url, in_addr* interface_
                                 // getting here we got a actual error so we set our error flag
                                 strncpy(error_buffer, "Error reading websocket upgrade response ", error_buffer_array_length);
                             
-                                error = true;
+                                error.store(true, std::memory_order_release);
 
                                 // we break out of this loop
                                 break;
@@ -6297,7 +6320,7 @@ bool lock_client_pm::interface_connect(std::string_view url, in_addr* interface_
 
                         }
 
-                        if(!error){
+                        if(!error.load(std::memory_order_acquire)){
 
                             data_array[len] = '\0'; // null terminate the received bytes
 
@@ -6345,7 +6368,7 @@ bool lock_client_pm::interface_connect(std::string_view url, in_addr* interface_
                                         // compare server's response with our calculation
                                         if(strncmp(local_sec_ws_accept_key, cursor, strlen(local_sec_ws_accept_key)) == 0){
                                             
-                                            client_state = OPEN;
+                                            client_state.store(OPEN, std::memory_order_release);
 
                                             break; // break if the server sec websocket key matches what we calculated. Connection authorised
                                                 
@@ -6356,7 +6379,7 @@ bool lock_client_pm::interface_connect(std::string_view url, in_addr* interface_
                                                 
                                             reset(); // reset session and disconnect the underlying connection
                                                 
-                                            error = true;
+                                            error.store(true, std::memory_order_release);
                                                 
                                             break;
                                                 
@@ -6375,7 +6398,7 @@ bool lock_client_pm::interface_connect(std::string_view url, in_addr* interface_
                                     
                                     reset(); // reset session and disconnect the underlying connection
                                     
-                                    error = true;
+                                    error.store(true, std::memory_order_release);
                                 
                                 }
                                 
@@ -6386,7 +6409,7 @@ bool lock_client_pm::interface_connect(std::string_view url, in_addr* interface_
                                 
                                 reset(); // reset session and disconnect the underlying connection
                                 
-                                error = true;
+                                error.store(true, std::memory_order_release);
                                 
                             }
                                                 
@@ -6407,12 +6430,12 @@ bool lock_client_pm::interface_connect(std::string_view url, in_addr* interface_
         
         strncpy(error_buffer, "Supplied URL parameter is not a valid/supported WebSocket endpoint", error_buffer_array_length);
                 
-        error = true;
+        error.store(true, std::memory_order_release);
         
     }
 
 
-    return error;
+    return error.load(std::memory_order_acquire);
 }
 
 int lock_client_pm::connect_to_server(const char *hostname, const char *port, in_addr* interface_address, const char *interface_name){
@@ -6424,7 +6447,7 @@ int lock_client_pm::connect_to_server(const char *hostname, const char *port, in
     if(sock < 0){
         std::cout<<"Error creating socket"<<std::endl;
         strncpy(error_buffer, "Error creating socket", error_buffer_array_length);          
-        error = true;
+        error.store(true, std::memory_order_release);
         return -1;
     }
 
@@ -6436,7 +6459,7 @@ int lock_client_pm::connect_to_server(const char *hostname, const char *port, in
             std::cout<<"Error binding socket to device"<<std::endl;
             perror("setsockopt(SO_BINDTODEVICE)");
             strncpy(error_buffer, "Error binding socket to device", error_buffer_array_length);          
-            error = true;
+            error.store(true, std::memory_order_release);
             ::close(sock);
             return -1;
         }
@@ -6473,7 +6496,7 @@ int lock_client_pm::connect_to_server(const char *hostname, const char *port, in
     if(getaddrinfo(hostname, port, &hints, &res) != 0){
         std::cout<<"Error resolving hostname: "<<hostname<<std::endl;
         strncpy(error_buffer, "Error resolving hostname", error_buffer_array_length);          
-        error = true;
+        error.store(true, std::memory_order_release);
         return -1;
     }
 
@@ -6497,7 +6520,7 @@ int lock_client_pm::connect_to_server(const char *hostname, const char *port, in
     if(sock < 0){
         std::cout<<"Failed to connect to "<<hostname<<':'<<port<<std::endl;
         strncpy(error_buffer, "Failed to connect to host", error_buffer_array_length);          
-        error = true;
+        error.store(true, std::memory_order_release);
         return -1;
     }
 
@@ -6605,23 +6628,148 @@ void lock_client_pm::fail_ws_connection(unsigned short status_code){
     // close the underlying connection, don't wait for server response
     reset();
             
-    client_state = CLOSED; // sets the client state back to closed
+    client_state.store(CLOSED, std::memory_order_release); // sets the client state back to closed
 
-    if(!error){
+    if(!error.load(std::memory_order_acquire)){
     // we only set the error message and error flag if the error flag was not set already
 
         // we set the lock client error variable
         strncpy(error_buffer, "Websocket Connection Lost", error_buffer_array_length);
                     
-        error = true;
+        error.store(true, std::memory_order_release);
 
     }
     
 }
-     
+
+bool lock_client_pm::set_cpu_affinity(int core){
+    
+    // thread id structure used to identify the calling thread
+    pthread_t thread_id = pthread_self();
+    
+    // cpu affinity variables
+    cpu_set_t cpuset;
+    
+    // zero out our cpu set
+    CPU_ZERO(&cpuset);
+    
+    // set in the cpuset struct to pin the thread to the specific core in the parameter
+    CPU_SET(core, &cpuset);
+    
+    // now set the cpu affinity to the core specified above
+    int error = pthread_setaffinity_np(thread_id, sizeof(cpuset), &cpuset);
+    
+    // test that the cpu recaliberating actually worked
+    if(error == 0){
+
+        if(CPU_ISSET(core, &cpuset))
+            std::cout<<"Thread Pinned To CPU Core "<<core<<"\n";     
+    }
+    else{
+
+        std::cout<<"Error Pinning Thread To CPU Core "<<core<<"\n";
+        return 1;
+    }
+    
+    return 0;
+}
+
+bool lock_client_pm::increase_thread_priority(int p_policy, int priority){
+    
+    // local variables used by the increase priority function
+    pthread_t thread_id = pthread_self();
+    int policy = 0;
+    sched_param param;
+    
+    // get scheduling parameters for this thread
+    int sched_error = pthread_getschedparam(thread_id, &policy, &param);
+        
+    if(sched_error == ESRCH){
+
+        strcpy(error_buffer, "No Thread With The Thread ID Could Be Found In Setting Scheduling Parameters\n");   
+
+        error.store(true, std::memory_order_release);
+            
+        return error;
+    
+    }
+    
+    // the policy will now be set to the value of policy and its priority set to the value of priority, understand that policies for which priorities can be set - SCHED_FIFO and SCHED_RR have a max priority of 99 and a min priority of 0
+    
+    // we set our local policy variable to the p_policy parameter passed
+    policy = p_policy;
+    
+    // we set our scheduling priority to the parameter passed
+    param.sched_priority = priority;
+    
+    // we change our scheduling policy to scheduling policy supplied, the default is SCHED_FIFO and the default priority is 90
+    sched_error = pthread_setschedparam(thread_id, policy, &param);
+    
+    if(sched_error != 0) [[unlikely]] {
+        
+        if(sched_error == ESRCH){
+        
+            std::cout<<"No Thread With The Thread ID Could Be Found In Setting Scheduling Parameters\n";
+            return 1;
+        }
+        else if(sched_error == EINVAL){
+            
+            std::cout<<"Invalid Scheduling Policy\n";
+            return 1;
+        }
+        else if(sched_error == EPERM){
+            
+            std::cout<<"Permission Denied For Setting Scheduling Parameters\n";
+            return 1;
+        }
+        
+    }
+    else [[likely]] {
+        
+        // we set our policy variable and sched_priority member variable back to 0 so we can be sure that whatever non 0 value written there is written by the pthread_getschedparam function
+        policy = 0;
+        param.sched_priority = 0;
+        
+        // get scheduling parameters for this thread
+        sched_error = pthread_getschedparam(thread_id, &policy, &param);
+        
+        if(sched_error == 0) [[likely]] {
+        
+            if(policy == SCHED_FIFO)
+            
+                std::cout<<"Thread Scheduling Policy Has Been Set To SCHED_FIFO With Thread Priority ";
+        
+            else if(policy == SCHED_RR)
+            
+                std::cout<<"Thread Scheduling Policy Has Been Set To SCHED_RR With Thread Priority ";
+        
+            else if(policy == SCHED_OTHER)
+            
+                std::cout<<"Thread Scheduling Policy Has Been Set To SCHED_OTHER With Thread Priority ";
+        
+        
+            std::cout<<param.sched_priority<<"\n";
+        
+        }
+        else [[unlikely]] {
+            
+            if(sched_error == ESRCH){
+        
+                std::cout<<"No Thread With The Thread ID Could Be Found In Setting Scheduling Parameters\n";
+                return 1;
+            }
+            
+        }
+            
+    }
+    
+    return 0;
+
+}
+
 bool lock_client_pm::close(unsigned short status_code){ // this closes an established websocket connection although the object itself still exists till it goes out of scope, the object can be connected to a different or the same websocket server using the connect function
     
-    if(client_state == OPEN){ // only continue if client is in open state
+    if(client_state.load(std::memory_order_acquire) == OPEN){ // only continue if client is in open state
     
         int i = 0; // variable for traversing the send array and building up the close data frame
         unsigned short frame_len = (unsigned short)2; // holds the length of the close data frame - sizeof unsigned short
@@ -6673,9 +6821,9 @@ bool lock_client_pm::close(unsigned short status_code){ // this closes an establ
     // we disconnect our underlying connection
     reset();
 
-    client_state = CLOSED;
+    client_state.store(CLOSED, std::memory_order_release);
     
-    return error;
+    return error.load(std::memory_order_acquire);
 }
 
 #pragma GCC diagnostic pop
