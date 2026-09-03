@@ -6,8 +6,8 @@ class lock_client_pm {
 public:
     
     //constructors
-    lock_client_pm(std::string_view url);
-    lock_client_pm(std::string_view url, in_addr* interface_address, char* interface_name); // constructor that binds to a particular interface before connection
+    lock_client_pm(std::string_view url, int core);
+    lock_client_pm(std::string_view url, in_addr* interface_address, char* interface_name, int core); // constructor that binds to a particular interface before connection
     lock_client_pm(int core); // basic constructor
     
     // destructor
@@ -143,7 +143,7 @@ private:
     bool set_cpu_affinity(int core);
 
     // function to increase the thread priority of the poll thread
-    bool increase_thread_priority(int p_policy, int priority);
+    bool increase_thread_priority(int p_policy = SCHED_FIFO, int priority = 99);
 
 // wolfssl Library instance variables    
 private:

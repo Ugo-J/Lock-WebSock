@@ -8,7 +8,7 @@
 #pragma GCC diagnostic ignored "-Wshift-count-overflow"
 
 // constructor with url string
-lock_client_pm::lock_client_pm(std::string_view url){
+lock_client_pm::lock_client_pm(std::string_view url, int core){
 
     // initialisation of class wide variables
     if(!wolfssl_init){
@@ -71,6 +71,28 @@ lock_client_pm::lock_client_pm(std::string_view url){
             for(int j = 0; j<mask_array_len; j++){
             
                 mask[j] = (unsigned char)(rand() % upper_bound);
+
+            }
+
+            // we allocate our read buffer
+            read_buffer = new(std::nothrow) unsigned char[READ_BUFFER_SIZE];
+
+            // we check that our read buffer was successfully allocated if it wasn't we set our error flag
+            if(read_buffer != nullptr){
+
+                // getting here our read buffer was successfully allocated so we start our poll_thread
+                poll_thread = std::thread(&lock_client_pm::poll_read, this, core);
+
+                // we wait till the poll thread sets its init flag before we continue because then we can check the error flag to know if the poll thread encountered any error while setting up
+                while(!poll_init.load(std::memory_order_acquire));
+
+            }
+            else{
+
+                // getting here our allocation of our read buffer was unsuccessful so we set our error flag to true
+                strcpy(error_buffer, "Error Allocating Poll Read Buffer.");
+
+                error.store(true, std::memory_order_release);
 
             }
 
@@ -755,7 +777,7 @@ lock_client_pm::lock_client_pm(std::string_view url){
 }
 
 // constructor that binds to a network interface
-lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address, char* interface_name){
+lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address, char* interface_name, int core){
 
     // initialisation of class wide variables
     if(!wolfssl_init){
@@ -818,6 +840,28 @@ lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address,
             for(int j = 0; j<mask_array_len; j++){
             
                 mask[j] = (unsigned char)(rand() % upper_bound);
+
+            }
+
+            // we allocate our read buffer
+            read_buffer = new(std::nothrow) unsigned char[READ_BUFFER_SIZE];
+
+            // we check that our read buffer was successfully allocated if it wasn't we set our error flag
+            if(read_buffer != nullptr){
+
+                // getting here our read buffer was successfully allocated so we start our poll_thread
+                poll_thread = std::thread(&lock_client_pm::poll_read, this, core);
+
+                // we wait till the poll thread sets its init flag before we continue because then we can check the error flag to know if the poll thread encountered any error while setting up
+                while(!poll_init.load(std::memory_order_acquire));
+
+            }
+            else{
+
+                // getting here our allocation of our read buffer was unsuccessful so we set our error flag to true
+                strcpy(error_buffer, "Error Allocating Poll Read Buffer.");
+
+                error.store(true, std::memory_order_release);
 
             }
 
@@ -1476,6 +1520,9 @@ lock_client_pm::lock_client_pm(int core){
 
 // destructor
 lock_client_pm::~lock_client_pm(){
+
+    // we set our stop poll flag to stop the poll thread
+    stop_poll.store(true, std::memory_order_release);
     
     // close the websocket connection if any
     if(client_state.load(std::memory_order_acquire) == OPEN){
@@ -1483,6 +1530,9 @@ lock_client_pm::~lock_client_pm(){
         close();
 
     }
+
+    // we join our poll thread if it is joinable
+    if(poll_thread.joinable()) { poll_thread.join(); }
     
     // free url heap memory - this only runs if dynamic memory allocation is used to store the url
     if(c_url_new != NULL){
@@ -2446,6 +2496,28 @@ void lock_client_pm::set_pong_function(lock_function fn){
 }
 
 bool lock_client_pm::poll_read(int core){
+
+    // we increase this thread priority
+    bool thread_priori_error = increase_thread_priority();
+
+    // if the increase thread priority error encounters an error we set our poll init and return
+    if(thread_priori_error){
+
+        // we set our poll init flag to true
+        poll_init.store(true, std::memory_order_release);
+
+        return error.load(std::memory_order_acquire);
+
+    }
+
+    // we set this thread cpu affinity
+    bool cpu_affinity_error = set_cpu_affinity(core);
+
+    // we set our poll init flag to true to indicate that that this thread is setup to run the read poll
+    poll_init.store(true, std::memory_order_release);
+
+    // we check if the set cpu affinity function encountered an error, if it did we return from the poll read function ending the poll thread - the poll init flag is already set after running the set cpu affinity function so we don't need to set it before returning
+    if(cpu_affinity_error) return error.load(std::memory_order_acquire);
 
     // we keep polling till our stop poll flag is set
     while(!stop_poll.load(std::memory_order_acquire)){
