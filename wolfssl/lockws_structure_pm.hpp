@@ -124,6 +124,9 @@ private:
     // read chunk size, this variable defines how much data the poll thread polls for with every read call
     static constexpr int READ_CHUNK_SIZE = 64 * 1024;
 
+    // poll init flag used to indicate to the main thread that the poll thread has finished initialisations so the main thread can check if there was any error in the poll thread initialisation
+    std::atomic<bool> poll_init{false};
+
     // stop poll flag used to stop the poll thread
     std::atomic<bool> stop_poll{false};
 
