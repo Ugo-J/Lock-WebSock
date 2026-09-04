@@ -145,6 +145,12 @@ private:
     // function to increase the thread priority of the poll thread
     bool increase_thread_priority(int p_policy = SCHED_FIFO, int priority = 99);
 
+// constants to indicate data availabilty in the read buffer
+private:
+
+    static constexpr int RETRY = -1;
+
+
 // wolfssl Library instance variables    
 private:
         

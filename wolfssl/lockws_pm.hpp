@@ -2548,6 +2548,29 @@ bool lock_client_pm::poll_read(int core){
 
 }
 
+int lock_client_pm::fetch_data(char* dest, int sz){
+
+    // first we check if the supplied sz is <=0 in which case we simply return 0
+    if(sz <= 0) return 0;
+
+    // we fetch our local last read and last write
+    int loc_last_read = last_read.load(std::memory_order_acquire);
+    int loc_last_write = last_write.load(std::memory_order_acquire);
+
+    // we compute our available data
+    int available_data = loc_last_write - loc_last_read;
+
+    // we check if there is any available data if not we return retry
+    if(available_data <= 0) return RETRY;
+
+    // getting here there is available data so we compute the size to copy
+    int data_sz = 0;
+
+
+    return data_sz;
+
+}
+
 bool lock_client_pm::basic_read(){
 
     if(!error.load(std::memory_order_acquire)){ // only continue if no error
