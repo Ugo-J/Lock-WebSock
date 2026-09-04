@@ -199,7 +199,7 @@ lock_client_pm::lock_client_pm(std::string_view url, int core){
 
                 }
                 
-                if(!error.load(std::memory_order_acquire)){ // checks if there was any error allocating memory, that is if that part of the code was executed. The constructor only continues if there was no error 
+                if(!error.load(std::memory_order_acquire)){ // checks if there was any error allocating memory, that is if that part of the code was executed. The constructor only continues if there was no error
                     
                     // we check if the supplied url has the port number appended if not we append it
                     if(strchr(c_url, ':') == NULL){
@@ -707,6 +707,10 @@ lock_client_pm::lock_client_pm(std::string_view url, int core){
                                                     // compare server's response with our calculation
                                                     if(strncmp(local_sec_ws_accept_key, cursor, strlen(local_sec_ws_accept_key)) == 0){
                                                         
+                                                        // we set our last read index and last write index to 0 so the poll thread ignores any messages from a previous connection and starts polling for messages from this connection
+                                                        last_read.store(0, std::memory_order_release);
+                                                        last_write.store(0, std::memory_order_release);
+
                                                         client_state.store(OPEN, std::memory_order_release);
 
                                                         break; // break if the server sec websocket key matches what we calculated. Connection authorised
@@ -1351,6 +1355,10 @@ lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address,
                                             // compare server's response with our calculation
                                             if(strncmp(local_sec_ws_accept_key, cursor, strlen(local_sec_ws_accept_key)) == 0){
                                                 
+                                                // we set our last read index and last write index to 0 so the poll thread ignores any messages from a previous connection and starts polling for messages from this connection
+                                                last_read.store(0, std::memory_order_release);
+                                                last_write.store(0, std::memory_order_release);
+
                                                 client_state.store(OPEN, std::memory_order_release);
 
                                                 break; // break if the server sec websocket key matches what we calculated. Connection authorised
@@ -5909,6 +5917,10 @@ bool lock_client_pm::connect(std::string_view url){ // this is used to connect t
                                                 // compare server's response with our calculation
                                                 if(strncmp(local_sec_ws_accept_key, cursor, strlen(local_sec_ws_accept_key)) == 0){
                                                     
+                                                    // we set our last read index and last write index to 0 so the poll thread ignores any messages from a previous connection and starts polling for messages from this connection
+                                                    last_read.store(0, std::memory_order_release);
+                                                    last_write.store(0, std::memory_order_release);
+
                                                     client_state.store(OPEN, std::memory_order_release);
 
                                                     break; // break if the server sec websocket key matches what we calculated. Connection authorised
@@ -6468,6 +6480,10 @@ bool lock_client_pm::interface_connect(std::string_view url, in_addr* interface_
                                         // compare server's response with our calculation
                                         if(strncmp(local_sec_ws_accept_key, cursor, strlen(local_sec_ws_accept_key)) == 0){
                                             
+                                            // we set our last read index and last write index to 0 so the poll thread ignores any messages from a previous connection and starts polling for messages from this connection
+                                            last_read.store(0, std::memory_order_release);
+                                            last_write.store(0, std::memory_order_release);
+
                                             client_state.store(OPEN, std::memory_order_release);
 
                                             break; // break if the server sec websocket key matches what we calculated. Connection authorised
