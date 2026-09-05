@@ -2605,7 +2605,7 @@ bool lock_client_pm::poll_read(int core){
 
 }
 
-int lock_client_pm::fetch_data(char* dest, int sz){
+int lock_client_pm::fetch_data(unsigned char* dest, int sz){
 
     // first we check if the supplied sz is <=0 in which case we simply return 0
     if(sz <= 0) return 0;
@@ -2654,14 +2654,11 @@ int lock_client_pm::fetch_data(char* dest, int sz){
 
 bool lock_client_pm::basic_read(){
 
-    if(!error.load(std::memory_order_acquire)){ // only continue if no error
+    if(client_state.load(std::memory_order_acquire) == OPEN){ // only continue if client is in open state
         
-        if(client_state.load(std::memory_order_acquire) == OPEN){ // only continue if lock client is in open state
+        if(!error.load(std::memory_order_acquire) || data_available()){ // only continue if no error or data available
         
             uint64_t frame_data_len = 0; // stores the length of the data frame received
-            
-            // block SIGPIPE signal before attempting to read data, just incase the connection is closed
-            block_sigpipe_signal();
 
             // attempt to read the first two bytes to test the FIN bit, the opcode and the size of the frame. We use the rand bytes array because it is not in use by the program at this point
 
@@ -2677,19 +2674,21 @@ bool lock_client_pm::basic_read(){
             // we keep reading till we have our total bytes to read
             while(total_read_bytes < bytes_to_read){
 
-                // we call wolfSSL_read to attempt to read the bytes into the buffer
-                read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
+                // we call fetch data function to attempt to read the bytes into the buffer
+                read_bytes = fetch_data(&rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
                 // if wolfssl_read returns a value <= 0 we check if there is data available to be read
                 if(read_bytes <= 0){
 
-                    // we get the error message
-                    int err = wolfSSL_get_error(c_ssl, read_bytes);
+                    // for clarification fetch data returns either 0 or RETRY which is a negative number. 0 is returned when the supplied size parameter is invalid and retry when the read buffer has no new data
 
-                    // we check if the wolfssl library still expects more reads or if this is an actual error
-                    if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
+                    // we check if we still expects more reads or if the poll thread encountered an error
+                    if(read_bytes == RETRY){
 
-                        // getting here WOLFSSL_ERROR_WANT_READ || WRITE returns true so we check if any data has been fetched in this basic read call
+                        // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                        if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
+
+                        // getting here fetch data returned RETRY so we check if any data has been fetched in this basic read call
                         if(total_read_bytes > 0){
                         // getting here data has been gotten in this current basic read call so we continue the loop till the entire data is fetched
 
@@ -2697,33 +2696,13 @@ bool lock_client_pm::basic_read(){
 
                         }
                         else{
-                        // getting here no data has been fetched in this basic read call so we unblock the sigpipe signal and exit
+                        // getting here no data has been fetched in this basic read call so we simply exit
 
-                            // we unblock the sigpipe signal
-                            unblock_sigpipe_signal();
-
-                            // we return error at this point because it is still 0 and it signals that basic read didn't fail there just is no data to read
-                            return error.load(std::memory_order_acquire);
+                            // we return error at this point because it is still 0 and it signals that basic read didn't fail there just is no data to read - so we use memory order relaxed here to load the error flag
+                            return error.load(std::memory_order_relaxed);
 
                         }
 
-
-                    }
-                    else{
-                    // getting here the error number returned by wolfssl read isn't due to wolfssl want read so we fail this websocket connection
-                    
-                        // here wolfssl_read couldn't fetch any data
-                        strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                        error.store(true, std::memory_order_release);
-
-                        // we unblock the sigpipe signal because fail_ws_connection internally blocks it
-                        unblock_sigpipe_signal();
-                        
-                        fail_ws_connection(GOING_AWAY);
-                        // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
-                        
-                        return error.load(std::memory_order_acquire);
 
                     }
 
@@ -5393,17 +5372,17 @@ bool lock_client_pm::basic_read(){
             }
             
         }
-        else{
+        
+    }
+    else{
+
+        strncpy(error_buffer, "Lock Client not connected yet", error_buffer_array_length);
             
-            strncpy(error_buffer, "Lock Client not connected yet", error_buffer_array_length);
-                
-            error.store(true, std::memory_order_release);
-            
-        }
+        error.store(true, std::memory_order_release);
         
     }
         
-    return error.load(std::memory_order_acquire);
+    return error.load(std::memory_order_relaxed);
         
 }
        

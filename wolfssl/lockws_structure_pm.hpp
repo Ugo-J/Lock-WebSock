@@ -151,7 +151,7 @@ private:
     bool poll_read(int core);
 
     // function to fetch data from the read buffer
-    int fetch_data(char* dest, int sz);
+    int fetch_data(unsigned char* dest, int sz);
 
     // function to set the cpu affinity of the poll thread
     bool set_cpu_affinity(int core);
