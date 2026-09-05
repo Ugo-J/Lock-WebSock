@@ -1864,7 +1864,7 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
         
         if(client_state.load(std::memory_order_acquire) == OPEN){ // only continue if client is in open state
         
-            uint64_t payload_data_len = payload_data.size();
+            int64_t payload_data_len = payload_data.size();
             int i = 0; // variable for traversing the send data array
             
             if((payload_data_len + biggest_header_len) < send_data_array_len){ // static array is large enough
@@ -2025,10 +2025,10 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
                 i++;
 
                 // we store the frame length of the frame - we set the frame length of the individual frames to send_data_array_len - biggest_header_len so the frame can be fit into the static array irrespective of the websocket header length
-                uint64_t frame_data_len = send_data_array_len - biggest_header_len;
+                int64_t frame_data_len = send_data_array_len - biggest_header_len;
 
                 // this variable holds the index of the payload data that the sending continues from after each frame
-                uint64_t continuation_index = 0;
+                int64_t continuation_index = 0;
                 
                 // set the second byte
                 if(frame_data_len < 126){ // if frame data length is less than 126 the next 7 bits represent the frame length
@@ -2094,7 +2094,7 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
                 // mask the data and store the masked data in the send data array 
                 int k = 0; // variable used to store the mask index of the exact byte in the mask array to mask with
                 
-                for(uint64_t j = 0; j<frame_data_len; j++){
+                for(int64_t j = 0; j<frame_data_len; j++){
 
                     k = j % 4;
                     
@@ -2245,7 +2245,7 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
                         k = 0; // we reuse the variable used to store the mask index of the exact byte in the mask array to mask with
                         
                         // since this is the last frame we use continuation_index < payload_data_len as the conditional for this for loop
-                        for(uint64_t j = continuation_index; j<payload_data_len; j++){
+                        for(int64_t j = continuation_index; j<payload_data_len; j++){
 
                             send_data[i] = payload_data[j] ^ mask[k];
 
@@ -2317,7 +2317,7 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
                         i = 0;
                         
                         // we get our copy boundary index where our frame data for this frame stops
-                        uint64_t copy_bound = continuation_index + frame_data_len;
+                        int64_t copy_bound = continuation_index + frame_data_len;
 
                         // set the first byte
                         send_data[i] = FIN_BIT_NOT_SET | RSV_BIT_UNSET_ALL | CONTINUATION_FRAME;
@@ -2387,7 +2387,7 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
                         // mask the data and store the masked data in the send data array 
                         k = 0; // we reuse the variable used to store the mask index of the exact byte in the mask array to mask with
                         
-                        for(uint64_t j = continuation_index; j<copy_bound; j++){
+                        for(int64_t j = continuation_index; j<copy_bound; j++){
 
                             send_data[i] = payload_data[j] ^ mask[k];
 
@@ -2658,7 +2658,7 @@ bool lock_client_pm::basic_read(){
         
         if(!error.load(std::memory_order_acquire) || data_available()){ // only continue if no error or data available
         
-            uint64_t frame_data_len = 0; // stores the length of the data frame received
+            int64_t frame_data_len = 0; // stores the length of the data frame received
 
             // attempt to read the first two bytes to test the FIN bit, the opcode and the size of the frame. We use the rand bytes array because it is not in use by the program at this point
 
@@ -2850,7 +2850,7 @@ bool lock_client_pm::basic_read(){
                 
                 // reaching here means that we encountered no errors thus far because if we encountered an error the function would have returned.
                 
-                uint64_t length_of_array_data = 0;
+                int64_t length_of_array_data = 0;
                 
                 // test that the size of data to be received can fit into the static data array
                 if(frame_data_len < static_data_array_length){ // static data array would be sufficient
@@ -2860,7 +2860,7 @@ bool lock_client_pm::basic_read(){
                     length_of_array = static_data_array_length;
                     length_of_array_data = frame_data_len;
 
-                    int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from wolfssl read because wolfssl read could return a negative value which would make frame data len - len calculation be wrong
+                    int64_t len = 0; // we initialise our len variable
 
                     // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                     while(len < frame_data_len){
@@ -2908,7 +2908,7 @@ bool lock_client_pm::basic_read(){
                     
                     // SIGPIPE signal is still blocked
 
-                    int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from wolfssl read because wolfssl read could return a negative value which would make frame data len - len calculation be wrong
+                    int64_t len = 0; // we initialise our len variable
 
                     // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                     while(len < frame_data_len){
@@ -2976,7 +2976,7 @@ bool lock_client_pm::basic_read(){
                         
                             // SIGPIPE signal is still blocked
 
-                            int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from wolfssl read because wolfssl read could return a negative value which would make frame data len - len calculation be wrong
+                            int64_t len = 0; // we initialise our len variable
 
                             // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                             while(len < frame_data_len){
@@ -3046,7 +3046,7 @@ bool lock_client_pm::basic_read(){
                         
                             // SIGPIPE signal is still blocked
 
-                            int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from wolfssl read because wolfssl read could return a negative value which would make frame data len - len calculation be wrong
+                            int64_t len = 0; // we initialise our len variable
 
                             // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                             while(len < frame_data_len){
@@ -3233,18 +3233,16 @@ bool lock_client_pm::basic_read(){
                     data_array = data_array_static;
                     cursor = data_array;
                     length_of_array = static_data_array_length;
-                    
-                    // SIGPIPE signal is still blocked
 
-                    int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from wolfssl read because wolfssl read could return a negative value which would make frame data len - len calculation be wrong
+                    int64_t len = 0; // we initialise our len variable
 
                     // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                     while(len < frame_data_len){
                     
-                        int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
-                            
+                        int extra_bytes_read = fetch_data(reinterpret_cast<unsigned char*>(cursor), frame_data_len - len);
+                        
                         if(extra_bytes_read > 0){
-                        // wolfssl_read fetched extra data
+                        // fetch data fetched extra data
 
                             len += extra_bytes_read;
                             
@@ -3252,40 +3250,21 @@ bool lock_client_pm::basic_read(){
 
                         }
                         else{
-                        // wolfssl read didn't fetch more data
+                        // fetch data didn't fetch more data
 
-                            // we get the error message
-                            int err = wolfSSL_get_error(c_ssl, extra_bytes_read);
-
-                            if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
+                            if(extra_bytes_read == RETRY){
                             // no data available yet
+
+                                // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                                if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
 
                                 continue;
 
-                            }
-                            else{
-                            // an actual errror occurred
-
-                                // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                                unblock_sigpipe_signal();
-
-                                // here wolfssl_read couldn't fetch any extra data
-                                strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                error.store(true, std::memory_order_release);
-
-                                fail_ws_connection(GOING_AWAY);
-
-                                return error.load(std::memory_order_acquire);
-                                
                             }
 
                         }
 
                     }
-
-                    // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                    unblock_sigpipe_signal();
                     
                     // we don't call user's receive function here because the data is still incomplete
                     
@@ -3297,18 +3276,16 @@ bool lock_client_pm::basic_read(){
                     data_array = data_array_new;
                     cursor = data_array;
                     length_of_array = size_of_allocated_data_memory;
-                    
-                    // SIGPIPE signal is still blocked
 
-                    int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from wolfssl read because wolfssl read could return a negative value which would make frame data len - len calculation be wrong
+                    int64_t len = 0; // we initialise our len variable
 
                     // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                     while(len < frame_data_len){
                     
-                        int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
-                            
+                        int extra_bytes_read = fetch_data(reinterpret_cast<unsigned char*>(cursor), frame_data_len - len);
+                        
                         if(extra_bytes_read > 0){
-                        // wolfssl_read fetched extra data
+                        // fetch data fetched extra data
 
                             len += extra_bytes_read;
                             
@@ -3316,47 +3293,28 @@ bool lock_client_pm::basic_read(){
 
                         }
                         else{
-                        // wolfssl read didn't fetch more data
+                        // fetch data didn't fetch more data
 
-                            // we get the error message
-                            int err = wolfSSL_get_error(c_ssl, extra_bytes_read);
-
-                            if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
+                            if(extra_bytes_read == RETRY){
                             // no data available yet
+
+                                // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                                if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
 
                                 continue;
 
-                            }
-                            else{
-                            // an actual errror occurred
-
-                                // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                                unblock_sigpipe_signal();
-
-                                // here wolfssl_read couldn't fetch any extra data
-                                strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                error.store(true, std::memory_order_release);
-
-                                fail_ws_connection(GOING_AWAY);
-
-                                return error.load(std::memory_order_acquire);
-                                
                             }
 
                         }
 
                     }
-
-                    // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                    unblock_sigpipe_signal();
                     
                     // we don't call user's receive function here because the data is still incomplete
                     
                     // we do not zero out the data array because the data isn't yet complete
                     
                 }
-                else{ // neither static nor already allocated memory is sufficient, so we check if memory has been allocated or not 
+                else{ // neither static nor already allocated memory is sufficient, so we check if memory has been allocated or not
                     
                     if(data_array_new == NULL){ // memory has not been allocated
                         
@@ -3368,11 +3326,11 @@ bool lock_client_pm::basic_read(){
                             
                             // no need to memset as no data has been written to the array at this point
                             
-                            strncpy(error_buffer, "Error allocating heap memory for receiving single frame data...frame too large ", error_buffer_array_length);
+                            strcpy(error_buffer, "Error allocating heap memory for receiving single frame data...frame too large ");
                     
                             error.store(true, std::memory_order_release);
 
-                            return error.load(std::memory_order_acquire);
+                            return error.load(std::memory_order_relaxed);
                     
                         }
                         else{
@@ -3381,18 +3339,16 @@ bool lock_client_pm::basic_read(){
                             cursor = data_array;
                             size_of_allocated_data_memory = frame_data_len + 1024;
                             length_of_array = size_of_allocated_data_memory;
-                        
-                            // SIGPIPE signal is still blocked
 
-                            int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from wolfssl read because wolfssl read could return a negative value which would make frame data len - len calculation be wrong
+                            int64_t len = 0; // we initialise our len variable
 
                             // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                             while(len < frame_data_len){
                             
-                                int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
-                                    
+                                int extra_bytes_read = fetch_data(reinterpret_cast<unsigned char*>(cursor), frame_data_len - len);
+                                
                                 if(extra_bytes_read > 0){
-                                // wolfssl_read fetched extra data
+                                // fetch data fetched extra data
 
                                     len += extra_bytes_read;
                                     
@@ -3400,40 +3356,21 @@ bool lock_client_pm::basic_read(){
 
                                 }
                                 else{
-                                // wolfssl read didn't fetch more data
+                                // fetch data didn't fetch more data
 
-                                    // we get the error message
-                                    int err = wolfSSL_get_error(c_ssl, extra_bytes_read);
-
-                                    if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
+                                    if(extra_bytes_read == RETRY){
                                     // no data available yet
+
+                                        // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                                        if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
 
                                         continue;
 
-                                    }
-                                    else{
-                                    // an actual errror occurred
-
-                                        // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                                        unblock_sigpipe_signal();
-
-                                        // here wolfssl_read couldn't fetch any extra data
-                                        strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                        error.store(true, std::memory_order_release);
-
-                                        fail_ws_connection(GOING_AWAY);
-
-                                        return error.load(std::memory_order_acquire);
-                                        
                                     }
 
                                 }
 
                             }
-
-                            // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                            unblock_sigpipe_signal();
                         
                             // we don't call user's receive function here because the data is still incomplete
                     
@@ -3444,7 +3381,7 @@ bool lock_client_pm::basic_read(){
                     }
                     else{ // there is already allocated memory but it is not sufficient
                         
-                        delete [] data_array_new; //delete already allocated memory
+                        delete [] data_array_new; // delete already allocated memory
                         
                         data_array_new = new(std::nothrow) char[frame_data_len + 1024]; // we allocate 1KB more memory than the data frame length just to get some extra spacing and avoid some memory allocation for future data frames
                 
@@ -3454,11 +3391,11 @@ bool lock_client_pm::basic_read(){
                                 
                             // no need to memset as no data has been written to the array at this point
                             
-                            strncpy(error_buffer, "Error allocating heap memory for receiving single frame data after deleting previously allocated memory...frame too large", error_buffer_array_length);
+                            strcpy(error_buffer, "Error allocating heap memory for receiving single frame data after deleting previously allocated memory...frame too large");
                         
                             error.store(true, std::memory_order_release);
 
-                            return error.load(std::memory_order_acquire);
+                            return error.load(std::memory_order_relaxed);
                         
                         }
                         else{
@@ -3467,18 +3404,16 @@ bool lock_client_pm::basic_read(){
                             cursor = data_array;
                             size_of_allocated_data_memory = frame_data_len + 1024;
                             length_of_array = size_of_allocated_data_memory;
-                        
-                            // SIGPIPE signal is still blocked
 
-                            int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from wolfssl read because wolfssl read could return a negative value which would make frame data len - len calculation be wrong
+                            int64_t len = 0; // we initialise our len variable to 0
 
                             // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                             while(len < frame_data_len){
                             
-                                int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
-                                    
+                                int extra_bytes_read = fetch_data(reinterpret_cast<unsigned char*>(cursor), frame_data_len - len);
+                                
                                 if(extra_bytes_read > 0){
-                                // wolfssl_read fetched extra data
+                                // fetch data fetched extra data
 
                                     len += extra_bytes_read;
                                     
@@ -3486,40 +3421,21 @@ bool lock_client_pm::basic_read(){
 
                                 }
                                 else{
-                                // wolfssl read didn't fetch more data
+                                // fetch data didn't fetch more data
 
-                                    // we get the error message
-                                    int err = wolfSSL_get_error(c_ssl, extra_bytes_read);
-
-                                    if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
+                                    if(extra_bytes_read == RETRY){
                                     // no data available yet
+
+                                        // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                                        if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
 
                                         continue;
 
-                                    }
-                                    else{
-                                    // an actual errror occurred
-
-                                        // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                                        unblock_sigpipe_signal();
-
-                                        // here wolfssl_read couldn't fetch any extra data
-                                        strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                        error.store(true, std::memory_order_release);
-
-                                        fail_ws_connection(GOING_AWAY);
-
-                                        return error.load(std::memory_order_acquire);
-                                        
                                     }
 
                                 }
 
                             }
-
-                            // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                            unblock_sigpipe_signal();
                         
                             // we don't call user's receive function here because the data is still incomplete
                     
@@ -3668,21 +3584,19 @@ bool lock_client_pm::basic_read(){
                 
                 // reaching here means that we encountered no errors thus far because if we encountered an error the function would have returned.
                 
-                uint64_t length_of_array_data = cursor - data_array; // this is used to store the length of data that the data array currently holds
+                int64_t length_of_array_data = cursor - data_array; // this is used to store the length of data that the data array currently holds
                 
                 if(frame_data_len < (length_of_array - length_of_array_data) ){ // array in use is large enough for incoming frame
-                    
-                    // SIGPIPE signal is still blocked
 
-                    int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from wolfssl read because wolfssl read could return a negative value which would make frame data len - len calculation be wrong
+                    int64_t len = 0; // we initialise our len variable
 
                     // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                     while(len < frame_data_len){
                     
-                        int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
-                            
+                        int extra_bytes_read = fetch_data(reinterpret_cast<unsigned char*>(cursor), frame_data_len - len);
+                        
                         if(extra_bytes_read > 0){
-                        // wolfssl_read fetched extra data
+                        // fetch data fetched extra data
 
                             len += extra_bytes_read;
                             
@@ -3690,40 +3604,21 @@ bool lock_client_pm::basic_read(){
 
                         }
                         else{
-                        // wolfssl read didn't fetch more data
+                        // fetch data didn't fetch more data
 
-                            // we get the error message
-                            int err = wolfSSL_get_error(c_ssl, extra_bytes_read);
-
-                            if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
+                            if(extra_bytes_read == RETRY){
                             // no data available yet
+
+                                // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                                if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
 
                                 continue;
 
-                            }
-                            else{
-                            // an actual errror occurred
-
-                                // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                                unblock_sigpipe_signal();
-
-                                // here wolfssl_read couldn't fetch any extra data
-                                strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                error.store(true, std::memory_order_release);
-
-                                fail_ws_connection(GOING_AWAY);
-
-                                return error.load(std::memory_order_acquire);
-                                
                             }
 
                         }
 
                     }
-
-                    // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                    unblock_sigpipe_signal();
                     
                     // we don't call user's receive function here because the data is still incomplete
                     
@@ -3742,18 +3637,16 @@ bool lock_client_pm::basic_read(){
                     memset(data_array_static, '\0', length_of_array_data); // zero out the static memory since it is no longer in use
                     
                     cursor += length_of_array_data; // move the cursor forward to point to to the next empty location in the array 
-                    
-                    // SIGPIPE signal is still blocked
 
-                    int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from wolfssl read because wolfssl read could return a negative value which would make frame data len - len calculation be wrong
+                    int64_t len = 0; // we initialise our len variable
 
                     // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                     while(len < frame_data_len){
                     
-                        int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
-                            
+                        int extra_bytes_read = fetch_data(reinterpret_cast<unsigned char*>(cursor), frame_data_len - len);
+                        
                         if(extra_bytes_read > 0){
-                        // wolfssl_read fetched extra data
+                        // fetch data fetched extra data
 
                             len += extra_bytes_read;
                             
@@ -3761,40 +3654,21 @@ bool lock_client_pm::basic_read(){
 
                         }
                         else{
-                        // wolfssl read didn't fetch more data
+                        // fetch data didn't fetch more data
 
-                            // we get the error message
-                            int err = wolfSSL_get_error(c_ssl, extra_bytes_read);
-
-                            if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
+                            if(extra_bytes_read == RETRY){
                             // no data available yet
+
+                                // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                                if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
 
                                 continue;
 
-                            }
-                            else{
-                            // an actual errror occurred
-
-                                // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                                unblock_sigpipe_signal();
-
-                                // here wolfssl_read couldn't fetch any extra data
-                                strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                error.store(true, std::memory_order_release);
-
-                                fail_ws_connection(GOING_AWAY);
-
-                                return error.load(std::memory_order_acquire);
-                                
                             }
 
                         }
 
                     }
-
-                    // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                    unblock_sigpipe_signal();
                     
                     // we don't call user's receive function here because the data is still incomplete
                     
@@ -3815,11 +3689,11 @@ bool lock_client_pm::basic_read(){
                             
                             close(FRAME_TOO_LARGE); // we close the websocket connection with a frame too large error
                             
-                            strncpy(error_buffer, "Error allocating heap memory for receiving non fin continuation frame data...frame too large ", error_buffer_array_length);
+                            strcpy(error_buffer, "Error allocating heap memory for receiving non fin continuation frame data...frame too large ");
                     
                             error.store(true, std::memory_order_release);
 
-                            return error.load(std::memory_order_acquire);
+                            return error.load(std::memory_order_relaxed);
                     
                         }
                         else{
@@ -3834,18 +3708,16 @@ bool lock_client_pm::basic_read(){
                             memset(data_array_static, '\0', length_of_array_data); // zero out the static memory since it is no longer in use
                             
                             cursor += length_of_array_data; // move the cursor forward to point to to the next empty location in the array 
-                            
-                            // SIGPIPE signal is still blocked
 
-                            int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from wolfssl read because wolfssl read could return a negative value which would make frame data len - len calculation be wrong
+                            int64_t len = 0; // we initialise our len variable
 
                             // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                             while(len < frame_data_len){
                             
-                                int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
-                                    
+                                int extra_bytes_read = fetch_data(reinterpret_cast<unsigned char*>(cursor), frame_data_len - len);
+                                
                                 if(extra_bytes_read > 0){
-                                // wolfssl_read fetched extra data
+                                // fetch data fetched extra data
 
                                     len += extra_bytes_read;
                                     
@@ -3853,40 +3725,21 @@ bool lock_client_pm::basic_read(){
 
                                 }
                                 else{
-                                // wolfssl read didn't fetch more data
+                                // fetch data didn't fetch more data
 
-                                    // we get the error message
-                                    int err = wolfSSL_get_error(c_ssl, extra_bytes_read);
-
-                                    if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
+                                    if(extra_bytes_read == RETRY){
                                     // no data available yet
+
+                                        // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                                        if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
 
                                         continue;
 
-                                    }
-                                    else{
-                                    // an actual errror occurred
-
-                                        // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                                        unblock_sigpipe_signal();
-
-                                        // here wolfssl_read couldn't fetch any extra data
-                                        strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                        error.store(true, std::memory_order_release);
-
-                                        fail_ws_connection(GOING_AWAY);
-
-                                        return error.load(std::memory_order_acquire);
-                                        
                                     }
 
                                 }
 
                             }
-
-                            // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                            unblock_sigpipe_signal();
                             
                             // we don't call user's receive function here because the data is still incomplete
                             
@@ -3909,11 +3762,11 @@ bool lock_client_pm::basic_read(){
                                 
                             close(FRAME_TOO_LARGE); // we close the websocket connection with a frame too large error
                                 
-                            strncpy(error_buffer, "Error allocating heap memory for receiving non fin continuation frame data...frame too large ", error_buffer_array_length);
+                            strcpy(error_buffer, "Error allocating heap memory for receiving non fin continuation frame data...frame too large ");
                         
                             error.store(true, std::memory_order_release);
 
-                            return error.load(std::memory_order_acquire);
+                            return error.load(std::memory_order_relaxed);
                         
                         }
                         else{
@@ -3928,18 +3781,16 @@ bool lock_client_pm::basic_read(){
                             memset(data_array_static, '\0', length_of_array_data); // zero out the static memory since it is no longer in use
                             
                             cursor += length_of_array_data; // move the cursor forward to point to to the next empty location in the array 
-                            
-                            // SIGPIPE signal is still blocked
 
-                            int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from wolfssl read because wolfssl read could return a negative value which would make frame data len - len calculation be wrong
+                            int64_t len = 0; // we initialise our len variable
 
                             // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                             while(len < frame_data_len){
                             
-                                int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len));
-                                    
+                                int extra_bytes_read = fetch_data(reinterpret_cast<unsigned char*>(cursor), frame_data_len - len);
+                                
                                 if(extra_bytes_read > 0){
-                                // wolfssl_read fetched extra data
+                                // fetch data fetched extra data
 
                                     len += extra_bytes_read;
                                     
@@ -3947,40 +3798,21 @@ bool lock_client_pm::basic_read(){
 
                                 }
                                 else{
-                                // wolfssl read didn't fetch more data
+                                // fetch data didn't fetch more data
 
-                                    // we get the error message
-                                    int err = wolfSSL_get_error(c_ssl, extra_bytes_read);
-
-                                    if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
+                                    if(extra_bytes_read == RETRY){
                                     // no data available yet
+
+                                        // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                                        if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
 
                                         continue;
 
-                                    }
-                                    else{
-                                    // an actual errror occurred
-
-                                        // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                                        unblock_sigpipe_signal();
-
-                                        // here wolfssl_read couldn't fetch any extra data
-                                        strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                        error.store(true, std::memory_order_release);
-
-                                        fail_ws_connection(GOING_AWAY);
-
-                                        return error.load(std::memory_order_acquire);
-                                        
                                     }
 
                                 }
 
                             }
-
-                            // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                            unblock_sigpipe_signal();
                             
                             // we don't call user's receive function here because the data is still incomplete
                             
@@ -4003,11 +3835,11 @@ bool lock_client_pm::basic_read(){
                             
                         close(FRAME_TOO_LARGE); // we close the websocket connection with a frame too large error
                             
-                        strncpy(error_buffer, "Error allocating heap memory for receiving non fin continuation frame data...frame too large ", error_buffer_array_length);
+                        strcpy(error_buffer, "Error allocating heap memory for receiving non fin continuation frame data...frame too large ");
                     
                         error.store(true, std::memory_order_release);
 
-                        return error.load(std::memory_order_acquire);
+                        return error.load(std::memory_order_relaxed);
                     
                     }
                     else{
@@ -4023,18 +3855,16 @@ bool lock_client_pm::basic_read(){
                         length_of_array = size_of_allocated_data_memory;
                         
                         cursor += length_of_array_data; // move the cursor forward to point to to the next empty location in the array 
-                        
-                        // SIGPIPE signal is still blocked
 
-                        int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from wolfssl read because wolfssl read could return a negative value which would make frame data len - len calculation be wrong
+                        int64_t len = 0; // we initialise our len variable
 
                         // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                         while(len < frame_data_len){
                         
-                            int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
-                                
+                            int extra_bytes_read = fetch_data(reinterpret_cast<unsigned char*>(cursor), frame_data_len - len);
+                            
                             if(extra_bytes_read > 0){
-                            // wolfssl_read fetched extra data
+                            // fetch data fetched extra data
 
                                 len += extra_bytes_read;
                                 
@@ -4042,40 +3872,21 @@ bool lock_client_pm::basic_read(){
 
                             }
                             else{
-                            // wolfssl read didn't fetch more data
+                            // fetch data didn't fetch more data
 
-                                // we get the error message
-                                int err = wolfSSL_get_error(c_ssl, extra_bytes_read);
-
-                                if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
+                                if(extra_bytes_read == RETRY){
                                 // no data available yet
+
+                                    // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                                    if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
 
                                     continue;
 
-                                }
-                                else{
-                                // an actual errror occurred
-
-                                    // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                                    unblock_sigpipe_signal();
-
-                                    // here wolfssl_read couldn't fetch any extra data
-                                    strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                    error.store(true, std::memory_order_release);
-
-                                    fail_ws_connection(GOING_AWAY);
-
-                                    return error.load(std::memory_order_acquire);
-                                    
                                 }
 
                             }
 
                         }
-
-                        // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                        unblock_sigpipe_signal();
                         
                         // we don't call user's receive function here because the data is still incomplete
                         
@@ -4222,21 +4033,21 @@ bool lock_client_pm::basic_read(){
                 
                 // reaching here means that we encountered no errors thus far because if we encountered an error the function would have returned.
                 
-                uint64_t length_of_array_data = cursor - data_array; // this is used to store the length of data that the data array currently holds
+                int64_t length_of_array_data = cursor - data_array; // this is used to store the length of data that the data array currently holds
                 
                 if(frame_data_len < (length_of_array - length_of_array_data) ){ // array in use is large enough for incoming frame
                     
                     // SIGPIPE signal is still blocked
 
-                    int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from wolfssl read because wolfssl read could return a negative value which would make frame data len - len calculation be wrong
+                    int64_t len = 0; // we initialise our len variable
 
                     // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                     while(len < frame_data_len){
                     
-                        int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
-                            
+                        int extra_bytes_read = fetch_data(reinterpret_cast<unsigned char*>(cursor), frame_data_len - len);
+                        
                         if(extra_bytes_read > 0){
-                        // wolfssl_read fetched extra data
+                        // fetch data fetched extra data
 
                             len += extra_bytes_read;
                             
@@ -4244,40 +4055,21 @@ bool lock_client_pm::basic_read(){
 
                         }
                         else{
-                        // wolfssl read didn't fetch more data
+                        // fetch data didn't fetch more data
 
-                            // we get the error message
-                            int err = wolfSSL_get_error(c_ssl, extra_bytes_read);
-
-                            if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
+                            if(extra_bytes_read == RETRY){
                             // no data available yet
+
+                                // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                                if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
 
                                 continue;
 
-                            }
-                            else{
-                            // an actual errror occurred
-
-                                // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                                unblock_sigpipe_signal();
-
-                                // here wolfssl_read couldn't fetch any extra data
-                                strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                error.store(true, std::memory_order_release);
-
-                                fail_ws_connection(GOING_AWAY);
-
-                                return error.load(std::memory_order_acquire);
-                                
                             }
 
                         }
 
                     }
-
-                    // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                    unblock_sigpipe_signal();
                     
                     // getting here would mean we did not encounter any error in receiving the frame data because if we did the websocket connection would have been failed
 
@@ -4301,19 +4093,17 @@ bool lock_client_pm::basic_read(){
                     
                     memset(data_array_static, '\0', length_of_array_data); // zero out the static memory since it is no longer in use
                     
-                    cursor += length_of_array_data; // move the cursor forward to point to to the next empty location in the array 
-                    
-                    // SIGPIPE signal is still blocked
+                    cursor += length_of_array_data; // move the cursor forward to point to to the next empty location in the array
 
-                    int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from wolfssl read because wolfssl read could return a negative value which would make frame data len - len calculation be wrong
+                    int64_t len = 0; // we initialise our len variable
 
                     // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                     while(len < frame_data_len){
                     
-                        int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
-                            
+                        int extra_bytes_read = fetch_data(reinterpret_cast<unsigned char*>(cursor), frame_data_len - len);
+                        
                         if(extra_bytes_read > 0){
-                        // wolfssl_read fetched extra data
+                        // fetch data fetched extra data
 
                             len += extra_bytes_read;
                             
@@ -4321,40 +4111,21 @@ bool lock_client_pm::basic_read(){
 
                         }
                         else{
-                        // wolfssl read didn't fetch more data
+                        // fetch data didn't fetch more data
 
-                            // we get the error message
-                            int err = wolfSSL_get_error(c_ssl, extra_bytes_read);
-
-                            if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
+                            if(extra_bytes_read == RETRY){
                             // no data available yet
+
+                                // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                                if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
 
                                 continue;
 
-                            }
-                            else{
-                            // an actual errror occurred
-
-                                // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                                unblock_sigpipe_signal();
-
-                                // here wolfssl_read couldn't fetch any extra data
-                                strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                error.store(true, std::memory_order_release);
-
-                                fail_ws_connection(GOING_AWAY);
-
-                                return error.load(std::memory_order_acquire);
-                                
                             }
 
                         }
 
                     }
-
-                    // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                    unblock_sigpipe_signal();
                     
                     // getting here would mean we did not encounter any error in receiving the frame data because if we did the websocket connection would have been failed
                     
@@ -4382,11 +4153,11 @@ bool lock_client_pm::basic_read(){
                             
                             close(FRAME_TOO_LARGE);
                             
-                            strncpy(error_buffer, "Error allocating heap memory for receiving non fin continuation frame data...frame too large ", error_buffer_array_length);
+                            strcpy(error_buffer, "Error allocating heap memory for receiving non fin continuation frame data...frame too large ");
                     
                             error.store(true, std::memory_order_release);
 
-                            return error.load(std::memory_order_acquire);
+                            return error.load(std::memory_order_relaxed);
                     
                         }
                         else{
@@ -4404,15 +4175,15 @@ bool lock_client_pm::basic_read(){
                             
                             // SIGPIPE signal is still blocked
 
-                            int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from wolfssl read because wolfssl read could return a negative value which would make frame data len - len calculation be wrong
+                            int64_t len = 0; // we initialise our len variable
 
                             // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                             while(len < frame_data_len){
                             
-                                int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
-                                    
+                                int extra_bytes_read = fetch_data(reinterpret_cast<unsigned char*>(cursor), frame_data_len - len);
+                                
                                 if(extra_bytes_read > 0){
-                                // wolfssl_read fetched extra data
+                                // fetch data fetched extra data
 
                                     len += extra_bytes_read;
                                     
@@ -4420,40 +4191,21 @@ bool lock_client_pm::basic_read(){
 
                                 }
                                 else{
-                                // wolfssl read didn't fetch more data
+                                // fetch data didn't fetch more data
 
-                                    // we get the error message
-                                    int err = wolfSSL_get_error(c_ssl, extra_bytes_read);
-
-                                    if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
+                                    if(extra_bytes_read == RETRY){
                                     // no data available yet
+
+                                        // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                                        if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
 
                                         continue;
 
-                                    }
-                                    else{
-                                    // an actual errror occurred
-
-                                        // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                                        unblock_sigpipe_signal();
-
-                                        // here wolfssl_read couldn't fetch any extra data
-                                        strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                        error.store(true, std::memory_order_release);
-
-                                        fail_ws_connection(GOING_AWAY);
-
-                                        return error.load(std::memory_order_acquire);
-                                        
                                     }
 
                                 }
 
                             }
-
-                            // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                            unblock_sigpipe_signal();
                             
                             // getting here would mean we did not encounter any error in receiving the frame data because if we did the websocket connection would have been failed
                             
@@ -4483,11 +4235,11 @@ bool lock_client_pm::basic_read(){
                                 
                             close(FRAME_TOO_LARGE);
                                 
-                            strncpy(error_buffer, "Error allocating heap memory for receiving non fin continuation frame data...total frame too large ", error_buffer_array_length);
+                            strcpy(error_buffer, "Error allocating heap memory for receiving non fin continuation frame data...total frame too large ");
                         
                             error.store(true, std::memory_order_release);
 
-                            return error.load(std::memory_order_acquire);
+                            return error.load(std::memory_order_relaxed);
                         
                         }
                         else{
@@ -4501,19 +4253,17 @@ bool lock_client_pm::basic_read(){
                             
                             memset(data_array_static, '\0', length_of_array_data); // zero out the static memory since it is no longer in use
                             
-                            cursor += length_of_array_data; // move the cursor forward to point to to the next empty location in the array 
-                            
-                            // SIGPIPE signal is still blocked
+                            cursor += length_of_array_data; // move the cursor forward to point to to the next empty location in the array
 
-                            int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from wolfssl read because wolfssl read could return a negative value which would make frame data len - len calculation be wrong
+                            int64_t len = 0; // we initialise our len variable
 
                             // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                             while(len < frame_data_len){
                             
-                                int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
-                                    
+                                int extra_bytes_read = fetch_data(reinterpret_cast<unsigned char*>(cursor), frame_data_len - len);
+                                
                                 if(extra_bytes_read > 0){
-                                // wolfssl_read fetched extra data
+                                // fetch data fetched extra data
 
                                     len += extra_bytes_read;
                                     
@@ -4521,40 +4271,22 @@ bool lock_client_pm::basic_read(){
 
                                 }
                                 else{
-                                // wolfssl read didn't fetch more data
+                                // fetch data didn't fetch more data
 
-                                    // we get the error message
-                                    int err = wolfSSL_get_error(c_ssl, extra_bytes_read);
-
-                                    if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
+                                    if(extra_bytes_read == RETRY){
                                     // no data available yet
+
+                                        // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                                        if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
 
                                         continue;
 
-                                    }
-                                    else{
-                                    // an actual errror occurred
-
-                                        // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                                        unblock_sigpipe_signal();
-
-                                        // here wolfssl_read couldn't fetch any extra data
-                                        strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                        error.store(true, std::memory_order_release);
-
-                                        fail_ws_connection(GOING_AWAY);
-
-                                        return error.load(std::memory_order_acquire);
-                                        
                                     }
 
                                 }
 
                             }
 
-                            // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                            unblock_sigpipe_signal();
                             // getting here would mean we did not encounter any error in receiving the frame data because if we did the websocket connection would have been failed
                             
                             // update the array data length
@@ -4583,11 +4315,11 @@ bool lock_client_pm::basic_read(){
                             
                         close(FRAME_TOO_LARGE);
                             
-                        strncpy(error_buffer, "Error allocating heap memory for receiving non fin continuation frame data...total frame too large ", error_buffer_array_length);
+                        strcpy(error_buffer, "Error allocating heap memory for receiving non fin continuation frame data...total frame too large ");
                     
                         error.store(true, std::memory_order_release);
 
-                        return error.load(std::memory_order_acquire);
+                        return error.load(std::memory_order_relaxed);
                     
                     }
                     else{
@@ -4606,15 +4338,15 @@ bool lock_client_pm::basic_read(){
                         
                         // SIGPIPE signal is still blocked
 
-                        int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from wolfssl read because wolfssl read could return a negative value which would make frame data len - len calculation be wrong
+                        int64_t len = 0; // we initialise our len variable
 
                         // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                         while(len < frame_data_len){
                         
-                            int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
-                                
+                            int extra_bytes_read = fetch_data(reinterpret_cast<unsigned char*>(cursor), frame_data_len - len);
+                            
                             if(extra_bytes_read > 0){
-                            // wolfssl_read fetched extra data
+                            // fetch data fetched extra data
 
                                 len += extra_bytes_read;
                                 
@@ -4622,40 +4354,21 @@ bool lock_client_pm::basic_read(){
 
                             }
                             else{
-                            // wolfssl read didn't fetch more data
+                            // fetch data didn't fetch more data
 
-                                // we get the error message
-                                int err = wolfSSL_get_error(c_ssl, extra_bytes_read);
-
-                                if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
+                                if(extra_bytes_read == RETRY){
                                 // no data available yet
+
+                                    // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                                    if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
 
                                     continue;
 
-                                }
-                                else{
-                                // an actual errror occurred
-
-                                    // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                                    unblock_sigpipe_signal();
-
-                                    // here wolfssl_read couldn't fetch any extra data
-                                    strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                    error.store(true, std::memory_order_release);
-
-                                    fail_ws_connection(GOING_AWAY);
-
-                                    return error.load(std::memory_order_acquire);
-                                    
                                 }
 
                             }
 
                         }
-
-                        // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                        unblock_sigpipe_signal();
                         
                         // getting here would mean we did not encounter any error in receiving the frame data because if we did the websocket connection would have been failed
                         
@@ -4697,7 +4410,7 @@ bool lock_client_pm::basic_read(){
                     
                     frame_data_len = rand_bytes[1];
                     
-                    int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from wolfssl read because wolfssl read could return a negative value which would make frame data len - len calculation be wrong
+                    int64_t len = 0; // we initialise our len variable
 
                     // point the upgrade request pointer to the upgrade request static array
                     upgrade_request = upgrade_request_static;
@@ -4707,10 +4420,10 @@ bool lock_client_pm::basic_read(){
                     // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                     while(len < frame_data_len){
                     
-                        int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
-                            
+                        int extra_bytes_read = fetch_data(reinterpret_cast<unsigned char*>(cursor), frame_data_len - len);
+                        
                         if(extra_bytes_read > 0){
-                        // wolfssl_read fetched extra data
+                        // fetch data fetched extra data
 
                             len += extra_bytes_read;
                             
@@ -4718,32 +4431,16 @@ bool lock_client_pm::basic_read(){
 
                         }
                         else{
-                        // wolfssl read didn't fetch more data
+                        // fetch data didn't fetch more data
 
-                            // we get the error message
-                            int err = wolfSSL_get_error(c_ssl, extra_bytes_read);
-
-                            if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
+                            if(extra_bytes_read == RETRY){
                             // no data available yet
+
+                                // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                                if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
 
                                 continue;
 
-                            }
-                            else{
-                            // an actual errror occurred
-
-                                // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                                unblock_sigpipe_signal();
-
-                                // here wolfssl_read couldn't fetch any extra data
-                                strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                error.store(true, std::memory_order_release);
-
-                                fail_ws_connection(GOING_AWAY);
-
-                                return error.load(std::memory_order_acquire);
-                                
                             }
 
                         }
@@ -4787,15 +4484,15 @@ bool lock_client_pm::basic_read(){
                 
                 int i = 0; // variable for traversing the send array and building up the close data frame response
 
-                int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from wolfssl read because wolfssl read could return a negative value which would make frame data len - len calculation be wrong
+                int64_t len = 0; // we initialise our len variable
 
                 // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                 while(len < frame_data_len){
                 
-                    int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
-                        
+                    int extra_bytes_read = fetch_data(reinterpret_cast<unsigned char*>(cursor), frame_data_len - len);
+                    
                     if(extra_bytes_read > 0){
-                    // wolfssl_read fetched extra data
+                    // fetch data fetched extra data
 
                         len += extra_bytes_read;
                         
@@ -4803,39 +4500,21 @@ bool lock_client_pm::basic_read(){
 
                     }
                     else{
-                    // wolfssl read didn't fetch more data
+                    // fetch data didn't fetch more data
 
-                        // we get the error message
-                        int err = wolfSSL_get_error(c_ssl, extra_bytes_read);
-
-                        if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
+                        if(extra_bytes_read == RETRY){
                         // no data available yet
+
+                            // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                            if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
 
                             continue;
 
-                        }
-                        else{
-                        // an actual errror occurred
-
-                            // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                            unblock_sigpipe_signal();
-
-                            // here wolfssl_read couldn't fetch any extra data
-                            strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                            error.store(true, std::memory_order_release);
-
-                            fail_ws_connection(GOING_AWAY);
-
-                            return error.load(std::memory_order_acquire);
-                            
                         }
 
                     }
 
                 }
-
-                // we leave the sigpipe signal blocked because we still need to send a close frame response
             
                 // build up the close frame response message
             
@@ -4947,10 +4626,10 @@ bool lock_client_pm::basic_read(){
                 // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                 while(len < frame_data_len){
                 
-                    int64_t extra_bytes_read = wolfSSL_read(c_ssl, cursor, (frame_data_len - len) );
-                        
+                    int extra_bytes_read = fetch_data(reinterpret_cast<unsigned char*>(cursor), frame_data_len - len);
+                    
                     if(extra_bytes_read > 0){
-                    // wolfssl_read fetched extra data
+                    // fetch data fetched extra data
 
                         len += extra_bytes_read;
                         
@@ -4958,32 +4637,16 @@ bool lock_client_pm::basic_read(){
 
                     }
                     else{
-                    // wolfssl read didn't fetch more data
+                    // fetch data didn't fetch more data
 
-                        // we get the error message
-                        int err = wolfSSL_get_error(c_ssl, extra_bytes_read);
-
-                        if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
+                        if(extra_bytes_read == RETRY){
                         // no data available yet
+
+                            // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                            if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
 
                             continue;
 
-                        }
-                        else{
-                        // an actual errror occurred
-
-                            // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                            unblock_sigpipe_signal();
-
-                            // here wolfssl_read couldn't fetch any extra data
-                            strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                            error.store(true, std::memory_order_release);
-
-                            fail_ws_connection(GOING_AWAY);
-
-                            return error.load(std::memory_order_acquire);
-                            
                         }
 
                     }
@@ -5016,7 +4679,7 @@ bool lock_client_pm::basic_read(){
     }
     else{
 
-        strncpy(error_buffer, "Lock Client not connected yet", error_buffer_array_length);
+        strcpy(error_buffer, "Lock Client not connected yet");
             
         error.store(true, std::memory_order_release);
         
