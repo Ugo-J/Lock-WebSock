@@ -1514,6 +1514,8 @@ lock_client_pm::lock_client_pm(int core){
                 // getting here our allocation of our read buffer was unsuccessful so we set our error flag to true
                 strcpy(error_buffer, "Error Allocating Poll Read Buffer.");
 
+                std::cout<<error_buffer<<std::endl;
+
                 error.store(true, std::memory_order_release);
 
             }
@@ -2521,6 +2523,8 @@ bool lock_client_pm::poll_read(int core){
         // we set our poll init flag to true
         poll_init.store(true, std::memory_order_release);
 
+        std::cout<<"Poll Thread Priority Increase Failed: "<<error_buffer<<std::endl;
+
         return error.load(std::memory_order_acquire);
 
     }
@@ -2538,7 +2542,7 @@ bool lock_client_pm::poll_read(int core){
     while(!stop_poll.load(std::memory_order_acquire)){
 
         // we check that the client has no error
-        if(error.load(std::memory_order_acquire)){
+        if(!error.load(std::memory_order_acquire)){
 
             // we check that the client has an open websocket connection
             if(client_state.load(std::memory_order_acquire) == OPEN){
