@@ -2553,9 +2553,9 @@ int lock_client_pm::fetch_data(char* dest, int sz){
     // first we check if the supplied sz is <=0 in which case we simply return 0
     if(sz <= 0) return 0;
 
-    // we fetch our local last read and last write
+    // we fetch our local last read and last write - we use memory order relaxed to acquire our last read variable because it is updated by only the main thread that calls this fetch data function
     int loc_last_read = last_read.load(std::memory_order_acquire);
-    int loc_last_write = last_write.load(std::memory_order_acquire);
+    int loc_last_write = last_write.load(std::memory_order_relaxed);
 
     // we compute our available data
     int available_data = loc_last_write - loc_last_read;
@@ -2564,10 +2564,34 @@ int lock_client_pm::fetch_data(char* dest, int sz){
     if(available_data <= 0) return RETRY;
 
     // getting here there is available data so we compute the size to copy
-    int data_sz = 0;
+    int data_sz_to_copy = available_data < sz ? available_data : sz;
 
+    // now we fetch the start index our read would start from
+    int start_index = loc_last_read & (READ_BUFFER_SIZE - 1);
 
-    return data_sz;
+    // now because we use bit masks to get our effective index and we need to know explicitly when to wrap around we check how much contiguous data there is to the end of the read buffer because we can only fetch ontiguous memory data with each memcpy call
+    int contiguous_data_sz = READ_BUFFER_SIZE - start_index;
+
+    // we check if our contiguous data sz is < our data sz to copy in which case we can fetch the available data in one memcpy call else we have to fetch our data sz to copy in two memcpy call
+    if(data_sz_to_copy <= contiguous_data_sz){
+
+        memcpy(dest, read_buffer + start_index, data_sz_to_copy);
+
+    }
+    else{
+
+        // getting here the available data is not contiguous so we fetch it in two memcpy calls
+        memcpy(dest, read_buffer + start_index, contiguous_data_sz);
+
+        // this second memcpy wraps around and copies from the start of the read buffer
+        memcpy(dest + contiguous_data_sz, read_buffer, data_sz_to_copy - contiguous_data_sz);
+
+    }
+
+    // we update our last read atomic variable
+    last_read.store(loc_last_read + data_sz_to_copy, std::memory_order_release);
+
+    return data_sz_to_copy;
 
 }
 
