@@ -2541,8 +2541,6 @@ bool lock_client_pm::poll_read(int core){
         // we set our poll init flag to true
         poll_init.store(true, std::memory_order_release);
 
-        std::cout<<"Poll Thread Priority Increase Failed: "<<error_buffer<<std::endl;
-
         return error.load(std::memory_order_acquire);
 
     }
