@@ -2536,7 +2536,57 @@ bool lock_client_pm::poll_read(int core){
             // we check that the client has an open websocket connection
             if(client_state.load(std::memory_order_acquire) == OPEN){
 
+                // we fetch our last read and last write index - we use memory order relaxed for fetching the last write variable because it is only the poll thread that updates it
+                int loc_last_read = last_read.load(std::memory_order_acquire);
+                int loc_last_write = last_write.load(std::memory_order_relaxed);
 
+                // we fetch how much free space we have in our read buffer - free space here means how much empty spaces or spaces with data already consumed do we have
+                int free_space = READ_BUFFER_SIZE - (loc_last_write - loc_last_read);
+
+                // we simply continue if we have no free space in our read buffer
+                if(free_space == 0) continue;
+
+                // we fetch our write start index
+                int start_index = loc_last_write & (READ_BUFFER_SIZE - 1);
+
+                // now we compute how much contiguous memory we have because wolfssl read ca only be called to populate contiguous memory
+                int contiguous_space = READ_BUFFER_SIZE - start_index;
+
+                // now we compute our data size to read. our data size to read is the minimum of 3 values - our free space, our contiguous space and our read chunk size
+                int data_sz_to_read = std::min({free_space, contiguous_space, READ_CHUNK_SIZE});
+
+                // block SIGPIPE signal before attempting to read data, just incase the connection is closed
+                block_sigpipe_signal_pm();
+
+                // we read our data using our wolfssl read
+                int data_size_read = wolfSSL_read(c_ssl, read_buffer + start_index, data_sz_to_read);
+
+                // we unblock the sigpipe signal because fail_ws_connection internally blocks it
+                unblock_sigpipe_signal_pm();
+
+                // we increment our write index if we successfully fetched more data
+                if(data_size_read > 0){
+
+                    last_write.store(loc_last_write + data_size_read, std::memory_order_release);
+
+                }
+                else{
+
+                    // we fetch the wolfssl error
+                    int err = wolfSSL_get_error(c_ssl, data_size_read);
+
+                    if(err != WOLFSSL_ERROR_WANT_READ){
+
+                        // we copy our error message to our error buffer
+                        strcpy(error_buffer, "Can't Fetch data from remote host: Check network connection");
+
+                        error.store(true, std::memory_order_release);
+                        
+                        // we don't break out from this loop we let it continue, the error flag set would prevent the poll thread from reading any more data till the main thread reconnects and clears the error flag
+
+                    }
+
+                }
 
             }
 
@@ -6730,6 +6780,26 @@ void lock_client_pm::unblock_sigpipe_signal(){
     
     // restore the previous signal mask of the calling thread
     pthread_sigmask(SIG_SETMASK, &oldset, NULL);
+    
+    
+}
+
+void lock_client_pm::block_sigpipe_signal_pm(){
+
+    sigemptyset(&newset_pm);
+    sigemptyset(&oldset_pm);
+    sigaddset(&newset_pm, SIGPIPE);
+    pthread_sigmask(SIG_BLOCK, &newset_pm, &oldset_pm);
+    
+}
+
+void lock_client_pm::unblock_sigpipe_signal_pm(){
+
+    // clear out any SIGPIPE signal that came in while we blocked it
+    while(sigtimedwait(&newset_pm, &si_pm, &ts_pm) >= 0 || errno != EAGAIN);
+    
+    // restore the previous signal mask of the calling thread
+    pthread_sigmask(SIG_SETMASK, &oldset_pm, NULL);
     
     
 }

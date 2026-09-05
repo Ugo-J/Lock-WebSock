@@ -51,6 +51,10 @@ private:
     int connect_to_server(const char *hostname, const char *port, in_addr* interface_address, const char *interface_name); // function to connect to server when we manually configure the socket
     int reset(); // function to reset a wolfssl session and disconnect the underlying connection
 
+    // poll thread block sigpipe signal functions
+    inline void block_sigpipe_signal_pm(); // function to block sigpipe signals before any write or read
+    void unblock_sigpipe_signal_pm(); // function to unblock sigpipe signals after any write or read
+
 // private signal handling variables
 private: 
     
@@ -58,6 +62,13 @@ private:
     sigset_t newset; // sigset variable for holding the signal mask of the signal(s) we wish to block
     siginfo_t si; // siginfo variable for storing the info of blocked signals
     timespec ts = {0}; // structure that stores the time wait for the sigtimedwait function to return, it is initialised to 0 meaning that we don't wait
+
+    // poll thread signal variables
+
+    sigset_t oldset_pm; // sigset variable for holding the old signal mask
+    sigset_t newset_pm; // sigset variable for holding the signal mask of the signal(s) we wish to block
+    siginfo_t si_pm; // siginfo variable for storing the info of blocked signals
+    timespec ts_pm = {0}; // structure that stores the time wait for the sigtimedwait function to return, it is initialised to 0 meaning that we don't wait
     
 // class wide variables    
 private:    
