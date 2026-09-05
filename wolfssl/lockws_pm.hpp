@@ -8,7 +8,7 @@
 #pragma GCC diagnostic ignored "-Wshift-count-overflow"
 
 // constructor with url string
-lock_client_pm::lock_client_pm(std::string_view url, int core){
+lock_client_pm::lock_client_pm(std::string_view url, int core, int read_chunk, int read_buffer_size){
 
     // initialisation of class wide variables
     if(!wolfssl_init){
@@ -73,6 +73,12 @@ lock_client_pm::lock_client_pm(std::string_view url, int core){
                 mask[j] = (unsigned char)(rand() % upper_bound);
 
             }
+
+            // we only update our read buffer size if the supplied size is > our default buffer size and is a power of 2 else we leave the default read buffer size
+            if(read_buffer_size > READ_BUFFER_SIZE && ((read_buffer_size & (read_buffer_size - 1)) == 0)) READ_BUFFER_SIZE = read_buffer_size;
+
+            // we only update our read chunk if it is > our default read chunk
+            if(read_chunk > READ_CHUNK_SIZE) READ_CHUNK_SIZE = read_chunk;
 
             // we allocate our read buffer
             read_buffer = new(std::nothrow) unsigned char[READ_BUFFER_SIZE];
@@ -781,7 +787,7 @@ lock_client_pm::lock_client_pm(std::string_view url, int core){
 }
 
 // constructor that binds to a network interface
-lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address, char* interface_name, int core){
+lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address, char* interface_name, int core, int read_chunk, int read_buffer_size){
 
     // initialisation of class wide variables
     if(!wolfssl_init){
@@ -846,6 +852,12 @@ lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address,
                 mask[j] = (unsigned char)(rand() % upper_bound);
 
             }
+
+            // we only update our read buffer size if the supplied size is > our default buffer size and is a power of 2 else we leave the default read buffer size
+            if(read_buffer_size > READ_BUFFER_SIZE && ((read_buffer_size & (read_buffer_size - 1)) == 0)) READ_BUFFER_SIZE = read_buffer_size;
+
+            // we only update our read chunk if it is > our default read chunk
+            if(read_chunk > READ_CHUNK_SIZE) READ_CHUNK_SIZE = read_chunk;
 
             // we allocate our read buffer
             read_buffer = new(std::nothrow) unsigned char[READ_BUFFER_SIZE];
@@ -1430,7 +1442,7 @@ lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address,
 }
 
 // basic constructor
-lock_client_pm::lock_client_pm(int core){
+lock_client_pm::lock_client_pm(int core, int read_chunk, int read_buffer_size){
     
     // initialisation of class wide variables
     if(!wolfssl_init){
@@ -1495,6 +1507,12 @@ lock_client_pm::lock_client_pm(int core){
                 mask[j] = (unsigned char)(rand() % upper_bound);
 
             }
+
+            // we only update our read buffer size if the supplied size is > our default buffer size and is a power of 2 else we leave the default read buffer size
+            if(read_buffer_size > READ_BUFFER_SIZE && ((read_buffer_size & (read_buffer_size - 1)) == 0)) READ_BUFFER_SIZE = read_buffer_size;
+
+            // we only update our read chunk if it is > our default read chunk
+            if(read_chunk > READ_CHUNK_SIZE) READ_CHUNK_SIZE = read_chunk;
 
             // we allocate our read buffer
             read_buffer = new(std::nothrow) unsigned char[READ_BUFFER_SIZE];
@@ -2658,9 +2676,9 @@ int lock_client_pm::fetch_data(unsigned char* dest, int sz){
 
 bool lock_client_pm::basic_read(){
 
-    if(client_state.load(std::memory_order_acquire) == OPEN){ // only continue if client is in open state
+    if(!error.load(std::memory_order_acquire) || data_available()){ // only continue if no error or data available
         
-        if(!error.load(std::memory_order_acquire) || data_available()){ // only continue if no error or data available
+        if(client_state.load(std::memory_order_acquire) == OPEN){ // only continue if client is in open state
         
             int64_t frame_data_len = 0; // stores the length of the data frame received
 
@@ -4679,13 +4697,13 @@ bool lock_client_pm::basic_read(){
             }
             
         }
-        
-    }
-    else{
+        else{
 
-        strcpy(error_buffer, "Lock Client not connected yet");
+            strcpy(error_buffer, "Lock Client not connected yet");
+                
+            error.store(true, std::memory_order_release);
             
-        error.store(true, std::memory_order_release);
+        }
         
     }
         

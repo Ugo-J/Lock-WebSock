@@ -6,9 +6,9 @@ class lock_client_pm {
 public:
     
     //constructors
-    lock_client_pm(std::string_view url, int core);
-    lock_client_pm(std::string_view url, in_addr* interface_address, char* interface_name, int core); // constructor that binds to a particular interface before connection
-    lock_client_pm(int core); // basic constructor
+    lock_client_pm(std::string_view url, int core, int read_chunk = 0, int read_buffer_size = 0);
+    lock_client_pm(std::string_view url, in_addr* interface_address, char* interface_name, int core, int read_chunk = 0, int read_buffer_size = 0); // constructor that binds to a particular interface before connection
+    lock_client_pm(int core, int read_chunk = 0, int read_buffer_size = 0); // basic constructor
     
     // destructor
     ~lock_client_pm();
