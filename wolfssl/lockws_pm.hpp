@@ -2503,6 +2503,13 @@ void lock_client_pm::set_pong_function(lock_function fn){
     
 }
 
+bool lock_client_pm::data_available(){
+
+    // we use memory order relaxed for loading last read because data available is called by the main thread that updates last read
+    return last_write.load(std::memory_order_acquire) - last_read.load(std::memory_order_relaxed) > 0 ? true : false;
+
+}
+
 bool lock_client_pm::poll_read(int core){
 
     // we increase this thread priority

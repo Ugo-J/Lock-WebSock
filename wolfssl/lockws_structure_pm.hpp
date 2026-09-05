@@ -144,6 +144,9 @@ private:
 // poll read functions
 private:
 
+    // function to check if there is available data in the read buffer
+    bool data_available();
+
     // function that continuously polls for network data on the poll thread - it takes as parameter the cpu core it should pin to
     bool poll_read(int core);
 
