@@ -6459,7 +6459,7 @@ bool lock_client_pm_crtp<T>::close(unsigned short status_code){ // this closes a
 
     client_state = CLOSED;
     
-    return error.load(std::memory_order_acquire);;
+    return error.load(std::memory_order_relaxed);;
 }
 
 #pragma GCC diagnostic pop

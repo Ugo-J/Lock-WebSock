@@ -6443,7 +6443,7 @@ bool lock_client_pm::close(unsigned short status_code){ // this closes an establ
 
     client_state.store(CLOSED, std::memory_order_release);
     
-    return error.load(std::memory_order_acquire);
+    return error.load(std::memory_order_relaxed);
 }
 
 #pragma GCC diagnostic pop
