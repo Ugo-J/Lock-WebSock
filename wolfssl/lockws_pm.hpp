@@ -2554,6 +2554,9 @@ bool lock_client_pm::poll_read(int core){
     // we check if the set cpu affinity function encountered an error, if it did we return from the poll read function ending the poll thread - the poll init flag is already set after running the set cpu affinity function so we don't need to set it before returning
     if(cpu_affinity_error) return error.load(std::memory_order_acquire);
 
+    // getting here the poll thread encountered no issue setting up so we set our poll thread running flag to true
+    poll_thread_running.store(true, std::memory_order_release);
+
     // we keep polling till our stop poll flag is set
     while(!stop_poll.load(std::memory_order_acquire)){
 
@@ -4710,6 +4713,9 @@ bool lock_client_pm::basic_read(){
 }
        
 bool lock_client_pm::connect(std::string_view url){ // this is used to connect to connect to the url passed as a parameter, it can be used when a lock client object was created without establishing a websocket connection by using the parameterless constructor, or to connect an already established websocket connection and lock client instance to a different websocket server, it can also be used to retry connecting an instance that encountered an error during connection
+
+    // we check that the poll thread is running if it isn't we return our error flag which would be set already if the poll thread isn't running - we return the error with memory order relaxed because we have already loaded the poll thread running flag which was written to after the error flag so we should already have an updated error flag
+    if(!poll_thread_running.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
     
     // we close the websocket connection - if this handle was connected before, if it wasn't close is still a safe operation
     close(NORMAL_CLOSE);
@@ -5398,6 +5404,9 @@ bool lock_client_pm::connect(std::string_view url){ // this is used to connect t
 
 bool lock_client_pm::interface_connect(std::string_view url, in_addr* interface_address, char* interface_name){
     
+    // we check that the poll thread is running if it isn't we return our error flag which would be set already if the poll thread isn't running - we return the error with memory order relaxed because we have already loaded the poll thread running flag which was written to after the error flag so we should already have an updated error flag
+    if(!poll_thread_running.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
+
     // we close the websocket connection - if this handle was connected before, if it wasn't close is still a safe operation
     close(NORMAL_CLOSE);
 

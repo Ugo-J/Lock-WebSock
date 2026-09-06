@@ -138,6 +138,9 @@ private:
     // poll init flag used to indicate to the main thread that the poll thread has finished initialisations so the main thread can check if there was any error in the poll thread initialisation
     std::atomic<bool> poll_init{false};
 
+    // atomic flag to indicate whether the poll thread is running or not
+    std::atomic<bool> poll_thread_running{false};
+
     // stop poll flag used to stop the poll thread
     std::atomic<bool> stop_poll{false};
 
