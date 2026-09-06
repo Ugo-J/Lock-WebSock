@@ -5422,7 +5422,7 @@ bool lock_client_pm::connect(std::string_view url){ // this is used to connect t
     
     }
 
-    return error.load(std::memory_order_acquire);
+    return error.load(std::memory_order_relaxed);
         
 }
 
@@ -5453,6 +5453,9 @@ bool lock_client_pm::interface_connect(std::string_view url, in_addr* interface_
 
         // size of required memory in bytes to store the base url and the port number if it would be appended
         int req_mem = base_url_length + 5; // we add an extra 5 bytes to the base url length to accomodate for the chance that this url was supplied without a port number so we have enough room to append port :443 to the base url
+
+        // we create our ssl object - we call close before calling wolfssl new and close frees the previous wolfssl object so for every connect call we create a new wolfssl object
+        c_ssl = wolfSSL_new(ssl_ctx);
         
         // URL copy 
         if(req_mem < url_static_array_length){ // static memory large enough
@@ -5716,8 +5719,6 @@ bool lock_client_pm::interface_connect(std::string_view url, in_addr* interface_
                 // now we can call the connect to server function that would return the configured socket file descriptor
                 int sockfd = connect_to_server(c_host, c_port, interface_address, interface_name);
 
-                std::cout<<sockfd<<std::endl;
-
                 // continue if no error - we use memory order relaxed here because at this point the error flag can only have been set from the main thread
                 if(!error.load(std::memory_order_relaxed)){ // only continue if no error
 
@@ -5770,10 +5771,6 @@ bool lock_client_pm::interface_connect(std::string_view url, in_addr* interface_
                     
                     // get the Base-64 encoding of the random number to give the value of the nonce
                     Base64_Encode_NoNl(rand_bytes, rand_byte_array_len, base64_encoded_nonce, &tmp_array_len);
-                
-                    std::cout<<base64_encoded_nonce<<std::endl;
-                    std::cout<<c_host<<std::endl;
-                    std::cout<<c_path<<std::endl;
 
                     // request connection upgrade
                     int length_of_supplied_data = strlen(c_path) + strlen((const char*)base64_encoded_nonce) + strlen(c_host);
@@ -6085,7 +6082,7 @@ bool lock_client_pm::interface_connect(std::string_view url, in_addr* interface_
     }
 
 
-    return error.load(std::memory_order_acquire);
+    return error.load(std::memory_order_relaxed);
 }
 
 int lock_client_pm::connect_to_server(const char *hostname, const char *port, in_addr* interface_address, const char *interface_name){
