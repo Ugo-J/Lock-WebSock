@@ -4982,7 +4982,7 @@ bool lock_client::connect(std::string_view url){ // this is used to connect to c
 
         }
         
-        if(!error){ // checks if there was any error allocating memory, that is if that part of the code was executed. The constructor only continues if there was no error 
+        if(!error){ // checks if there was any error allocating memory, that is if that part of the code was executed. The constructor only continues if there was no error
             
             // we check if the supplied url has the port number appended if not we append it
             if(strchr(c_url, ':') == NULL){
@@ -12437,7 +12437,7 @@ bool lock_client_nb::interface_connect(std::string_view url, in_addr* interface_
                     
                         strcpy(error_buffer, "Error allocating heap memory for lock_client channel path");
 
-                        error.store(true, std::memory_order_release);
+                        error = true;
                         
                     }
                     else{ 
@@ -12463,7 +12463,7 @@ bool lock_client_nb::interface_connect(std::string_view url, in_addr* interface_
                     
                         strcpy(error_buffer, "Error allocating heap memory for lock_client channel path");
                         
-                        error.store(true, std::memory_order_release);
+                        error = true;
                         
                     }
                     else{ 
@@ -12833,6 +12833,7 @@ bool lock_client_nb::interface_connect(std::string_view url, in_addr* interface_
             }
 
         }
+    
     }
     else{ // not a valid/supported websocket endpoint
         

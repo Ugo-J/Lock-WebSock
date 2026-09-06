@@ -12453,7 +12453,7 @@ bool lock_client_nb_crtp<T>::interface_connect(std::string_view url, in_addr* in
                     
                         strcpy(error_buffer, "Error allocating heap memory for lock_client channel path");
 
-                        error.store(true, std::memory_order_release);
+                        error = true;
                         
                     }
                     else{ 
@@ -12479,7 +12479,7 @@ bool lock_client_nb_crtp<T>::interface_connect(std::string_view url, in_addr* in
                     
                         strcpy(error_buffer, "Error allocating heap memory for lock_client channel path");
                         
-                        error.store(true, std::memory_order_release);
+                        error = true;
                         
                     }
                     else{ 
