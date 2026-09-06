@@ -5631,200 +5631,109 @@ bool lock_client_pm::interface_connect(std::string_view url, in_addr* interface_
             // we null terminate the c_port array
             c_port[num_of_chars_copied] = '\0';
 
-            // now we can call the connect to server function that would return the configured socket file descriptor
-            int sockfd = connect_to_server(c_host, c_port, interface_address, interface_name);
+            // we fetch our path
 
-            if(!error.load(std::memory_order_acquire)){ // only continue if no error
+            // we check if a forward slash was found after the last colon, if none was we connect to the default root path else the forward slash till the end of the url string is the path
+            std::string_view path = (base_url_end_index != std::string_view::npos) ? url.substr(base_url_end_index) : "/";
 
-                // getting here the connect to server function returned successfully so now we bind the returned socket fd to our c_ssl object
-                wolfSSL_set_fd(c_ssl, sockfd);
-
-                // we perform our tls handshake - since this is a non blocking socket we loop till our handshake is complete
-                int len;
-
-                while((len = wolfSSL_connect(c_ssl)) != WOLFSSL_SUCCESS){
+            // copy the channel path parameter into the channel path array
+            int path_string_len = path.size();
+            
+            if(path_string_len < path_static_array_length){ // we can store the path in the static array if this condition is true
+            
+                path.copy(c_path_static, path_string_len); // copy the path into the static array
+                c_path_static[path_string_len] = '\0'; // null-terminate the array
+                
+                c_path = c_path_static;
+                
+            }
+            else if(path_string_len < size_of_allocated_path_memory){ // allocated memory is large enough
+            
+                path.copy(c_path_new, path_string_len); // copy the path into the allocated array
+                c_path_new[path_string_len] = '\0'; // null-terminate the array
+                
+                c_path = c_path_new;
+                
+            }
+            else{ // neither static or already allocated memory is large enough, we test the two possible cases 
+            
+                if(c_path_new == NULL){ //memory has not been allocated yet
+                
+                    c_path_new = new(std::nothrow) char[path_string_len + 1]; // allocate memory for the path string with the std::nothrow parameter so C++ throws no exceptons even if memory allocation fails. We check for this below
+                
+                    if(c_path_new == NULL){
                     
-                    // we get the error message
-                    int err = wolfSSL_get_error(c_ssl, len);
+                        strcpy(error_buffer, "Error allocating heap memory for lock_client channel path");
 
-                    // we check if the wolfssl handle is still expecting a read or a write
-                    if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
-
-                        continue;
-
-                    }
-                    else{
-
-                        // getting here we got a actual error so we set our error flag
-                        strncpy(error_buffer, "Error performing tls handshake ", error_buffer_array_length);
-                    
                         error.store(true, std::memory_order_release);
-
-                        // we break out of this loop
-                        break;
-
-                    }
-
-                }
-
-                // upgrade the connection to websocket
-                
-                // fill the random bytes array with 16 random bytes between 0 and 255
-                int upper_bound = 255;
-                for(int i = 0; i < rand_byte_array_len; i++){
-                    
-                    rand_bytes[i] = (unsigned char)(rand() % upper_bound ); // we get a random byte between 0 and 255 and cast it into a one byte value
-
-                }
-                
-                // we store our nonce array len in a local variable because we pass it to base 64 encode as a pointer and the function updates it
-                unsigned int tmp_array_len = nonce_array_len;
-                
-                // get the Base-64 encoding of the random number to give the value of the nonce
-                Base64_Encode_NoNl(rand_bytes, rand_byte_array_len, base64_encoded_nonce, &tmp_array_len);
-            
-                // request connection upgrade
-                int length_of_supplied_data = strlen(c_path) + strlen( (const char*)base64_encoded_nonce) + strlen(c_host);
-                char char_remaining[] = "GET  HTTP/1.1\nHost: \nConnection: Upgrade\nPragma: no-cache\nUpgrade: websocket\nSec-WebSocket-Version: 13\nSec-WebSocket-Key: \n\n";
-                int upgrade_request_len = strlen(char_remaining) + length_of_supplied_data;
-                
-                if(upgrade_request_len < upgrade_request_array_length){ // static array is large enough
-                    
-                    // build the upgrade request
-                    strcpy(upgrade_request_static, "GET ");
-                    strcat(upgrade_request_static, c_path);
-                    strcat(upgrade_request_static, " HTTP/1.1\n");
-                    strcat(upgrade_request_static, "Host: ");
-                    strcat(upgrade_request_static, c_host);
-                    strcat(upgrade_request_static, "\n");
-                    strcat(upgrade_request_static, "Connection: Upgrade\n");
-                    strcat(upgrade_request_static, "Pragma: no-cache\n");
-                    strcat(upgrade_request_static, "Upgrade: websocket\n");
-                    strcat(upgrade_request_static, "Sec-WebSocket-Version: 13\n");
-                    strcat(upgrade_request_static, "Sec-WebSocket-Key: ");
-                    strcat(upgrade_request_static, (const char*)base64_encoded_nonce);
-                    strcat(upgrade_request_static, "\n\n");
-                    // upgrade request build end 
-                    
-                    upgrade_request = upgrade_request_static;
-                    
-                }
-                else if(upgrade_request_len < size_of_allocated_upgrade_request_memory){ // allocated memory large enough
-                
-                    // build the upgrade request
-                    strcpy(upgrade_request_new, "GET ");
-                    strcat(upgrade_request_new, c_path);
-                    strcat(upgrade_request_new, " HTTP/1.1\n");
-                    strcat(upgrade_request_new, "Host: ");
-                    strcat(upgrade_request_new, c_host);
-                    strcat(upgrade_request_new, "\n");
-                    strcat(upgrade_request_new, "Connection: Upgrade\n");
-                    strcat(upgrade_request_new, "Pragma: no-cache\n");
-                    strcat(upgrade_request_new, "Upgrade: websocket\n");
-                    strcat(upgrade_request_new, "Sec-WebSocket-Version: 13\n");
-                    strcat(upgrade_request_new, "Sec-WebSocket-Key: ");
-                    strcat(upgrade_request_new, (const char*)base64_encoded_nonce);
-                    strcat(upgrade_request_new, "\n\n");
-                    // upgrade request build end 
-                    
-                    upgrade_request = upgrade_request_new;
-                    
-                }
-                else{ // neither static nor allocated memory is large enough, we test both cases
-                
-                    if(upgrade_request_new == NULL){ // memory has not been allocated yet
-                    
-                        upgrade_request_new = new(std::nothrow) char[upgrade_request_len + 1]; // allocate memory for the upgrade request with the std::nothrow parameter stops the C++ runtime from throwing an error should the allocation request fail
-                    
-                        if(upgrade_request_new == NULL){
-                        
-                            strncpy(error_buffer, "Error allocating heap memory for upgrade request string, supplied URL or channel path too long  ", error_buffer_array_length);
-                            
-                            error.store(true, std::memory_order_release);
-                            
-                            reset(); // disconnect the underlying wolfssl object
-                            
-                        }
-                        else{
-                            
-                            size_of_allocated_upgrade_request_memory = upgrade_request_len + 1;
-                            
-                            // build the upgrade request
-                            strcpy(upgrade_request_new, "GET ");
-                            strcat(upgrade_request_new, c_path);
-                            strcat(upgrade_request_new, " HTTP/1.1\n");
-                            strcat(upgrade_request_new, "Host: ");
-                            strcat(upgrade_request_new, c_host);
-                            strcat(upgrade_request_new, "\n");
-                            strcat(upgrade_request_new, "Connection: Upgrade\n");
-                            strcat(upgrade_request_new, "Pragma: no-cache\n");
-                            strcat(upgrade_request_new, "Upgrade: websocket\n");
-                            strcat(upgrade_request_new, "Sec-WebSocket-Version: 13\n");
-                            strcat(upgrade_request_new, "Sec-WebSocket-Key: ");
-                            strcat(upgrade_request_new, (const char*)base64_encoded_nonce);
-                            strcat(upgrade_request_new, "\n\n");
-                            // upgrade request build end 
-                    
-                            upgrade_request = upgrade_request_new;
-                        
-                        }
-                
-                    }
-                    else{ // memory has previously been allocated for an upgrade request but it still isn't sufficient
-                        
-                        delete [] upgrade_request_new; // delete the previously allocated memory
-                        
-                        upgrade_request_new = new(std::nothrow) char[upgrade_request_len + 1]; // allocate memory for the upgrade request with the std::nothrow parameter stops the C++ runtime from throwing an error should the allocation request fail
-                
-                        if(upgrade_request_new == NULL){
-                    
-                            strncpy(error_buffer, "Error allocating heap memory for upgrade request string, supplied URL or channel path too long  ", error_buffer_array_length);
-                        
-                            error.store(true, std::memory_order_release);
-                            
-                            reset(); // disconnect the underlying wolfssl object
-                        
-                        }
-                        else{ 
-                        
-                            size_of_allocated_upgrade_request_memory = upgrade_request_len + 1;
-                        
-                            // build the upgrade request
-                            strcpy(upgrade_request_new, "GET ");
-                            strcat(upgrade_request_new, c_path);
-                            strcat(upgrade_request_new, " HTTP/1.1\n");
-                            strcat(upgrade_request_new, "Host: ");
-                            strcat(upgrade_request_new, c_host);
-                            strcat(upgrade_request_new, "\n");
-                            strcat(upgrade_request_new, "Connection: Upgrade\n");
-                            strcat(upgrade_request_new, "Pragma: no-cache\n");
-                            strcat(upgrade_request_new, "Upgrade: websocket\n");
-                            strcat(upgrade_request_new, "Sec-WebSocket-Version: 13\n");
-                            strcat(upgrade_request_new, "Sec-WebSocket-Key: ");
-                            strcat(upgrade_request_new, (const char*)base64_encoded_nonce);
-                            strcat(upgrade_request_new, "\n\n");
-                            // upgrade request build end 
-                
-                            upgrade_request = upgrade_request_new;
-                    
-                        }
                         
                     }
+                    else{ 
+                    
+                        size_of_allocated_path_memory = path_string_len + 1;
+                        
+                        path.copy(c_path_new, path_string_len); // copy the path into the dynamically allocated array
                 
+                        c_path_new[path_string_len] = '\0'; // null-terminate the array
+                
+                        c_path = c_path_new;
+                
+                    }
+                    
                 }
-            
-                if(!error.load(std::memory_order_acquire)){ // only continue if no error
+                else{ // memory has been allocated but is still not sufficient
                     
-                    data_array = data_array_static;
+                    delete [] c_path_new; // delete already allocated memory
+                    
+                    c_path_new = new(std::nothrow) char[path_string_len + 1]; // allocate memory for the path string with the std::nothrow parameter so C++ throws no exceptons even if memory allocation fails. We check for this below
+                
+                    if(c_path_new == NULL){
+                    
+                        strcpy(error_buffer, "Error allocating heap memory for lock_client channel path");
+                        
+                        error.store(true, std::memory_order_release);
+                        
+                    }
+                    else{ 
+                        
+                        size_of_allocated_path_memory = path_string_len + 1;
+                        
+                        path.copy(c_path_new, path_string_len); // copy the path into the dynamically allocated array
+                
+                        c_path_new[path_string_len] = '\0'; // null-terminate the array
+                
+                        c_path = c_path_new;
+                
+                    }
+                    
+                }
+                
+            }
 
-                    // we send our upgrade request
-                    while((len = wolfSSL_write(c_ssl, reinterpret_cast<const void*>(upgrade_request), strlen(upgrade_request))) <= 0){
-                    
+            // only continue if no error - we use memory order relaxed here because at this point the error flag can only have been set from the mai thread
+            if(!error.load(std::memory_order_relaxed)){
+
+                // now we can call the connect to server function that would return the configured socket file descriptor
+                int sockfd = connect_to_server(c_host, c_port, interface_address, interface_name);
+
+                std::cout<<sockfd<<std::endl;
+
+                // continue if no error - we use memory order relaxed here because at this point the error flag can only have been set from the main thread
+                if(!error.load(std::memory_order_relaxed)){ // only continue if no error
+
+                    // getting here the connect to server function returned successfully so now we bind the returned socket fd to our c_ssl object
+                    wolfSSL_set_fd(c_ssl, sockfd);
+
+                    // we perform our tls handshake - since this is a non blocking socket we loop till our handshake is complete
+                    int len;
+
+                    while((len = wolfSSL_connect(c_ssl)) != WOLFSSL_SUCCESS){
+                        
                         // we get the error message
                         int err = wolfSSL_get_error(c_ssl, len);
 
-                        // we check if the wolfssl handle is still expecting a write
-                        if(err == WOLFSSL_ERROR_WANT_WRITE || err == WOLFSSL_ERROR_WANT_READ){
+                        // we check if the wolfssl handle is still expecting a read or a write
+                        if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
 
                             continue;
 
@@ -5832,27 +5741,182 @@ bool lock_client_pm::interface_connect(std::string_view url, in_addr* interface_
                         else{
 
                             // getting here we got a actual error so we set our error flag
-                            strncpy(error_buffer, "Error sending websocket upgrade request ", error_buffer_array_length);
+                            strcpy(error_buffer, "Error performing tls handshake: ");
+
+                            // we store the wolfssl error
+                            wolfSSL_ERR_error_string_n(err, error_buffer + strlen(error_buffer), error_buffer_array_length - strlen(error_buffer));
                         
                             error.store(true, std::memory_order_release);
 
-                            // we break out of this loop
-                            break;
+                            // we return from this function
+                            return error.load(std::memory_order_relaxed);
 
                         }
 
                     }
-                    
-                    if(!error.load(std::memory_order_acquire)){
 
-                        // non blocking call to wolfssl read
-                        while((len = wolfSSL_read(c_ssl, data_array, static_data_array_length)) <= 0){
+                    // upgrade the connection to websocket
                     
+                    // fill the random bytes array with 16 random bytes between 0 and 255
+                    int upper_bound = 255;
+                    for(int i = 0; i < rand_byte_array_len; i++){
+                        
+                        rand_bytes[i] = (unsigned char)(rand() % upper_bound ); // we get a random byte between 0 and 255 and cast it into a one byte value
+
+                    }
+                    
+                    // we store our nonce array len in a local variable because we pass it to base 64 encode as a pointer and the function updates it
+                    unsigned int tmp_array_len = nonce_array_len;
+                    
+                    // get the Base-64 encoding of the random number to give the value of the nonce
+                    Base64_Encode_NoNl(rand_bytes, rand_byte_array_len, base64_encoded_nonce, &tmp_array_len);
+                
+                    std::cout<<base64_encoded_nonce<<std::endl;
+                    std::cout<<c_host<<std::endl;
+                    std::cout<<c_path<<std::endl;
+
+                    // request connection upgrade
+                    int length_of_supplied_data = strlen(c_path) + strlen((const char*)base64_encoded_nonce) + strlen(c_host);
+                    char char_remaining[] = "GET  HTTP/1.1\nHost: \nConnection: Upgrade\nPragma: no-cache\nUpgrade: websocket\nSec-WebSocket-Version: 13\nSec-WebSocket-Key: \n\n";
+                    int upgrade_request_len = strlen(char_remaining) + length_of_supplied_data;
+                    
+                    if(upgrade_request_len < upgrade_request_array_length){ // static array is large enough
+                        
+                        // build the upgrade request
+                        strcpy(upgrade_request_static, "GET ");
+                        strcat(upgrade_request_static, c_path);
+                        strcat(upgrade_request_static, " HTTP/1.1\n");
+                        strcat(upgrade_request_static, "Host: ");
+                        strcat(upgrade_request_static, c_host);
+                        strcat(upgrade_request_static, "\n");
+                        strcat(upgrade_request_static, "Connection: Upgrade\n");
+                        strcat(upgrade_request_static, "Pragma: no-cache\n");
+                        strcat(upgrade_request_static, "Upgrade: websocket\n");
+                        strcat(upgrade_request_static, "Sec-WebSocket-Version: 13\n");
+                        strcat(upgrade_request_static, "Sec-WebSocket-Key: ");
+                        strcat(upgrade_request_static, (const char*)base64_encoded_nonce);
+                        strcat(upgrade_request_static, "\n\n");
+                        // upgrade request build end 
+                        
+                        upgrade_request = upgrade_request_static;
+                        
+                    }
+                    else if(upgrade_request_len < size_of_allocated_upgrade_request_memory){ // allocated memory large enough
+                    
+                        // build the upgrade request
+                        strcpy(upgrade_request_new, "GET ");
+                        strcat(upgrade_request_new, c_path);
+                        strcat(upgrade_request_new, " HTTP/1.1\n");
+                        strcat(upgrade_request_new, "Host: ");
+                        strcat(upgrade_request_new, c_host);
+                        strcat(upgrade_request_new, "\n");
+                        strcat(upgrade_request_new, "Connection: Upgrade\n");
+                        strcat(upgrade_request_new, "Pragma: no-cache\n");
+                        strcat(upgrade_request_new, "Upgrade: websocket\n");
+                        strcat(upgrade_request_new, "Sec-WebSocket-Version: 13\n");
+                        strcat(upgrade_request_new, "Sec-WebSocket-Key: ");
+                        strcat(upgrade_request_new, (const char*)base64_encoded_nonce);
+                        strcat(upgrade_request_new, "\n\n");
+                        // upgrade request build end 
+                        
+                        upgrade_request = upgrade_request_new;
+                        
+                    }
+                    else{ // neither static nor allocated memory is large enough, we test both cases
+                    
+                        if(upgrade_request_new == NULL){ // memory has not been allocated yet
+                        
+                            upgrade_request_new = new(std::nothrow) char[upgrade_request_len + 1]; // allocate memory for the upgrade request with the std::nothrow parameter stops the C++ runtime from throwing an error should the allocation request fail
+                        
+                            if(upgrade_request_new == NULL){
+                            
+                                strncpy(error_buffer, "Error allocating heap memory for upgrade request string, supplied URL or channel path too long  ", error_buffer_array_length);
+                                
+                                error.store(true, std::memory_order_release);
+                                
+                                reset(); // disconnect the underlying wolfssl object
+                                
+                            }
+                            else{
+                                
+                                size_of_allocated_upgrade_request_memory = upgrade_request_len + 1;
+                                
+                                // build the upgrade request
+                                strcpy(upgrade_request_new, "GET ");
+                                strcat(upgrade_request_new, c_path);
+                                strcat(upgrade_request_new, " HTTP/1.1\n");
+                                strcat(upgrade_request_new, "Host: ");
+                                strcat(upgrade_request_new, c_host);
+                                strcat(upgrade_request_new, "\n");
+                                strcat(upgrade_request_new, "Connection: Upgrade\n");
+                                strcat(upgrade_request_new, "Pragma: no-cache\n");
+                                strcat(upgrade_request_new, "Upgrade: websocket\n");
+                                strcat(upgrade_request_new, "Sec-WebSocket-Version: 13\n");
+                                strcat(upgrade_request_new, "Sec-WebSocket-Key: ");
+                                strcat(upgrade_request_new, (const char*)base64_encoded_nonce);
+                                strcat(upgrade_request_new, "\n\n");
+                                // upgrade request build end 
+                        
+                                upgrade_request = upgrade_request_new;
+                            
+                            }
+                    
+                        }
+                        else{ // memory has previously been allocated for an upgrade request but it still isn't sufficient
+                            
+                            delete [] upgrade_request_new; // delete the previously allocated memory
+                            
+                            upgrade_request_new = new(std::nothrow) char[upgrade_request_len + 1]; // allocate memory for the upgrade request with the std::nothrow parameter stops the C++ runtime from throwing an error should the allocation request fail
+                    
+                            if(upgrade_request_new == NULL){
+                        
+                                strncpy(error_buffer, "Error allocating heap memory for upgrade request string, supplied URL or channel path too long  ", error_buffer_array_length);
+                            
+                                error.store(true, std::memory_order_release);
+                                
+                                reset(); // disconnect the underlying wolfssl object
+                            
+                            }
+                            else{ 
+                            
+                                size_of_allocated_upgrade_request_memory = upgrade_request_len + 1;
+                            
+                                // build the upgrade request
+                                strcpy(upgrade_request_new, "GET ");
+                                strcat(upgrade_request_new, c_path);
+                                strcat(upgrade_request_new, " HTTP/1.1\n");
+                                strcat(upgrade_request_new, "Host: ");
+                                strcat(upgrade_request_new, c_host);
+                                strcat(upgrade_request_new, "\n");
+                                strcat(upgrade_request_new, "Connection: Upgrade\n");
+                                strcat(upgrade_request_new, "Pragma: no-cache\n");
+                                strcat(upgrade_request_new, "Upgrade: websocket\n");
+                                strcat(upgrade_request_new, "Sec-WebSocket-Version: 13\n");
+                                strcat(upgrade_request_new, "Sec-WebSocket-Key: ");
+                                strcat(upgrade_request_new, (const char*)base64_encoded_nonce);
+                                strcat(upgrade_request_new, "\n\n");
+                                // upgrade request build end 
+                    
+                                upgrade_request = upgrade_request_new;
+                        
+                            }
+                            
+                        }
+                    
+                    }
+                
+                    if(!error.load(std::memory_order_acquire)){ // only continue if no error
+                        
+                        data_array = data_array_static;
+
+                        // we send our upgrade request
+                        while((len = wolfSSL_write(c_ssl, reinterpret_cast<const void*>(upgrade_request), strlen(upgrade_request))) <= 0){
+                        
                             // we get the error message
                             int err = wolfSSL_get_error(c_ssl, len);
 
-                            // we check if the wolfssl handle is still expecting a read
-                            if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
+                            // we check if the wolfssl handle is still expecting a write
+                            if(err == WOLFSSL_ERROR_WANT_WRITE || err == WOLFSSL_ERROR_WANT_READ){
 
                                 continue;
 
@@ -5860,7 +5924,7 @@ bool lock_client_pm::interface_connect(std::string_view url, in_addr* interface_
                             else{
 
                                 // getting here we got a actual error so we set our error flag
-                                strncpy(error_buffer, "Error reading websocket upgrade response ", error_buffer_array_length);
+                                strncpy(error_buffer, "Error sending websocket upgrade request ", error_buffer_array_length);
                             
                                 error.store(true, std::memory_order_release);
 
@@ -5870,115 +5934,146 @@ bool lock_client_pm::interface_connect(std::string_view url, in_addr* interface_
                             }
 
                         }
-
+                        
                         if(!error.load(std::memory_order_acquire)){
 
-                            data_array[len] = '\0'; // null terminate the received bytes
+                            // non blocking call to wolfssl read
+                            while((len = wolfSSL_read(c_ssl, data_array, static_data_array_length)) <= 0){
+                        
+                                // we get the error message
+                                int err = wolfSSL_get_error(c_ssl, len);
 
-                            // test for the switching protocol header to confirm that the connection upgrade was successful
-                            char success_response[] = "HTTP/1.1 101 Switching Protocols";
-                            
-                            if(strncmp(success_response, strtok(data_array, "\n"), strlen(success_response)) == 0){ // upgrade successful
+                                // we check if the wolfssl handle is still expecting a read
+                                if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
 
-                                // Authorise connection - confirm that the Sec-WebSocket-Accept is what it should be by calculating the key and comparing it with the server's
+                                    continue;
+
+                                }
+                                else{
+
+                                    // getting here we got a actual error so we set our error flag
+                                    strncpy(error_buffer, "Error reading websocket upgrade response ", error_buffer_array_length);
                                 
-                                // build the SHA1 parameter
-                                strncpy(SHA1_parameter, (const char*)base64_encoded_nonce, SHA1_parameter_array_len);
-                                strncat(SHA1_parameter, string_to_append, SHA1_parameter_array_len - strlen(SHA1_parameter));
-                                // SHA1 parameter build end 
+                                    error.store(true, std::memory_order_release);
+
+                                    // we break out of this loop
+                                    break;
+
+                                }
+
+                            }
+
+                            if(!error.load(std::memory_order_acquire)){
+
+                                data_array[len] = '\0'; // null terminate the received bytes
+
+                                // test for the switching protocol header to confirm that the connection upgrade was successful
+                                char success_response[] = "HTTP/1.1 101 Switching Protocols";
                                 
-                                // we create a sha context for computing our sha1 hash
-                                wc_Sha sha_context;
+                                if(strncmp(success_response, strtok(data_array, "\n"), strlen(success_response)) == 0){ // upgrade successful
 
-                                // sha context init
-                                wc_InitSha(&sha_context);
-
-                                // we update our sha context with the data to be hashed
-                                wc_ShaUpdate(&sha_context, reinterpret_cast<const byte*>(SHA1_parameter), strlen(SHA1_parameter));
-
-                                wc_ShaFinal(&sha_context, SHA1_digest);
-
-                                // we store a copy of our local sec key array len
-                                tmp_array_len = local_sec_ws_accept_key_array_len;
-
-                                // base64 encode the SHA1 digest
-                                Base64_Encode_NoNl(SHA1_digest, size_of_SHA1_digest, reinterpret_cast<byte*>(local_sec_ws_accept_key), &tmp_array_len);
-                                
-                                // loop through the rest of the response string to find the Sec-WebSocket-Accept header
-                                char key[] = "Sec";
-                                char* cursor = strtok(NULL, "\n");
-                                
-                                while(cursor != NULL){
-                                // we keep looping through the HTTP upgrade request response till either cursor == NULL or we find our Sec-WebSocket-Key header
+                                    // Authorise connection - confirm that the Sec-WebSocket-Accept is what it should be by calculating the key and comparing it with the server's
                                     
-                                    // we use sizeof so we can get the length of key as a compile time constan, we subtract 1 from the result of sizeof() to account for the null byte that terminates the string
-                                    if((strncmp(key, cursor, sizeof(key) - 1) == 0) || (strncmp("sec", cursor, sizeof(key) - 1) == 0) || (strncmp("SEC", cursor, sizeof(key) - 1) == 0) || (strncmp("sEc", cursor, sizeof(key) - 1) == 0) || (strncmp("seC", cursor, sizeof(key) - 1) == 0) || (strncmp("sEC", cursor, sizeof(key) - 1) == 0) || (strncmp("SEc", cursor, sizeof(key) - 1) == 0) || (strncmp("SeC", cursor, sizeof(key) - 1) == 0)){ // only the Sec-WebSocket-key response header would have "Sec" in it so we test all possible upper and lower case combinations of the key word "sec"
-                                            
-                                        cursor += strlen("Sec-WebSocket-Accept: "); //move cursor foward to point to accept key value
+                                    // build the SHA1 parameter
+                                    strncpy(SHA1_parameter, (const char*)base64_encoded_nonce, SHA1_parameter_array_len);
+                                    strncat(SHA1_parameter, string_to_append, SHA1_parameter_array_len - strlen(SHA1_parameter));
+                                    // SHA1 parameter build end 
+                                    
+                                    // we create a sha context for computing our sha1 hash
+                                    wc_Sha sha_context;
+
+                                    // sha context init
+                                    wc_InitSha(&sha_context);
+
+                                    // we update our sha context with the data to be hashed
+                                    wc_ShaUpdate(&sha_context, reinterpret_cast<const byte*>(SHA1_parameter), strlen(SHA1_parameter));
+
+                                    wc_ShaFinal(&sha_context, SHA1_digest);
+
+                                    // we store a copy of our local sec key array len
+                                    tmp_array_len = local_sec_ws_accept_key_array_len;
+
+                                    // base64 encode the SHA1 digest
+                                    Base64_Encode_NoNl(SHA1_digest, size_of_SHA1_digest, reinterpret_cast<byte*>(local_sec_ws_accept_key), &tmp_array_len);
+                                    
+                                    // loop through the rest of the response string to find the Sec-WebSocket-Accept header
+                                    char key[] = "Sec";
+                                    char* cursor = strtok(NULL, "\n");
+                                    
+                                    while(cursor != NULL){
+                                    // we keep looping through the HTTP upgrade request response till either cursor == NULL or we find our Sec-WebSocket-Key header
                                         
-                                        // compare server's response with our calculation
-                                        if(strncmp(local_sec_ws_accept_key, cursor, strlen(local_sec_ws_accept_key)) == 0){
+                                        // we use sizeof so we can get the length of key as a compile time constan, we subtract 1 from the result of sizeof() to account for the null byte that terminates the string
+                                        if((strncmp(key, cursor, sizeof(key) - 1) == 0) || (strncmp("sec", cursor, sizeof(key) - 1) == 0) || (strncmp("SEC", cursor, sizeof(key) - 1) == 0) || (strncmp("sEc", cursor, sizeof(key) - 1) == 0) || (strncmp("seC", cursor, sizeof(key) - 1) == 0) || (strncmp("sEC", cursor, sizeof(key) - 1) == 0) || (strncmp("SEc", cursor, sizeof(key) - 1) == 0) || (strncmp("SeC", cursor, sizeof(key) - 1) == 0)){ // only the Sec-WebSocket-key response header would have "Sec" in it so we test all possible upper and lower case combinations of the key word "sec"
+                                                
+                                            cursor += strlen("Sec-WebSocket-Accept: "); //move cursor foward to point to accept key value
                                             
-                                            // we set our last read index and last write index to 0 so the poll thread ignores any messages from a previous connection and starts polling for messages from this connection
-                                            last_read.store(0, std::memory_order_release);
-                                            last_write.store(0, std::memory_order_release);
-
-                                            client_state.store(OPEN, std::memory_order_release);
-
-                                            break; // break if the server sec websocket key matches what we calculated. Connection authorised
+                                            // compare server's response with our calculation
+                                            if(strncmp(local_sec_ws_accept_key, cursor, strlen(local_sec_ws_accept_key)) == 0){
                                                 
-                                        }
-                                        else{
+                                                // we set our last read index and last write index to 0 so the poll thread ignores any messages from a previous connection and starts polling for messages from this connection
+                                                last_read.store(0, std::memory_order_release);
+                                                last_write.store(0, std::memory_order_release);
+
+                                                client_state.store(OPEN, std::memory_order_release);
+
+                                                break; // break if the server sec websocket key matches what we calculated. Connection authorised
+                                                    
+                                            }
+                                            else{
+                                                
+                                                strncpy(error_buffer, "Connection authorisation Failed", error_buffer_array_length);
+                                                    
+                                                reset(); // reset session and disconnect the underlying connection
+                                                    
+                                                error.store(true, std::memory_order_release);
+                                                    
+                                                break;
+                                                    
+                                            }
                                             
-                                            strncpy(error_buffer, "Connection authorisation Failed", error_buffer_array_length);
-                                                
-                                            reset(); // reset session and disconnect the underlying connection
-                                                
-                                            error.store(true, std::memory_order_release);
-                                                
-                                            break;
-                                                
                                         }
+                                        
+                                        cursor = strtok(NULL, "\n");
                                         
                                     }
                                     
-                                    cursor = strtok(NULL, "\n");
+                                    if(cursor == NULL){
+                                        
+                                        // getting here means no Sec-Websocket-Key header was found before strtok returned a null value
+                                        strncpy(error_buffer, "Invalid Upgrade request response received", error_buffer_array_length);
+                                        
+                                        reset(); // reset session and disconnect the underlying connection
+                                        
+                                        error.store(true, std::memory_order_release);
+                                    
+                                    }
                                     
                                 }
-                                
-                                if(cursor == NULL){
+                                else{ // upgrade unsuccessful
                                     
-                                    // getting here means no Sec-Websocket-Key header was found before strtok returned a null value
-                                    strncpy(error_buffer, "Invalid Upgrade request response received", error_buffer_array_length);
+                                    strncpy(error_buffer, "Connection upgrade failed. Invalid path or url supplied", error_buffer_array_length);
                                     
                                     reset(); // reset session and disconnect the underlying connection
                                     
                                     error.store(true, std::memory_order_release);
-                                
+                                    
                                 }
-                                
-                            }
-                            else{ // upgrade unsuccessful
-                                
-                                strncpy(error_buffer, "Connection upgrade failed. Invalid path or url supplied", error_buffer_array_length);
-                                
-                                reset(); // reset session and disconnect the underlying connection
-                                
-                                error.store(true, std::memory_order_release);
-                                
-                            }
-                                                
-                            memset(data_array, '\0', len); // zero out the data array
+                                                    
+                                memset(data_array, '\0', len); // zero out the data array
 
-                            memset(upgrade_request, '\0', upgrade_request_len); // zero out the upgrade request array
+                                memset(upgrade_request, '\0', upgrade_request_len); // zero out the upgrade request array
+                                
+                            }
                             
                         }
-                        
+                
                     }
-            
+                
                 }
-            
+
             }
+
         }
     }
     else{ // not a valid/supported websocket endpoint
