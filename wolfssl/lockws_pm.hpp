@@ -1649,7 +1649,8 @@ bool lock_client_pm::ping(){ // sends a ping on an established websocket connect
     
     if(!error.load(std::memory_order_acquire)){ // only continue if no error
         
-        if(client_state.load(std::memory_order_acquire) == OPEN){ // continue if client is in open state
+        // we use memory order relaxed to check the client state because only the main thread can set the client state
+        if(client_state.load(std::memory_order_relaxed) == OPEN){ // continue if client is in open state
             
             int i = 0; // variable for traversing the send data array
             
@@ -1742,7 +1743,8 @@ bool lock_client_pm::pong(int ping_data_len){ // sends out a pong frame unsolici
     
     if(!error.load(std::memory_order_acquire)){ // only continue if no error
         
-        if(client_state.load(std::memory_order_acquire) == OPEN){ // continue if client is in open state
+        // we use memory order relaxed to check the client state because only the main thread can set the client state
+        if(client_state.load(std::memory_order_relaxed) == OPEN){ // continue if client is in open state
             
             int i = 0; // variable for traversing the send data array
             
@@ -1866,7 +1868,8 @@ inline bool lock_client_pm::set_ping_backlog(int backlog_num){
 
 inline bool lock_client_pm::clear(){ // clear the error flag of a lock client in open state
 
-    if(client_state.load(std::memory_order_acquire) == OPEN){
+    // we use memory order relaxed to check the client state because only the main thread can set the client state
+    if(client_state.load(std::memory_order_relaxed) == OPEN){
     
         memset(error_buffer, '\0', strlen(error_buffer));
             
@@ -1882,7 +1885,8 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
 
     if(!error.load(std::memory_order_acquire)){ // only continue if no error
         
-        if(client_state.load(std::memory_order_acquire) == OPEN){ // only continue if client is in open state
+        // we use memory order relaxed to check the client state because only the main thread can set the client state
+        if(client_state.load(std::memory_order_relaxed) == OPEN){ // only continue if client is in open state
         
             int64_t payload_data_len = payload_data.size();
             int i = 0; // variable for traversing the send data array
@@ -2679,7 +2683,8 @@ bool lock_client_pm::basic_read(){
 
     if(!error.load(std::memory_order_acquire) || data_available()){ // only continue if no error or data available
         
-        if(client_state.load(std::memory_order_acquire) == OPEN){ // only continue if client is in open state
+        // we use memory order relaxed to check the client state because only the main thread can set the client state
+        if(client_state.load(std::memory_order_relaxed) == OPEN){ // only continue if client is in open state
         
             int64_t frame_data_len = 0; // stores the length of the data frame received
 
@@ -6204,7 +6209,7 @@ void lock_client_pm::fail_ws_connection(unsigned short status_code){
     // we only set the error message and error flag if the error flag was not set already
 
         // we set the lock client error variable
-        strncpy(error_buffer, "Websocket Connection Lost", error_buffer_array_length);
+        strcpy(error_buffer, "Websocket Connection Lost");
                     
         error.store(true, std::memory_order_release);
 
