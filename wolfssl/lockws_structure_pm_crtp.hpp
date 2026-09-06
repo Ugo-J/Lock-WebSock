@@ -4,10 +4,10 @@ class lock_client_pm_crtp {
     
 public:
     
-    //constructors
-    lock_client_pm_crtp(std::string_view url);
-    lock_client_pm_crtp(std::string_view url, in_addr* interface_address, char* interface_name); // constructor that binds to a particular interface before connection
-    lock_client_pm_crtp(); // parameterless constructor
+    // constructors
+    lock_client_pm_crtp(std::string_view url, int core, int read_chunk = 0, int read_buffer_size = 0);
+    lock_client_pm_crtp(std::string_view url, in_addr* interface_address, char* interface_name, int core, int read_chunk = 0, int read_buffer_size = 0); // constructor that binds to a particular interface before connection
+    lock_client_pm_crtp(int core, int read_chunk = 0, int read_buffer_size = 0); // parameterless constructor
     
     // destructor
     ~lock_client_pm_crtp();
@@ -46,6 +46,10 @@ protected:
     int connect_to_server(const char *hostname, const char *port, in_addr* interface_address, const char *interface_name); // function to connect to server when we manually configure the socket
     int reset(); // function to reset a wolfssl session and disconnect the underlying connection
 
+    // poll thread block sigpipe signal functions
+    inline void block_sigpipe_signal_pm(); // function to block sigpipe signals before any write or read
+    void unblock_sigpipe_signal_pm(); // function to unblock sigpipe signals after any write or read
+
 // protected signal handling variables
 protected: 
     
@@ -53,6 +57,13 @@ protected:
     sigset_t newset; // sigset variable for holding the signal mask of the signal(s) we wish to block
     siginfo_t si; // siginfo variable for storing the info of blocked signals
     timespec ts = {0}; // structure that stores the time wait for the sigtimedwait function to return, it is initialised to 0 meaning that we don't wait
+
+    // poll thread signal variables
+
+    sigset_t oldset_pm; // sigset variable for holding the old signal mask
+    sigset_t newset_pm; // sigset variable for holding the signal mask of the signal(s) we wish to block
+    siginfo_t si_pm; // siginfo variable for storing the info of blocked signals
+    timespec ts_pm = {0}; // structure that stores the time wait for the sigtimedwait function to return, it is initialised to 0 meaning that we don't wait
     
 // class wide variables    
 protected:    
@@ -96,7 +107,61 @@ protected:
     // for a poll mode lock client the error flag and client state variable are both atomic
     std::atomic<bool> error{false};
     std::atomic<unsigned char> client_state{CLOSED}; // this variable is used to store the lock client state, OPEN meaning there is an active websocket connection and CLOSED meaning that there isn't 
-    
+
+// poll read variables
+private:
+
+    // the poll thread instance
+    std::thread poll_thread;
+
+    // cache line size for aligning our last read and last write variables
+    static inline constexpr std::size_t CACHE_LINE_SIZE = 64;
+
+    // last read and last write variables are declared with size alignment to prevent false sharing
+    alignas(CACHE_LINE_SIZE) std::atomic<int> last_read{0};
+    alignas(CACHE_LINE_SIZE) std::atomic<int> last_write{0};
+
+    // pointer to our internal read buffer
+    unsigned char* read_buffer = nullptr;
+
+    // read buffer size, this is static and can be increased but the lockclient falls back to this size if the caller supplies a size smaller than this size - 16MB
+    static inline int READ_BUFFER_SIZE = 16 * 1024 * 1024;
+
+    // read chunk size, this variable defines how much data the poll thread polls for with every read call
+    static inline int READ_CHUNK_SIZE = 64 * 1024;
+
+    // poll init flag used to indicate to the main thread that the poll thread has finished initialisations so the main thread can check if there was any error in the poll thread initialisation
+    std::atomic<bool> poll_init{false};
+
+    // atomic flag to indicate whether the poll thread is running or not
+    std::atomic<bool> poll_thread_running{false};
+
+    // stop poll flag used to stop the poll thread
+    std::atomic<bool> stop_poll{false};
+
+// poll read functions
+private:
+
+    // function to check if there is available data in the read buffer
+    bool data_available();
+
+    // function that continuously polls for network data on the poll thread - it takes as parameter the cpu core it should pin to
+    bool poll_read(int core);
+
+    // function to fetch data from the read buffer
+    int fetch_data(unsigned char* dest, int sz);
+
+    // function to set the cpu affinity of the poll thread
+    bool set_cpu_affinity(int core);
+
+    // function to increase the thread priority of the poll thread
+    bool increase_thread_priority(int p_policy = SCHED_FIFO, int priority = 99);
+
+// constants to indicate data availabilty in the read buffer
+private:
+
+    static constexpr int RETRY = -1;
+
 // Wolfssl Library instance variables    
 protected:
  
