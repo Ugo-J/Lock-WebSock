@@ -4632,7 +4632,7 @@ bool lock_client_pm::basic_read(){
                 
                 cursor = data_array; // set cursor to point back to data array
                 
-                client_state.store(CLOSED, std::memory_order_relaxed);
+                client_state.store(CLOSED, std::memory_order_release);
                 
             }
             else if( rand_bytes[0] == (FIN_BIT_SET | RSV_BIT_UNSET_ALL | PONG) ){
@@ -4725,8 +4725,9 @@ bool lock_client_pm::basic_read(){
         }
         
     }
-        
-    return error.load(std::memory_order_relaxed);
+
+    // in order to accomodate the scenario where the poll thread sets the error flag to true but there is still data to read we check if data is still available and if so we return false masking the error till there is no more data available. this way calling basic read in a loop that checks if any error was encountered can run till all available data is exhausted
+    return data_available() ? false : error.load(std::memory_order_relaxed);
         
 }
        
