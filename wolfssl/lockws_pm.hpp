@@ -2608,7 +2608,7 @@ bool lock_client_pm::poll_read(int core){
                     if(err != WOLFSSL_ERROR_WANT_READ){
 
                         // we copy our error message to our error buffer
-                        strcpy(error_buffer, "Can't Fetch data from remote host: Check network connection");
+                        strcpy(error_buffer, "Poll Error: Can't Fetch data from remote host: Check network connection");
 
                         error.store(true, std::memory_order_release);
                         
@@ -4581,12 +4581,32 @@ bool lock_client_pm::basic_read(){
                 unblock_sigpipe_signal();
                 
                 reset(); // close the existing connection and reset the wolfssl object
+
+                // before we set the error flag for the unsolicited close frame we first check if the poll thread already set the error flag
+                if(!error.load(std::memory_order_acquire)){
                 
-                // set error flag to indicate that the lock client instance connection has been closed by foreign host
-                strcpy(error_buffer, "Lock client WebSocket connection mutually closed after instance received unsolicited close frame from foreign host");
+                    // getting here the error flag isn't set so we copy our error message to the error buffer
+
+                    // set error flag to indicate that the lock client instance connection has been closed by foreign host
+                    strcpy(error_buffer, "Lock client WebSocket connection mutually closed after instance received unsolicited close frame from foreign host");
+
+                    // we set our error flag
+                    error.store(true, std::memory_order_release);
+
+                }
+                else{
+
+                    // getting here the error flag is set so we concatenate our error message to the error buffer
+
+                    // set error flag to indicate that the lock client instance connection has been closed by foreign host
+                    strcat(error_buffer, "\nClient Error: Lock client WebSocket connection mutually closed after instance received unsolicited close frame from foreign host");
+
+                    // getting here our error flag is already set so we don't have to set it
+
+                }
 
                 // now the received close frame application data may contain a server reason for closing after the first 2 bytes which is the status code for the close frame, so we check if the application data length is > 2 if it is we append it to the error buffer
-                
+                    
                 int server_reason = static_cast<int>(frame_data_len) - 2;
 
                 // we check if there is a received close reason
@@ -4611,8 +4631,6 @@ bool lock_client_pm::basic_read(){
                 memset(data_array, '\0', frame_data_len); // zero out the data array
                 
                 cursor = data_array; // set cursor to point back to data array
-                
-                error.store(true, std::memory_order_release);
                 
                 client_state.store(CLOSED, std::memory_order_relaxed);
                 

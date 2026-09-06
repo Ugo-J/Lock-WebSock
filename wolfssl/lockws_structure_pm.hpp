@@ -106,7 +106,7 @@ private:
     uint64_t size_of_allocated_upgrade_request_memory = 0;
     char* upgrade_request_new = NULL;
     char* upgrade_request = NULL;
-    static const int error_buffer_array_length = 256;
+    static const int error_buffer_array_length = 512;
     char error_buffer[error_buffer_array_length] = {'\0'};
 
     // for a poll mode lock client the error flag and client state variable are both atomic
