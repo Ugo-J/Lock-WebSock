@@ -9336,29 +9336,14 @@ bool lock_client_nb::basic_read(){
                         // we call BIO_read to attempt to read the bytes into the buffer
                         read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if BIO_read returns a value <= 0 we check if there is data available to be read
+                        // if BIO_read returns a value <= 0 we check if bio should retry is true
                         if(read_bytes <= 0){
 
                             // we check if the BIO should retry
                             if(BIO_should_retry(c_bio)){
 
-                                // getting here BIO should retry returns true so we check if any ata has been fetched in this basic read call
-                                if(total_read_bytes > 0){
-                                // getting here data has been gotten in this current basic read call so we continue the loop till the entire data is fetched
-
-                                    continue;
-
-                                }
-                                else{
-                                // getting here no data has been fetched in this basic read call so we unblock the sigpipe signal and exit
-
-                                    // we unblock the sigpipe signal
-                                    unblock_sigpipe_signal();
-
-                                    // we return error at this point because it is still 0 and it signals that basic read didn't fail there just is no data to read
-                                    return error;
-
-                                }
+                                // getting here BIO should retry returns true so we continue the loop because getting here we have fetched our first 2 frame bytes to indicate that there is an unread ws frame to be read
+                                continue;
 
                             }
                             else{
@@ -9412,29 +9397,14 @@ bool lock_client_nb::basic_read(){
                         // we call BIO_read to attempt to read the bytes into the buffer
                         read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if BIO_read returns a value <= 0 we check if there is data available to be read
+                        // if BIO_read returns a value <= 0 we check if bio should retry is true
                         if(read_bytes <= 0){
 
                             // we check if the BIO should retry
                             if(BIO_should_retry(c_bio)){
 
-                                // getting here BIO should retry returns true so we check if any ata has been fetched in this basic read call
-                                if(total_read_bytes > 0){
-                                // getting here data has been gotten in this current basic read call so we continue the loop till the entire data is fetched
-
-                                    continue;
-
-                                }
-                                else{
-                                // getting here no data has been fetched in this basic read call so we unblock the sigpipe signal and exit
-
-                                    // we unblock the sigpipe signal
-                                    unblock_sigpipe_signal();
-
-                                    // we return error at this point because it is still 0 and it signals that basic read didn't fail there just is no data to read
-                                    return error;
-
-                                }
+                                // getting here BIO should retry returns true so we continue the loop because getting here we have fetched our first 2 frame bytes to indicate that there is an unread ws frame to be read
+                                continue;
 
                             }
                             else{
@@ -9641,8 +9611,12 @@ bool lock_client_nb::basic_read(){
                         data_array_new = new(std::nothrow) char[frame_data_len + 1024]; // we allocate 1KB more memory than is needed to store the frame so we could avoid some future memory allocations
             
                         if(data_array_new == NULL){
+
+                            // we unblock the sigpipe signal because close internally blocks it
+                            unblock_sigpipe_signal();
                             
-                            close(FRAME_TOO_LARGE); // close the WebSocket connection with a frame too large error
+                            // close the WebSocket connection with a frame too large error
+                            close(FRAME_TOO_LARGE);
                             
                             // no need to memset as no data has been written to the array at this point
                             
@@ -9727,6 +9701,9 @@ bool lock_client_nb::basic_read(){
                         data_array_new = new(std::nothrow) char[frame_data_len + 1024]; // we allocate 1KB more memory than the data frame length just to get some extra spacing and avoid some memory allocation for future data frames
                 
                         if(data_array_new == NULL){
+
+                            // we unblock the sigpipe signal because close internally blocks it
+                            unblock_sigpipe_signal();
                             
                             close(FRAME_TOO_LARGE); // close the WebSocket connection with a frame too large error
                                 
@@ -9839,29 +9816,14 @@ bool lock_client_nb::basic_read(){
                         // we call BIO_read to attempt to read the bytes into the buffer
                         read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if BIO_read returns a value <= 0 we check if there is data available to be read
+                        // if BIO_read returns a value <= 0 we check if bio should retry is true
                         if(read_bytes <= 0){
 
                             // we check if the BIO should retry
                             if(BIO_should_retry(c_bio)){
 
-                                // getting here BIO should retry returns true so we check if any ata has been fetched in this basic read call
-                                if(total_read_bytes > 0){
-                                // getting here data has been gotten in this current basic read call so we continue the loop till the entire data is fetched
-
-                                    continue;
-
-                                }
-                                else{
-                                // getting here no data has been fetched in this basic read call so we unblock the sigpipe signal and exit
-
-                                    // we unblock the sigpipe signal
-                                    unblock_sigpipe_signal();
-
-                                    // we return error at this point because it is still 0 and it signals that basic read didn't fail there just is no data to read
-                                    return error;
-
-                                }
+                                // getting here BIO should retry returns true so we continue the loop because getting here we have fetched our first 2 frame bytes to indicate that there is an unread ws frame to be read
+                                continue;
 
                             }
                             else{
@@ -9915,29 +9877,14 @@ bool lock_client_nb::basic_read(){
                         // we call BIO_read to attempt to read the bytes into the buffer
                         read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if BIO_read returns a value <= 0 we check if there is data available to be read
+                        // if BIO_read returns a value <= 0 we check if bio should retry is true
                         if(read_bytes <= 0){
 
                             // we check if the BIO should retry
                             if(BIO_should_retry(c_bio)){
 
-                                // getting here BIO should retry returns true so we check if any ata has been fetched in this basic read call
-                                if(total_read_bytes > 0){
-                                // getting here data has been gotten in this current basic read call so we continue the loop till the entire data is fetched
-
-                                    continue;
-
-                                }
-                                else{
-                                // getting here no data has been fetched in this basic read call so we unblock the sigpipe signal and exit
-
-                                    // we unblock the sigpipe signal
-                                    unblock_sigpipe_signal();
-
-                                    // we return error at this point because it is still 0 and it signals that basic read didn't fail there just is no data to read
-                                    return error;
-
-                                }
+                                // getting here BIO should retry returns true so we continue the loop because getting here we have fetched our first 2 frame bytes to indicate that there is an unread ws frame to be read
+                                continue;
 
                             }
                             else{
@@ -10129,13 +10076,16 @@ bool lock_client_nb::basic_read(){
                     // we do not zero out the data array because the data isn't yet complete
                     
                 }
-                else{ // neither static nor already allocated memory is sufficient, so we check if memory has been allocated or not 
+                else{ // neither static nor already allocated memory is sufficient, so we check if memory has been allocated or not
                     
                     if(data_array_new == NULL){ // memory has not been allocated
                         
                         data_array_new = new(std::nothrow) char[frame_data_len + 1024]; // we allocate 1KB more memory than is needed to store the frame so we could avoid some future memory allocations
             
                         if(data_array_new == NULL){
+
+                            // we unblock the sigpipe signal because close internally blocks it
+                            unblock_sigpipe_signal();
                             
                             close(FRAME_TOO_LARGE); // close the WebSocket connection with a frame too large error
                             
@@ -10219,6 +10169,9 @@ bool lock_client_nb::basic_read(){
                         data_array_new = new(std::nothrow) char[frame_data_len + 1024]; // we allocate 1KB more memory than the data frame length just to get some extra spacing and avoid some memory allocation for future data frames
                 
                         if(data_array_new == NULL){
+
+                            // we unblock the sigpipe signal because close internally blocks it
+                            unblock_sigpipe_signal();
                             
                             close(FRAME_TOO_LARGE); // close the WebSocket connection with a frame too large error
                                 
@@ -10328,29 +10281,14 @@ bool lock_client_nb::basic_read(){
                         // we call BIO_read to attempt to read the bytes into the buffer
                         read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if BIO_read returns a value <= 0 we check if there is data available to be read
+                        // if BIO_read returns a value <= 0 we check if bio should retry is true
                         if(read_bytes <= 0){
 
                             // we check if the BIO should retry
                             if(BIO_should_retry(c_bio)){
 
-                                // getting here BIO should retry returns true so we check if any ata has been fetched in this basic read call
-                                if(total_read_bytes > 0){
-                                // getting here data has been gotten in this current basic read call so we continue the loop till the entire data is fetched
-
-                                    continue;
-
-                                }
-                                else{
-                                // getting here no data has been fetched in this basic read call so we unblock the sigpipe signal and exit
-
-                                    // we unblock the sigpipe signal
-                                    unblock_sigpipe_signal();
-
-                                    // we return error at this point because it is still 0 and it signals that basic read didn't fail there just is no data to read
-                                    return error;
-
-                                }
+                                // getting here BIO should retry returns true so we continue the loop because getting here we have fetched our first 2 frame bytes to indicate that there is an unread ws frame to be read
+                                continue;
 
                             }
                             else{
@@ -10404,29 +10342,14 @@ bool lock_client_nb::basic_read(){
                         // we call BIO_read to attempt to read the bytes into the buffer
                         read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if BIO_read returns a value <= 0 we check if there is data available to be read
+                        // if BIO_read returns a value <= 0 we check if bio should retry is true
                         if(read_bytes <= 0){
 
                             // we check if the BIO should retry
                             if(BIO_should_retry(c_bio)){
 
-                                // getting here BIO should retry returns true so we check if any ata has been fetched in this basic read call
-                                if(total_read_bytes > 0){
-                                // getting here data has been gotten in this current basic read call so we continue the loop till the entire data is fetched
-
-                                    continue;
-
-                                }
-                                else{
-                                // getting here no data has been fetched in this basic read call so we unblock the sigpipe signal and exit
-
-                                    // we unblock the sigpipe signal
-                                    unblock_sigpipe_signal();
-
-                                    // we return error at this point because it is still 0 and it signals that basic read didn't fail there just is no data to read
-                                    return error;
-
-                                }
+                                // getting here BIO should retry returns true so we continue the loop because getting here we have fetched our first 2 frame bytes to indicate that there is an unread ws frame to be read
+                                continue;
 
                             }
                             else{
@@ -10632,7 +10555,10 @@ bool lock_client_nb::basic_read(){
                             
                             memset(data_array, '\0', length_of_array_data); // zero out already received data
                     
-                            cursor = data_array; // set cursor to point back to data array 
+                            cursor = data_array; // set cursor to point back to data array
+
+                            // we unblock the sigpipe signal because close internally blocks it
+                            unblock_sigpipe_signal();
                             
                             close(FRAME_TOO_LARGE); // we close the websocket connection with a frame too large error
                             
@@ -10723,7 +10649,10 @@ bool lock_client_nb::basic_read(){
                     
                             memset(data_array, '\0', length_of_array_data); // zero out already received data
                         
-                            cursor = data_array; // set cursor to point back to data array 
+                            cursor = data_array; // set cursor to point back to data array
+
+                            // we unblock the sigpipe signal because close internally blocks it
+                            unblock_sigpipe_signal();
                                 
                             close(FRAME_TOO_LARGE); // we close the websocket connection with a frame too large error
                                 
@@ -10814,7 +10743,10 @@ bool lock_client_nb::basic_read(){
                 
                         memset(data_array, '\0', length_of_array_data); // zero out already received data
                     
-                        cursor = data_array; // set cursor to point back to data array 
+                        cursor = data_array; // set cursor to point back to data array
+
+                        // we unblock the sigpipe signal because close internally blocks it
+                        unblock_sigpipe_signal();
                             
                         close(FRAME_TOO_LARGE); // we close the websocket connection with a frame too large error
                             
@@ -10927,29 +10859,14 @@ bool lock_client_nb::basic_read(){
                         // we call BIO_read to attempt to read the bytes into the buffer
                         read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if BIO_read returns a value <= 0 we check if there is data available to be read
+                        // if BIO_read returns a value <= 0 we check if bio should retry is true
                         if(read_bytes <= 0){
 
                             // we check if the BIO should retry
                             if(BIO_should_retry(c_bio)){
 
-                                // getting here BIO should retry returns true so we check if any ata has been fetched in this basic read call
-                                if(total_read_bytes > 0){
-                                // getting here data has been gotten in this current basic read call so we continue the loop till the entire data is fetched
-
-                                    continue;
-
-                                }
-                                else{
-                                // getting here no data has been fetched in this basic read call so we unblock the sigpipe signal and exit
-
-                                    // we unblock the sigpipe signal
-                                    unblock_sigpipe_signal();
-
-                                    // we return error at this point because it is still 0 and it signals that basic read didn't fail there just is no data to read
-                                    return error;
-
-                                }
+                                // getting here BIO should retry returns true so we continue the loop because getting here we have fetched our first 2 frame bytes to indicate that there is an unread ws frame to be read
+                                continue;
 
                             }
                             else{
@@ -11003,29 +10920,14 @@ bool lock_client_nb::basic_read(){
                         // we call BIO_read to attempt to read the bytes into the buffer
                         read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if BIO_read returns a value <= 0 we check if there is data available to be read
+                        // if BIO_read returns a value <= 0 we check if bio should retry is true
                         if(read_bytes <= 0){
 
                             // we check if the BIO should retry
                             if(BIO_should_retry(c_bio)){
 
-                                // getting here BIO should retry returns true so we check if any ata has been fetched in this basic read call
-                                if(total_read_bytes > 0){
-                                // getting here data has been gotten in this current basic read call so we continue the loop till the entire data is fetched
-
-                                    continue;
-
-                                }
-                                else{
-                                // getting here no data has been fetched in this basic read call so we unblock the sigpipe signal and exit
-
-                                    // we unblock the sigpipe signal
-                                    unblock_sigpipe_signal();
-
-                                    // we return error at this point because it is still 0 and it signals that basic read didn't fail there just is no data to read
-                                    return error;
-
-                                }
+                                // getting here BIO should retry returns true so we continue the loop because getting here we have fetched our first 2 frame bytes to indicate that there is an unread ws frame to be read
+                                continue;
 
                             }
                             else{
@@ -11232,7 +11134,7 @@ bool lock_client_nb::basic_read(){
                     cursor = data_array; // set the cursor back to point to the array pointed at by data array
                     
                 }
-                else if( (data_array == data_array_static) && ( (length_of_array_data + frame_data_len) > size_of_allocated_data_memory) ){ // there are two parts to this condition, either memory has been allocated of memory has not been allocated 
+                else if( (data_array == data_array_static) && ( (length_of_array_data + frame_data_len) > size_of_allocated_data_memory) ){ // there are two parts to this condition, either memory has been allocated of memory has not been allocated
                     
                     if(data_array_new == NULL){ // memory has not been allocated
                         
@@ -11242,7 +11144,10 @@ bool lock_client_nb::basic_read(){
                             
                             memset(data_array, '\0', length_of_array_data); // zero out already received data
                     
-                            cursor = data_array; // set cursor to point back to data array 
+                            cursor = data_array; // set cursor to point back to data array
+
+                            // we unblock the sigpipe signal because close internally blocks it
+                            unblock_sigpipe_signal();
                             
                             close(FRAME_TOO_LARGE);
                             
@@ -11340,7 +11245,10 @@ bool lock_client_nb::basic_read(){
                     
                             memset(data_array, '\0', length_of_array_data); // zero out already received data
                         
-                            cursor = data_array; // set cursor to point back to data array 
+                            cursor = data_array; // set cursor to point back to data array
+
+                            // we unblock the sigpipe signal because close internally blocks it
+                            unblock_sigpipe_signal();
                                 
                             close(FRAME_TOO_LARGE);
                                 
@@ -11437,7 +11345,10 @@ bool lock_client_nb::basic_read(){
                 
                         memset(data_array, '\0', length_of_array_data); // zero out already received data
                     
-                        cursor = data_array; // set cursor to point back to data array 
+                        cursor = data_array; // set cursor to point back to data array
+
+                        // we unblock the sigpipe signal because close internally blocks it
+                        unblock_sigpipe_signal();
                             
                         close(FRAME_TOO_LARGE);
                             
@@ -11863,6 +11774,9 @@ bool lock_client_nb::basic_read(){
                 memset(data_array, '\0', (cursor - data_array) ); // zero out the data possibly already written to the data array if the an unrecognised frame is received when a fragmented message is still being transmitted.
                 
                 cursor = data_array; // set cursor to point back to data array
+
+                // we unblock the sigpipe signal because fail ws connection internally blocks it
+                unblock_sigpipe_signal();
                 
                 fail_ws_connection(PROTOCOL_ERROR); // fail the websocket connection
                 
@@ -12930,12 +12844,12 @@ bool lock_client_nb::interface_connect(std::string_view url, in_addr* interface_
 
                         }
 
-                        // we fetch the path for this connection
-
                         if(!error){
                         // continue if no error
 
                             std::cout<<"SSL handshake successful"<<std::endl;
+
+                            // we fetch the path for this connection
 
                             // we check if a forward slash was found after the last colon, if none was we connect to the default root path else the forward slash till the end of the url string is the path
                             std::string_view path = (base_url_end_index != std::string_view::npos) ? url.substr(base_url_end_index) : "/";
