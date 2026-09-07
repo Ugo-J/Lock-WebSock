@@ -2199,7 +2199,7 @@ bool lock_client_crtp<T>::basic_read(){
         
         if(client_state == OPEN){ // only continue if lock client is in open state
         
-            uint64_t frame_data_len = 0; // stores the length of the data frame received
+            int64_t frame_data_len = 0; // stores the length of the data frame received
             
             // block SIGPIPE signal before attempting to read data, just incase the connection is closed
             block_sigpipe_signal();
@@ -2209,19 +2209,19 @@ bool lock_client_crtp<T>::basic_read(){
             // we set our bytes to read variable to the number of bytes we are trying to read
             int bytes_to_read = 2;
 
-            // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfssl_read should write to
+            // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfSSL_read should write to
             int total_read_bytes = 0;
 
-            // we initialise our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfssl_read call
+            // we initialise our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfSSL_read call
             int read_bytes = 0;
 
             // we keep reading till we have our total bytes to read
             while(total_read_bytes < bytes_to_read){
 
-                // we call wolfssl_read to attempt to read the bytes into the buffer
+                // we call wolfSSL_read to attempt to read the bytes into the buffer
                 read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                // if wolfssl_read returns a value <= 0 it indicates an error so we break out from the loop
+                // if wolfSSL_read returns a value <= 0 it indicates an error so we break out from the loop
                 if(read_bytes <= 0) break;
 
                 // we increment our total read bytes
@@ -2229,7 +2229,7 @@ bool lock_client_crtp<T>::basic_read(){
 
             }
             
-            // we check if the last wolfssl_read call returned 0 or < 0 which would indicate an error
+            // we check if the last wolfSSL_read call returned 0 or < 0 which would indicate an error
             if(read_bytes <= 0){
                 
                 // here wolfssl_read couldn't fetch any data
@@ -2266,19 +2266,19 @@ bool lock_client_crtp<T>::basic_read(){
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 2;
 
-                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfssl_read should write to. We reset it to 0
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfSSL_read should write to. We reset it to 0
                     total_read_bytes = 0;
 
-                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfssl_read call
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfSSL_read call
                     read_bytes = 0;
 
                     // we keep reading till we have our total bytes to read
                     while(total_read_bytes < bytes_to_read){
 
-                        // we call wolfssl_read to attempt to read the bytes into the buffer
+                        // we call wolfSSL_read to attempt to read the bytes into the buffer
                         read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if wolfssl_read returns a value <= 0 it indicates an error so we break out from the loop
+                        // if wolfSSL_read returns a value <= 0 it indicates an error so we break out from the loop
                         if(read_bytes <= 0) break;
 
                         // we increment our total read bytes
@@ -2286,7 +2286,7 @@ bool lock_client_crtp<T>::basic_read(){
 
                     }
                     
-                    // we check if the last wolfssl_read call returned 0 or < 0 which would indicate an error
+                    // we check if the last wolfSSL_read call returned 0 or < 0 which would indicate an error
                     if(read_bytes <= 0){
                         
                         // here wolfssl_read couldn't fetch any data
@@ -2319,19 +2319,19 @@ bool lock_client_crtp<T>::basic_read(){
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 8;
 
-                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfssl_read should write to. We reset it to 0
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfSSL_read should write to. We reset it to 0
                     total_read_bytes = 0;
 
-                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfssl_read call
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfSSL_read call
                     read_bytes = 0;
 
                     // we keep reading till we have our total bytes to read
                     while(total_read_bytes < bytes_to_read){
 
-                        // we call wolfssl_read to attempt to read the bytes into the buffer
+                        // we call wolfSSL_read to attempt to read the bytes into the buffer
                         read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if wolfssl_read returns a value <= 0 it indicates an error so we break out from the loop
+                        // if wolfSSL_read returns a value <= 0 it indicates an error so we break out from the loop
                         if(read_bytes <= 0) break;
 
                         // we increment our total read bytes
@@ -2339,7 +2339,7 @@ bool lock_client_crtp<T>::basic_read(){
 
                     }
                     
-                    // we check if the last wolfssl_read call returned 0 or < 0 which would indicate an error
+                    // we check if the last wolfSSL_read call returned 0 or < 0 which would indicate an error
                     if(read_bytes <= 0){
                         
                         // here wolfssl_read couldn't fetch any data
@@ -2396,7 +2396,7 @@ bool lock_client_crtp<T>::basic_read(){
                 
                 // reaching here means that we encountered no errors thus far because if we encountered an error the function would have returned - SIGPIPE signal is still blocked
                 
-                uint64_t length_of_array_data = 0;
+                int64_t length_of_array_data = 0;
                 
                 // test that the size of data to be received can fit into the static data array
                 if(frame_data_len < static_data_array_length){ // static data array would be sufficient
@@ -2569,6 +2569,9 @@ bool lock_client_crtp<T>::basic_read(){
                         data_array_new = new(std::nothrow) char[frame_data_len + 1024]; // we allocate 1KB more memory than is needed to store the frame so we could avoid some future memory allocations
             
                         if(data_array_new == NULL){
+
+                            // we unblock the sigpipe signal because close internally blocks it
+                            unblock_sigpipe_signal();
                             
                             close(FRAME_TOO_LARGE); // close the WebSocket connection with a frame too large error
                             
@@ -2672,6 +2675,9 @@ bool lock_client_crtp<T>::basic_read(){
                         data_array_new = new(std::nothrow) char[frame_data_len + 1024]; // we allocate 1KB more memory than the data frame length just to get some extra spacing and avoid some memory allocation for future data frames
                 
                         if(data_array_new == NULL){
+
+                            // we unblock the sigpipe signal because close internally blocks it
+                            unblock_sigpipe_signal();
                             
                             close(FRAME_TOO_LARGE); // close the WebSocket connection with a frame too large error
                                 
@@ -2784,19 +2790,19 @@ bool lock_client_crtp<T>::basic_read(){
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 2;
 
-                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfssl_read should write to. We reset it to 0
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfSSL_read should write to. We reset it to 0
                     total_read_bytes = 0;
 
-                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfssl_read call
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfSSL_read call
                     read_bytes = 0;
 
                     // we keep reading till we have our total bytes to read
                     while(total_read_bytes < bytes_to_read){
 
-                        // we call wolfssl_read to attempt to read the bytes into the buffer
+                        // we call wolfSSL_read to attempt to read the bytes into the buffer
                         read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if wolfssl_read returns a value <= 0 it indicates an error so we break out from the loop
+                        // if wolfSSL_read returns a value <= 0 it indicates an error so we break out from the loop
                         if(read_bytes <= 0) break;
 
                         // we increment our total read bytes
@@ -2804,7 +2810,7 @@ bool lock_client_crtp<T>::basic_read(){
 
                     }
                     
-                    // we check if the last wolfssl_read call returned 0 or < 0 which would indicate an error
+                    // we check if the last wolfSSL_read call returned 0 or < 0 which would indicate an error
                     if(read_bytes <= 0){
                         
                         // here wolfssl_read couldn't fetch any data
@@ -2837,19 +2843,19 @@ bool lock_client_crtp<T>::basic_read(){
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 8;
 
-                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfssl_read should write to. We reset it to 0
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfSSL_read should write to. We reset it to 0
                     total_read_bytes = 0;
 
-                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfssl_read call
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfSSL_read call
                     read_bytes = 0;
 
                     // we keep reading till we have our total bytes to read
                     while(total_read_bytes < bytes_to_read){
 
-                        // we call wolfssl_read to attempt to read the bytes into the buffer
+                        // we call wolfSSL_read to attempt to read the bytes into the buffer
                         read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if wolfssl_read returns a value <= 0 it indicates an error so we break out from the loop
+                        // if wolfSSL_read returns a value <= 0 it indicates an error so we break out from the loop
                         if(read_bytes <= 0) break;
 
                         // we increment our total read bytes
@@ -2857,7 +2863,7 @@ bool lock_client_crtp<T>::basic_read(){
 
                     }
                     
-                    // we check if the last wolfssl_read call returned 0 or < 0 which would indicate an error
+                    // we check if the last wolfSSL_read call returned 0 or < 0 which would indicate an error
                     if(read_bytes <= 0){
                         
                         // here wolfssl_read couldn't fetch any data
@@ -3066,6 +3072,9 @@ bool lock_client_crtp<T>::basic_read(){
                         data_array_new = new(std::nothrow) char[frame_data_len + 1024]; // we allocate 1KB more than the frame length 
             
                         if(data_array_new == NULL){
+
+                            // we unblock the sigpipe signal because close internally blocks it
+                            unblock_sigpipe_signal();
                         
                             close(FRAME_TOO_LARGE);
                             
@@ -3159,6 +3168,9 @@ bool lock_client_crtp<T>::basic_read(){
                         data_array_new = new(std::nothrow) char[frame_data_len + 1024]; // we allocate extra memory for future use
             
                         if(data_array_new == NULL){
+
+                            // we unblock the sigpipe signal because close internally blocks it
+                            unblock_sigpipe_signal();
                 
                             close(FRAME_TOO_LARGE);
                             
@@ -3266,19 +3278,19 @@ bool lock_client_crtp<T>::basic_read(){
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 2;
 
-                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfssl_read should write to. We reset it to 0
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfSSL_read should write to. We reset it to 0
                     total_read_bytes = 0;
 
-                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfssl_read call
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfSSL_read call
                     read_bytes = 0;
 
                     // we keep reading till we have our total bytes to read
                     while(total_read_bytes < bytes_to_read){
 
-                        // we call wolfssl_read to attempt to read the bytes into the buffer
+                        // we call wolfSSL_read to attempt to read the bytes into the buffer
                         read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if wolfssl_read returns a value <= 0 it indicates an error so we break out from the loop
+                        // if wolfSSL_read returns a value <= 0 it indicates an error so we break out from the loop
                         if(read_bytes <= 0) break;
 
                         // we increment our total read bytes
@@ -3286,7 +3298,7 @@ bool lock_client_crtp<T>::basic_read(){
 
                     }
                     
-                    // we check if the last wolfssl_read call returned 0 or < 0 which would indicate an error
+                    // we check if the last wolfSSL_read call returned 0 or < 0 which would indicate an error
                     if(read_bytes <= 0){
                         
                         // here wolfssl_read couldn't fetch any data
@@ -3319,19 +3331,19 @@ bool lock_client_crtp<T>::basic_read(){
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 8;
 
-                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfssl_read should write to. We reset it to 0
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfSSL_read should write to. We reset it to 0
                     total_read_bytes = 0;
 
-                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfssl_read call
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfSSL_read call
                     read_bytes = 0;
 
                     // we keep reading till we have our total bytes to read
                     while(total_read_bytes < bytes_to_read){
 
-                        // we call wolfssl_read to attempt to read the bytes into the buffer
+                        // we call wolfSSL_read to attempt to read the bytes into the buffer
                         read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if wolfssl_read returns a value <= 0 it indicates an error so we break out from the loop
+                        // if wolfSSL_read returns a value <= 0 it indicates an error so we break out from the loop
                         if(read_bytes <= 0) break;
 
                         // we increment our total read bytes
@@ -3339,7 +3351,7 @@ bool lock_client_crtp<T>::basic_read(){
 
                     }
                     
-                    // we check if the last wolfssl_read call returned 0 or < 0 which would indicate an error
+                    // we check if the last wolfSSL_read call returned 0 or < 0 which would indicate an error
                     if(read_bytes <= 0){
                         
                         // here wolfssl_read couldn't fetch any data
@@ -3396,7 +3408,7 @@ bool lock_client_crtp<T>::basic_read(){
                 
                 // reaching here means that we encountered no errors thus far because if we encountered an error the function would have returned - SIGPIPE signal is still blocked
                 
-                uint64_t length_of_array_data = cursor - data_array; // this is used to store the length of data that the data array currently holds
+                int64_t length_of_array_data = cursor - data_array; // this is used to store the length of data that the data array currently holds
                 
                 if(frame_data_len < (length_of_array - length_of_array_data) ){ // array in use is large enough for incoming frame
                     
@@ -3553,7 +3565,10 @@ bool lock_client_crtp<T>::basic_read(){
                             
                             memset(data_array, '\0', length_of_array_data); // zero out already received data
                     
-                            cursor = data_array; // set cursor to point back to data array 
+                            cursor = data_array; // set cursor to point back to data array
+
+                            // we unblock the sigpipe signal because close internally blocks it
+                            unblock_sigpipe_signal();
                             
                             close(FRAME_TOO_LARGE); // we close the websocket connection with a frame too large error
                             
@@ -3656,7 +3671,10 @@ bool lock_client_crtp<T>::basic_read(){
                     
                             memset(data_array, '\0', length_of_array_data); // zero out already received data
                         
-                            cursor = data_array; // set cursor to point back to data array 
+                            cursor = data_array; // set cursor to point back to data array
+
+                            // we unblock the sigpipe signal because close internally blocks it
+                            unblock_sigpipe_signal();
                                 
                             close(FRAME_TOO_LARGE); // we close the websocket connection with a frame too large error
                                 
@@ -3759,7 +3777,10 @@ bool lock_client_crtp<T>::basic_read(){
                 
                         memset(data_array, '\0', length_of_array_data); // zero out already received data
                     
-                        cursor = data_array; // set cursor to point back to data array 
+                        cursor = data_array; // set cursor to point back to data array
+
+                        // we unblock the sigpipe signal because close internally blocks it
+                        unblock_sigpipe_signal();
                             
                         close(FRAME_TOO_LARGE); // we close the websocket connection with a frame too large error
                             
@@ -3872,19 +3893,19 @@ bool lock_client_crtp<T>::basic_read(){
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 2;
 
-                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfssl_read should write to. We reset it to 0
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfSSL_read should write to. We reset it to 0
                     total_read_bytes = 0;
 
-                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfssl_read call
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfSSL_read call
                     read_bytes = 0;
 
                     // we keep reading till we have our total bytes to read
                     while(total_read_bytes < bytes_to_read){
 
-                        // we call wolfssl_read to attempt to read the bytes into the buffer
+                        // we call wolfSSL_read to attempt to read the bytes into the buffer
                         read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if wolfssl_read returns a value <= 0 it indicates an error so we break out from the loop
+                        // if wolfSSL_read returns a value <= 0 it indicates an error so we break out from the loop
                         if(read_bytes <= 0) break;
 
                         // we increment our total read bytes
@@ -3892,7 +3913,7 @@ bool lock_client_crtp<T>::basic_read(){
 
                     }
                     
-                    // we check if the last wolfssl_read call returned 0 or < 0 which would indicate an error
+                    // we check if the last wolfSSL_read call returned 0 or < 0 which would indicate an error
                     if(read_bytes <= 0){
                         
                         // here wolfssl_read couldn't fetch any data
@@ -3925,19 +3946,19 @@ bool lock_client_crtp<T>::basic_read(){
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 8;
 
-                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfssl_read should write to. We reset it to 0
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfSSL_read should write to. We reset it to 0
                     total_read_bytes = 0;
 
-                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfssl_read call
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfSSL_read call
                     read_bytes = 0;
 
                     // we keep reading till we have our total bytes to read
                     while(total_read_bytes < bytes_to_read){
 
-                        // we call wolfssl_read to attempt to read the bytes into the buffer
+                        // we call wolfSSL_read to attempt to read the bytes into the buffer
                         read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if wolfssl_read returns a value <= 0 it indicates an error so we break out from the loop
+                        // if wolfSSL_read returns a value <= 0 it indicates an error so we break out from the loop
                         if(read_bytes <= 0) break;
 
                         // we increment our total read bytes
@@ -3945,7 +3966,7 @@ bool lock_client_crtp<T>::basic_read(){
 
                     }
                     
-                    // we check if the last wolfssl_read call returned 0 or < 0 which would indicate an error
+                    // we check if the last wolfSSL_read call returned 0 or < 0 which would indicate an error
                     if(read_bytes <= 0){
                         
                         // here wolfssl_read couldn't fetch any data
@@ -4000,7 +4021,7 @@ bool lock_client_crtp<T>::basic_read(){
                     
                 }
                 
-                uint64_t length_of_array_data = cursor - data_array; // this is used to store the length of data that the data array currently holds
+                int64_t length_of_array_data = cursor - data_array; // this is used to store the length of data that the data array currently holds
                 
                 if(frame_data_len < (length_of_array - length_of_array_data) ){ // array in use is large enough for incoming frame
                     
@@ -4174,7 +4195,10 @@ bool lock_client_crtp<T>::basic_read(){
                             
                             memset(data_array, '\0', length_of_array_data); // zero out already received data
                     
-                            cursor = data_array; // set cursor to point back to data array 
+                            cursor = data_array; // set cursor to point back to data array
+
+                            // we unblock the sigpipe signal because close internally blocks it
+                            unblock_sigpipe_signal();
                             
                             close(FRAME_TOO_LARGE);
                             
@@ -4284,7 +4308,10 @@ bool lock_client_crtp<T>::basic_read(){
                     
                             memset(data_array, '\0', length_of_array_data); // zero out already received data
                         
-                            cursor = data_array; // set cursor to point back to data array 
+                            cursor = data_array; // set cursor to point back to data array
+
+                            // we unblock the sigpipe signal because close internally blocks it
+                            unblock_sigpipe_signal();
                                 
                             close(FRAME_TOO_LARGE);
                                 
@@ -4394,7 +4421,10 @@ bool lock_client_crtp<T>::basic_read(){
                 
                         memset(data_array, '\0', length_of_array_data); // zero out already received data
                     
-                        cursor = data_array; // set cursor to point back to data array 
+                        cursor = data_array; // set cursor to point back to data array
+
+                        // we unblock the sigpipe signal because close internally blocks it
+                        unblock_sigpipe_signal();
                             
                         close(FRAME_TOO_LARGE);
                             
@@ -4532,19 +4562,19 @@ bool lock_client_crtp<T>::basic_read(){
                         // we set our bytes to read variable to the number of bytes we are trying to read
                         bytes_to_read = (int)frame_data_len;
 
-                        // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the upgrade request static array wolfssl_read should write to. We reset it to 0
+                        // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the upgrade request static array wolfSSL_read should write to. We reset it to 0
                         total_read_bytes = 0;
 
-                        // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfssl_read call
+                        // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfSSL_read call
                         read_bytes = 0;
 
                         // we keep reading till we have our total bytes to read
                         while(total_read_bytes < bytes_to_read){
 
-                            // we call wolfssl_read to attempt to read the bytes into the buffer
+                            // we call wolfSSL_read to attempt to read the bytes into the buffer
                             read_bytes = wolfSSL_read(c_ssl, &upgrade_request_static[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                            // if wolfssl_read returns a value <= 0 it indicates an error so we break out from the loop
+                            // if wolfSSL_read returns a value <= 0 it indicates an error so we break out from the loop
                             if(read_bytes <= 0) break;
 
                             // we increment our total read bytes
@@ -4552,7 +4582,7 @@ bool lock_client_crtp<T>::basic_read(){
 
                         }
                         
-                        // we check if the last wolfssl_read call returned 0 or < 0 which would indicate an error
+                        // we check if the last wolfSSL_read call returned 0 or < 0 which would indicate an error
                         if(read_bytes <= 0){
                             
                             // here wolfssl_read couldn't fetch any data
@@ -4861,6 +4891,9 @@ bool lock_client_crtp<T>::basic_read(){
                 memset(data_array, '\0', (cursor - data_array) ); // zero out the data possibly already written to the data array if the an unrecognised frame is received when a fragmented message is still being transmitted.
                 
                 cursor = data_array; // set cursor to point back to data array
+
+                // we unblock the sigpipe signal because fail ws connection internally blocks it
+                unblock_sigpipe_signal();
                 
                 fail_ws_connection(PROTOCOL_ERROR); // fail the websocket connection
                 
@@ -8780,7 +8813,7 @@ bool lock_client_nb_crtp<T>::basic_read(){
         
         if(client_state == OPEN){ // only continue if lock client is in open state
         
-            uint64_t frame_data_len = 0; // stores the length of the data frame received
+            int64_t frame_data_len = 0; // stores the length of the data frame received
             
             // block SIGPIPE signal before attempting to read data, just incase the connection is closed
             block_sigpipe_signal();
@@ -8790,16 +8823,16 @@ bool lock_client_nb_crtp<T>::basic_read(){
             // we set our bytes to read variable to the number of bytes we are trying to read
             int bytes_to_read = 2;
 
-            // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfssl_read should write to
+            // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfSSL_read should write to
             int total_read_bytes = 0;
 
-            // we initialise our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfssl_read call
+            // we initialise our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfSSL_read call
             int read_bytes = 0;
 
             // we keep reading till we have our total bytes to read
             while(total_read_bytes < bytes_to_read){
 
-                // we call wolfssl_read to attempt to read the bytes into the buffer
+                // we call wolfSSL_read to attempt to read the bytes into the buffer
                 read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
                 // if wolfssl_read returns a value <= 0 we check if there is data available to be read
@@ -8811,7 +8844,7 @@ bool lock_client_nb_crtp<T>::basic_read(){
                     // we check if the wolfssl library still expects more reads or if this is an actual error
                     if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
 
-                        // getting here ssl should retry returns true so we check if any ata has been fetched in this basic read call
+                        // getting here WOLFSSL_ERROR_WANT_READ || WRITE returns true so we check if any data has been fetched in this basic read call
                         if(total_read_bytes > 0){
                         // getting here data has been gotten in this current basic read call so we continue the loop till the entire data is fetched
 
@@ -8875,19 +8908,19 @@ bool lock_client_nb_crtp<T>::basic_read(){
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 2;
 
-                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfssl_read should write to
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfSSL_read should write to
                     total_read_bytes = 0;
 
-                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfssl_read call
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfSSL_read call
                     read_bytes = 0;
 
                     // we keep reading till we have our total bytes to read
                     while(total_read_bytes < bytes_to_read){
 
-                        // we call wolfssl_read to attempt to read the bytes into the buffer
+                        // we call wolfSSL_read to attempt to read the bytes into the buffer
                         read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if wolfssl_read returns a value <= 0 we check if there is data available to be read
+                        // if wolfSSL_read returns a value <= 0 we check if there is data available to be read
                         if(read_bytes <= 0){
 
                             // we get the error message
@@ -8896,7 +8929,7 @@ bool lock_client_nb_crtp<T>::basic_read(){
                             // we check if the wolfssl library still expects more reads or if this is an actual error
                             if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
 
-                                // getting here ssl should retry returns true so we check if any ata has been fetched in this basic read call
+                                // getting here WOLFSSL_ERROR_WANT_READ || WRITE returns true so we check if any data has been fetched in this basic read call
                                 if(total_read_bytes > 0){
                                 // getting here data has been gotten in this current basic read call so we continue the loop till the entire data is fetched
 
@@ -8955,10 +8988,10 @@ bool lock_client_nb_crtp<T>::basic_read(){
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 8;
 
-                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfssl_read should write to
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfSSL_read should write to
                     total_read_bytes = 0;
 
-                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfssl_read call
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfSSL_read call
                     read_bytes = 0;
 
                     // we keep reading till we have our total bytes to read
@@ -8976,7 +9009,7 @@ bool lock_client_nb_crtp<T>::basic_read(){
                             // we check if the wolfssl library still expects more reads or if this is an actual error
                             if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
 
-                                // getting here ssl should retry returns true so we check if any ata has been fetched in this basic read call
+                                // getting here WOLFSSL_ERROR_WANT_READ || WRITE returns true so we check if any data has been fetched in this basic read call
                                 if(total_read_bytes > 0){
                                 // getting here data has been gotten in this current basic read call so we continue the loop till the entire data is fetched
 
@@ -9062,7 +9095,7 @@ bool lock_client_nb_crtp<T>::basic_read(){
                 
                 // reaching here means that we encountered no errors thus far because if we encountered an error the function would have returned. SIGPIPE signal is still blocked
                 
-                uint64_t length_of_array_data = 0;
+                int64_t length_of_array_data = 0;
                 
                 // test that the size of data to be received can fit into the static data array
                 if(frame_data_len < static_data_array_length){ // static data array would be sufficient
@@ -9207,6 +9240,9 @@ bool lock_client_nb_crtp<T>::basic_read(){
             
                         if(data_array_new == NULL){
                             
+                            // we unblock the sigpipe signal because close internally blocks it
+                            unblock_sigpipe_signal();
+
                             close(FRAME_TOO_LARGE); // close the WebSocket connection with a frame too large error
                             
                             // no need to memset as no data has been written to the array at this point
@@ -9295,6 +9331,9 @@ bool lock_client_nb_crtp<T>::basic_read(){
                         data_array_new = new(std::nothrow) char[frame_data_len + 1024]; // we allocate 1KB more memory than the data frame length just to get some extra spacing and avoid some memory allocation for future data frames
                 
                         if(data_array_new == NULL){
+
+                            // we unblock the sigpipe signal because close internally blocks it
+                            unblock_sigpipe_signal();
                             
                             close(FRAME_TOO_LARGE); // close the WebSocket connection with a frame too large error
                                 
@@ -9398,19 +9437,19 @@ bool lock_client_nb_crtp<T>::basic_read(){
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 2;
 
-                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfssl_read should write to
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfSSL_read should write to
                     total_read_bytes = 0;
 
-                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfssl_read call
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfSSL_read call
                     read_bytes = 0;
 
                     // we keep reading till we have our total bytes to read
                     while(total_read_bytes < bytes_to_read){
 
-                        // we call wolfssl_read to attempt to read the bytes into the buffer
+                        // we call wolfSSL_read to attempt to read the bytes into the buffer
                         read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if wolfssl_read returns a value <= 0 we check if there is data available to be read
+                        // if wolfSSL_read returns a value <= 0 we check if there is data available to be read
                         if(read_bytes <= 0){
 
                             // we get the error message
@@ -9419,7 +9458,7 @@ bool lock_client_nb_crtp<T>::basic_read(){
                             // we check if the wolfssl library still expects more reads or if this is an actual error
                             if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
 
-                                // getting here ssl should retry returns true so we check if any ata has been fetched in this basic read call
+                                // getting here WOLFSSL_ERROR_WANT_READ || WRITE returns true so we check if any data has been fetched in this basic read call
                                 if(total_read_bytes > 0){
                                 // getting here data has been gotten in this current basic read call so we continue the loop till the entire data is fetched
 
@@ -9478,10 +9517,10 @@ bool lock_client_nb_crtp<T>::basic_read(){
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 8;
 
-                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfssl_read should write to
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfSSL_read should write to
                     total_read_bytes = 0;
 
-                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfssl_read call
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfSSL_read call
                     read_bytes = 0;
 
                     // we keep reading till we have our total bytes to read
@@ -9499,7 +9538,7 @@ bool lock_client_nb_crtp<T>::basic_read(){
                             // we check if the wolfssl library still expects more reads or if this is an actual error
                             if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
 
-                                // getting here ssl should retry returns true so we check if any ata has been fetched in this basic read call
+                                // getting here WOLFSSL_ERROR_WANT_READ || WRITE returns true so we check if any data has been fetched in this basic read call
                                 if(total_read_bytes > 0){
                                 // getting here data has been gotten in this current basic read call so we continue the loop till the entire data is fetched
 
@@ -9721,6 +9760,9 @@ bool lock_client_nb_crtp<T>::basic_read(){
                         data_array_new = new(std::nothrow) char[frame_data_len + 1024]; // we allocate 1KB more memory than is needed to store the frame so we could avoid some future memory allocations
             
                         if(data_array_new == NULL){
+
+                            // we unblock the sigpipe signal because close internally blocks it
+                            unblock_sigpipe_signal();
                             
                             close(FRAME_TOO_LARGE); // close the WebSocket connection with a frame too large error
                             
@@ -9807,6 +9849,9 @@ bool lock_client_nb_crtp<T>::basic_read(){
                         data_array_new = new(std::nothrow) char[frame_data_len + 1024]; // we allocate 1KB more memory than the data frame length just to get some extra spacing and avoid some memory allocation for future data frames
                 
                         if(data_array_new == NULL){
+
+                            // we unblock the sigpipe signal because close internally blocks it
+                            unblock_sigpipe_signal();
                             
                             close(FRAME_TOO_LARGE); // close the WebSocket connection with a frame too large error
                                 
@@ -9907,19 +9952,19 @@ bool lock_client_nb_crtp<T>::basic_read(){
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 2;
 
-                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfssl_read should write to
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfSSL_read should write to
                     total_read_bytes = 0;
 
-                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfssl_read call
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfSSL_read call
                     read_bytes = 0;
 
                     // we keep reading till we have our total bytes to read
                     while(total_read_bytes < bytes_to_read){
 
-                        // we call wolfssl_read to attempt to read the bytes into the buffer
+                        // we call wolfSSL_read to attempt to read the bytes into the buffer
                         read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if wolfssl_read returns a value <= 0 we check if there is data available to be read
+                        // if wolfSSL_read returns a value <= 0 we check if there is data available to be read
                         if(read_bytes <= 0){
 
                             // we get the error message
@@ -9928,7 +9973,7 @@ bool lock_client_nb_crtp<T>::basic_read(){
                             // we check if the wolfssl library still expects more reads or if this is an actual error
                             if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
 
-                                // getting here ssl should retry returns true so we check if any ata has been fetched in this basic read call
+                                // getting here WOLFSSL_ERROR_WANT_READ || WRITE returns true so we check if any data has been fetched in this basic read call
                                 if(total_read_bytes > 0){
                                 // getting here data has been gotten in this current basic read call so we continue the loop till the entire data is fetched
 
@@ -9987,10 +10032,10 @@ bool lock_client_nb_crtp<T>::basic_read(){
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 8;
 
-                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfssl_read should write to
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfSSL_read should write to
                     total_read_bytes = 0;
 
-                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfssl_read call
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfSSL_read call
                     read_bytes = 0;
 
                     // we keep reading till we have our total bytes to read
@@ -10008,7 +10053,7 @@ bool lock_client_nb_crtp<T>::basic_read(){
                             // we check if the wolfssl library still expects more reads or if this is an actual error
                             if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
 
-                                // getting here ssl should retry returns true so we check if any ata has been fetched in this basic read call
+                                // getting here WOLFSSL_ERROR_WANT_READ || WRITE returns true so we check if any data has been fetched in this basic read call
                                 if(total_read_bytes > 0){
                                 // getting here data has been gotten in this current basic read call so we continue the loop till the entire data is fetched
 
@@ -10094,7 +10139,7 @@ bool lock_client_nb_crtp<T>::basic_read(){
                 
                 // reaching here means that we encountered no errors thus far because if we encountered an error the function would have returned - SIGPIPE signal is still blocked
                 
-                uint64_t length_of_array_data = cursor - data_array; // this is used to store the length of data that the data array currently holds
+                int64_t length_of_array_data = cursor - data_array; // this is used to store the length of data that the data array currently holds
                 
                 if(frame_data_len < (length_of_array - length_of_array_data) ){ // array in use is large enough for incoming frame
                     
@@ -10237,7 +10282,10 @@ bool lock_client_nb_crtp<T>::basic_read(){
                             
                             memset(data_array, '\0', length_of_array_data); // zero out already received data
                     
-                            cursor = data_array; // set cursor to point back to data array 
+                            cursor = data_array; // set cursor to point back to data array
+
+                            // we unblock the sigpipe signal because close internally blocks it
+                            unblock_sigpipe_signal();
                             
                             close(FRAME_TOO_LARGE); // we close the websocket connection with a frame too large error
                             
@@ -10425,7 +10473,10 @@ bool lock_client_nb_crtp<T>::basic_read(){
                 
                         memset(data_array, '\0', length_of_array_data); // zero out already received data
                     
-                        cursor = data_array; // set cursor to point back to data array 
+                        cursor = data_array; // set cursor to point back to data array
+
+                        // we unblock the sigpipe signal because close internally blocks it
+                        unblock_sigpipe_signal();
                             
                         close(FRAME_TOO_LARGE); // we close the websocket connection with a frame too large error
                             
@@ -10529,19 +10580,19 @@ bool lock_client_nb_crtp<T>::basic_read(){
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 2;
 
-                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfssl_read should write to
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfSSL_read should write to
                     total_read_bytes = 0;
 
-                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfssl_read call
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfSSL_read call
                     read_bytes = 0;
 
                     // we keep reading till we have our total bytes to read
                     while(total_read_bytes < bytes_to_read){
 
-                        // we call wolfssl_read to attempt to read the bytes into the buffer
+                        // we call wolfSSL_read to attempt to read the bytes into the buffer
                         read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if wolfssl_read returns a value <= 0 we check if there is data available to be read
+                        // if wolfSSL_read returns a value <= 0 we check if there is data available to be read
                         if(read_bytes <= 0){
 
                             // we get the error message
@@ -10550,7 +10601,7 @@ bool lock_client_nb_crtp<T>::basic_read(){
                             // we check if the wolfssl library still expects more reads or if this is an actual error
                             if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
 
-                                // getting here ssl should retry returns true so we check if any ata has been fetched in this basic read call
+                                // getting here WOLFSSL_ERROR_WANT_READ || WRITE returns true so we check if any data has been fetched in this basic read call
                                 if(total_read_bytes > 0){
                                 // getting here data has been gotten in this current basic read call so we continue the loop till the entire data is fetched
 
@@ -10609,10 +10660,10 @@ bool lock_client_nb_crtp<T>::basic_read(){
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 8;
 
-                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfssl_read should write to
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfSSL_read should write to
                     total_read_bytes = 0;
 
-                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfssl_read call
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfSSL_read call
                     read_bytes = 0;
 
                     // we keep reading till we have our total bytes to read
@@ -10630,7 +10681,7 @@ bool lock_client_nb_crtp<T>::basic_read(){
                             // we check if the wolfssl library still expects more reads or if this is an actual error
                             if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
 
-                                // getting here ssl should retry returns true so we check if any ata has been fetched in this basic read call
+                                // getting here WOLFSSL_ERROR_WANT_READ || WRITE returns true so we check if any data has been fetched in this basic read call
                                 if(total_read_bytes > 0){
                                 // getting here data has been gotten in this current basic read call so we continue the loop till the entire data is fetched
 
@@ -10714,7 +10765,7 @@ bool lock_client_nb_crtp<T>::basic_read(){
                     
                 }
                 
-                uint64_t length_of_array_data = cursor - data_array; // this is used to store the length of data that the data array currently holds
+                int64_t length_of_array_data = cursor - data_array; // this is used to store the length of data that the data array currently holds
                 
                 if(frame_data_len < (length_of_array - length_of_array_data) ){ // array in use is large enough for incoming frame
                     
@@ -10860,7 +10911,7 @@ bool lock_client_nb_crtp<T>::basic_read(){
                     cursor = data_array; // set the cursor back to point to the array pointed at by data array
                     
                 }
-                else if( (data_array == data_array_static) && ( (length_of_array_data + frame_data_len) > size_of_allocated_data_memory) ){ // there are two parts to this condition, either memory has been allocated of memory has not been allocated 
+                else if( (data_array == data_array_static) && ( (length_of_array_data + frame_data_len) > size_of_allocated_data_memory) ){ // there are two parts to this condition, either memory has been allocated of memory has not been allocated
                     
                     if(data_array_new == NULL){ // memory has not been allocated
                         
@@ -10870,7 +10921,10 @@ bool lock_client_nb_crtp<T>::basic_read(){
                             
                             memset(data_array, '\0', length_of_array_data); // zero out already received data
                     
-                            cursor = data_array; // set cursor to point back to data array 
+                            cursor = data_array; // set cursor to point back to data array
+
+                            // we unblock the sigpipe signal because close internally blocks it
+                            unblock_sigpipe_signal();
                             
                             close(FRAME_TOO_LARGE);
                             
@@ -10971,7 +11025,10 @@ bool lock_client_nb_crtp<T>::basic_read(){
                     
                             memset(data_array, '\0', length_of_array_data); // zero out already received data
                         
-                            cursor = data_array; // set cursor to point back to data array 
+                            cursor = data_array; // set cursor to point back to data array
+
+                            // we unblock the sigpipe signal because close internally blocks it
+                            unblock_sigpipe_signal();
                                 
                             close(FRAME_TOO_LARGE);
                                 
@@ -11071,7 +11128,10 @@ bool lock_client_nb_crtp<T>::basic_read(){
                 
                         memset(data_array, '\0', length_of_array_data); // zero out already received data
                     
-                        cursor = data_array; // set cursor to point back to data array 
+                        cursor = data_array; // set cursor to point back to data array
+
+                        // we unblock the sigpipe signal because close internally blocks it
+                        unblock_sigpipe_signal();
                             
                         close(FRAME_TOO_LARGE);
                             
@@ -11509,6 +11569,9 @@ bool lock_client_nb_crtp<T>::basic_read(){
                 memset(data_array, '\0', (cursor - data_array) ); // zero out the data possibly already written to the data array if the an unrecognised frame is received when a fragmented message is still being transmitted.
                 
                 cursor = data_array; // set cursor to point back to data array
+
+                // we unblock the sigpipe signal because fail ws connection internally blocks it
+                unblock_sigpipe_signal();
                 
                 fail_ws_connection(PROTOCOL_ERROR); // fail the websocket connection
                 
