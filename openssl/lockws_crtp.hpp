@@ -2291,7 +2291,7 @@ bool lock_client_crtp<T>::basic_read(){
         
         if(client_state == OPEN){ // only continue if lock client is in open state
         
-            uint64_t frame_data_len = 0; // stores the length of the data frame received
+            int64_t frame_data_len = 0; // stores the length of the data frame received
             
             // block SIGPIPE signal before attempting to read data, just incase the connection is closed
             block_sigpipe_signal();
@@ -2488,7 +2488,7 @@ bool lock_client_crtp<T>::basic_read(){
                 
                 // reaching here means that we encountered no errors thus far because if we encountered an error the function would have returned - SIGPIPE signal is still blocked
                 
-                uint64_t length_of_array_data = 0;
+                int64_t length_of_array_data = 0;
                 
                 // test that the size of data to be received can fit into the static data array
                 if(frame_data_len < static_data_array_length){ // static data array would be sufficient
@@ -2654,15 +2654,19 @@ bool lock_client_crtp<T>::basic_read(){
                     cursor = data_array; // set the cursor back to point to the array pointed at by data array
                     
                 }
-                else{ // neither static nor already allocated memory is sufficient, so we check if memory has been allocated or not 
+                else{ // neither static nor already allocated memory is sufficient, so we check if memory has been allocated or not
                     
                     if(data_array_new == NULL){ // memory has not been allocated
                         
                         data_array_new = new(std::nothrow) char[frame_data_len + 1024]; // we allocate 1KB more memory than is needed to store the frame so we could avoid some future memory allocations
             
                         if(data_array_new == NULL){
+
+                            // we unblock the SIGPIPE signal because the close function internally blocks it
+                            unblock_sigpipe_signal();
                             
-                            close(FRAME_TOO_LARGE); // close the WebSocket connection with a frame too large error
+                            // close the WebSocket connection with a frame too large error
+                            close(FRAME_TOO_LARGE);
                             
                             // no need to memset as no data has been written to the array at this point
                             
@@ -2764,6 +2768,9 @@ bool lock_client_crtp<T>::basic_read(){
                         data_array_new = new(std::nothrow) char[frame_data_len + 1024]; // we allocate 1KB more memory than the data frame length just to get some extra spacing and avoid some memory allocation for future data frames
                 
                         if(data_array_new == NULL){
+
+                            // we unblock the SIGPIPE signal because the close function internally blocks it
+                            unblock_sigpipe_signal();
                             
                             close(FRAME_TOO_LARGE); // close the WebSocket connection with a frame too large error
                                 
@@ -2983,6 +2990,7 @@ bool lock_client_crtp<T>::basic_read(){
                         
                     }
                     
+                    
                     // getting here there was no error fetching the frame length so we store it
                     frame_data_len =  (rand_bytes[0] << 56) | (rand_bytes[1] << 48) | rand_bytes[2] << 40 | rand_bytes[3] << 32 | rand_bytes[4] << 24 | rand_bytes[5] << 16 | rand_bytes[6] << 8 | rand_bytes[7];
                     
@@ -3150,13 +3158,16 @@ bool lock_client_crtp<T>::basic_read(){
                     // we do not zero out the data array because the data isn't yet complete
                     
                 }
-                else{ // neither static nor already allocated memory is sufficient, so we check if memory has been allocated or not 
+                else{ // neither static nor already allocated memory is sufficient, so we check if memory has been allocated or not
                     
-                    if( data_array_new == NULL ){ // memory has not been allocated
+                    if(data_array_new == NULL){ // memory has not been allocated
                         
                         data_array_new = new(std::nothrow) char[frame_data_len + 1024]; // we allocate 1KB more than the frame length 
             
                         if(data_array_new == NULL){
+
+                            // we unblock the SIGPIPE signal because the close function internally blocks it
+                            unblock_sigpipe_signal();
                         
                             close(FRAME_TOO_LARGE);
                             
@@ -3250,6 +3261,9 @@ bool lock_client_crtp<T>::basic_read(){
                         data_array_new = new(std::nothrow) char[frame_data_len + 1024]; // we allocate extra memory for future use
             
                         if(data_array_new == NULL){
+
+                            // we unblock the SIGPIPE signal because the close function internally blocks it
+                            unblock_sigpipe_signal();
                 
                             close(FRAME_TOO_LARGE);
                             
@@ -3487,7 +3501,7 @@ bool lock_client_crtp<T>::basic_read(){
                 
                 // reaching here means that we encountered no errors thus far because if we encountered an error the function would have returned - SIGPIPE signal is still blocked
                 
-                uint64_t length_of_array_data = cursor - data_array; // this is used to store the length of data that the data array currently holds
+                int64_t length_of_array_data = cursor - data_array; // this is used to store the length of data that the data array currently holds
                 
                 if(frame_data_len < (length_of_array - length_of_array_data) ){ // array in use is large enough for incoming frame
                     
@@ -3636,7 +3650,7 @@ bool lock_client_crtp<T>::basic_read(){
                 }
                 else if( (data_array == data_array_static) && ( (length_of_array_data + frame_data_len) > size_of_allocated_data_memory) ){ // there are two parts to this condition, either memory has been allocated of memory has not been allocated 
                     
-                    if( data_array_new == NULL ){ // memory has not been allocated
+                    if(data_array_new == NULL){ // memory has not been allocated
                         
                         data_array_new = new(std::nothrow) char[length_of_array_data + frame_data_len + 1024]; // allocate memory 1KB bigger than the length of array data + the length of the incoming continuation frame
             
@@ -3644,7 +3658,10 @@ bool lock_client_crtp<T>::basic_read(){
                             
                             memset(data_array, '\0', length_of_array_data); // zero out already received data
                     
-                            cursor = data_array; // set cursor to point back to data array 
+                            cursor = data_array; // set cursor to point back to data array
+
+                            // we unblock the SIGPIPE signal because the close function internally blocks it
+                            unblock_sigpipe_signal();
                             
                             close(FRAME_TOO_LARGE); // we close the websocket connection with a frame too large error
                             
@@ -3747,7 +3764,10 @@ bool lock_client_crtp<T>::basic_read(){
                     
                             memset(data_array, '\0', length_of_array_data); // zero out already received data
                         
-                            cursor = data_array; // set cursor to point back to data array 
+                            cursor = data_array; // set cursor to point back to data array
+
+                            // we unblock the SIGPIPE signal because the close function internally blocks it
+                            unblock_sigpipe_signal();
                                 
                             close(FRAME_TOO_LARGE); // we close the websocket connection with a frame too large error
                                 
@@ -3850,7 +3870,10 @@ bool lock_client_crtp<T>::basic_read(){
                 
                         memset(data_array, '\0', length_of_array_data); // zero out already received data
                     
-                        cursor = data_array; // set cursor to point back to data array 
+                        cursor = data_array; // set cursor to point back to data array
+
+                        // we unblock the SIGPIPE signal because the close function internally blocks it
+                        unblock_sigpipe_signal();
                             
                         close(FRAME_TOO_LARGE); // we close the websocket connection with a frame too large error
                             
@@ -4091,7 +4114,7 @@ bool lock_client_crtp<T>::basic_read(){
                     
                 }
                 
-                uint64_t length_of_array_data = cursor - data_array; // this is used to store the length of data that the data array currently holds
+                int64_t length_of_array_data = cursor - data_array; // this is used to store the length of data that the data array currently holds
                 
                 if(frame_data_len < (length_of_array - length_of_array_data) ){ // array in use is large enough for incoming frame
                     
@@ -4265,7 +4288,10 @@ bool lock_client_crtp<T>::basic_read(){
                             
                             memset(data_array, '\0', length_of_array_data); // zero out already received data
                     
-                            cursor = data_array; // set cursor to point back to data array 
+                            cursor = data_array; // set cursor to point back to data array
+
+                            // we unblock the SIGPIPE signal because the close function internally blocks it
+                            unblock_sigpipe_signal();
                             
                             close(FRAME_TOO_LARGE);
                             
@@ -4375,7 +4401,10 @@ bool lock_client_crtp<T>::basic_read(){
                     
                             memset(data_array, '\0', length_of_array_data); // zero out already received data
                         
-                            cursor = data_array; // set cursor to point back to data array 
+                            cursor = data_array; // set cursor to point back to data array
+
+                            // we unblock the SIGPIPE signal because the close function internally blocks it
+                            unblock_sigpipe_signal();
                                 
                             close(FRAME_TOO_LARGE);
                                 
@@ -4485,7 +4514,10 @@ bool lock_client_crtp<T>::basic_read(){
                 
                         memset(data_array, '\0', length_of_array_data); // zero out already received data
                     
-                        cursor = data_array; // set cursor to point back to data array 
+                        cursor = data_array; // set cursor to point back to data array
+
+                        // we unblock the SIGPIPE signal because the close function internally blocks it
+                        unblock_sigpipe_signal();
                             
                         close(FRAME_TOO_LARGE);
                             
@@ -4769,6 +4801,7 @@ bool lock_client_crtp<T>::basic_read(){
                     }
 
                 }
+                
             
                 // build up the close frame response message
             
@@ -4952,6 +4985,9 @@ bool lock_client_crtp<T>::basic_read(){
                 memset(data_array, '\0', (cursor - data_array) ); // zero out the data possibly already written to the data array if the an unrecognised frame is received when a fragmented message is still being transmitted.
                 
                 cursor = data_array; // set cursor to point back to data array
+
+                // we unblock the SIGPIPE signal because the fail ws connection function internally blocks it
+                unblock_sigpipe_signal();
                 
                 fail_ws_connection(PROTOCOL_ERROR); // fail the websocket connection
                 
