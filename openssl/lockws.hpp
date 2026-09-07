@@ -46,7 +46,6 @@ lock_client::lock_client(std::string_view url){
     // chain base64 and mem bio 
     BIO_push(c_base64, c_mem_base64);
     
-    
     // check if url is a ws:// or wss:// endpoint, check case insensitively
     
     if( (url.compare(0, 6, "wss://") == 0) || (url.compare(0, 6, "Wss://") == 0) || (url.compare(0, 6, "WSs://") == 0) || (url.compare(0, 6, "WSS://") == 0) || (url.compare(0, 6, "WsS://") == 0) || (url.compare(0, 6, "wSS://") == 0) || (url.compare(0, 6, "wsS://") == 0) || (url.compare(0, 6, "wSs://") == 0) ){ // endpoint is a wss:// endpoint, the second parameter to the std::string_view compare function is 6 which is the length of the string "wss://" which we are testing for the presence of, we list out and compare the 8 possible combinations of uppercase and lowercase lettering that are valid
@@ -280,6 +279,7 @@ lock_client::lock_client(std::string_view url){
         error = true;
         
     }
+
     // initialisation of BIO and SSL structures end
     
     if(!error){ // only continue if no error
@@ -1580,10 +1580,7 @@ inline char* lock_client::get_error_message(){ // returns the error message: the
 
 inline bool lock_client::is_open(){
 
-    if(client_state == OPEN)
-        return true;
-    else
-        return false;
+    return (client_state == OPEN) ? true : false;
     
 }
 
@@ -1770,7 +1767,7 @@ bool lock_client::send(std::string_view payload_data){ // sends data passed as p
         
         if(client_state == OPEN){ // only continue if client is in open state
         
-            uint64_t payload_data_len = payload_data.size();
+            int64_t payload_data_len = payload_data.size();
             int i = 0; // variable for traversing the send data array
             
             if( (payload_data_len + biggest_header_len) < send_data_array_len ){ // static array is large enough
@@ -1901,10 +1898,10 @@ bool lock_client::send(std::string_view payload_data){ // sends data passed as p
                 i++;
 
                 // we store the frame length of the frame - we set the frame length of the individual frames to send_data_array_len - biggest_header_len so the frame can be fit into the static array irrespective of the websocket header length
-                uint64_t frame_data_len = send_data_array_len - biggest_header_len;
+                int64_t frame_data_len = send_data_array_len - biggest_header_len;
 
                 // this variable holds the index of the payload data that the sending continues from after each frame
-                uint64_t continuation_index = 0;
+                int64_t continuation_index = 0;
                 
                 // set the second byte
                 if(frame_data_len < 126){ // if frame data length is less than 126 the next 7 bits represent the frame length
@@ -1971,7 +1968,7 @@ bool lock_client::send(std::string_view payload_data){ // sends data passed as p
                 // mask the data and store the masked data in the send data array 
                 int k = 0; // variable used to store the mask index of the exact byte in the mask array to mask with
                 
-                for(uint64_t j = 0; j<frame_data_len; j++){
+                for(int64_t j = 0; j<frame_data_len; j++){
 
                     k = j % 4;
                     
@@ -2090,7 +2087,7 @@ bool lock_client::send(std::string_view payload_data){ // sends data passed as p
                         k = 0; // we reuse the variable used to store the mask index of the exact byte in the mask array to mask with
                         
                         // since this is the last frame we use continuation_index < payload_data_len as the conditional for this for loop
-                        for(uint64_t j = continuation_index; j<payload_data_len; j++){
+                        for(int64_t j = continuation_index; j<payload_data_len; j++){
 
                             send_data[i] = payload_data[j] ^ mask[k];
 
@@ -2130,7 +2127,7 @@ bool lock_client::send(std::string_view payload_data){ // sends data passed as p
                         i = 0;
                         
                         // we get our copy boundary index where our frame data for this frame stops
-                        uint64_t copy_bound = continuation_index + frame_data_len;
+                        int64_t copy_bound = continuation_index + frame_data_len;
 
                         // set the first byte
                         send_data[i] = FIN_BIT_NOT_SET | RSV_BIT_UNSET_ALL | CONTINUATION_FRAME;
@@ -2200,7 +2197,7 @@ bool lock_client::send(std::string_view payload_data){ // sends data passed as p
                         // mask the data and store the masked data in the send data array 
                         k = 0; // we reuse the variable used to store the mask index of the exact byte in the mask array to mask with
                         
-                        for(uint64_t j = continuation_index; j<copy_bound; j++){
+                        for(int64_t j = continuation_index; j<copy_bound; j++){
 
                             send_data[i] = payload_data[j] ^ mask[k];
 
@@ -2290,7 +2287,7 @@ bool lock_client::basic_read(){
         
         if(client_state == OPEN){ // only continue if lock client is in open state
         
-            uint64_t frame_data_len = 0; // stores the length of the data frame received
+            int64_t frame_data_len = 0; // stores the length of the data frame received
             
             // block SIGPIPE signal before attempting to read data, just incase the connection is closed
             block_sigpipe_signal();
@@ -2487,7 +2484,7 @@ bool lock_client::basic_read(){
                 
                 // reaching here means that we encountered no errors thus far because if we encountered an error the function would have returned - SIGPIPE signal is still blocked
                 
-                uint64_t length_of_array_data = 0;
+                int64_t length_of_array_data = 0;
                 
                 // test that the size of data to be received can fit into the static data array
                 if(frame_data_len < static_data_array_length){ // static data array would be sufficient
@@ -2653,15 +2650,19 @@ bool lock_client::basic_read(){
                     cursor = data_array; // set the cursor back to point to the array pointed at by data array
                     
                 }
-                else{ // neither static nor already allocated memory is sufficient, so we check if memory has been allocated or not 
+                else{ // neither static nor already allocated memory is sufficient, so we check if memory has been allocated or not
                     
                     if(data_array_new == NULL){ // memory has not been allocated
                         
                         data_array_new = new(std::nothrow) char[frame_data_len + 1024]; // we allocate 1KB more memory than is needed to store the frame so we could avoid some future memory allocations
             
                         if(data_array_new == NULL){
+
+                            // we unblock the SIGPIPE signal because the close function internally blocks it
+                            unblock_sigpipe_signal();
                             
-                            close(FRAME_TOO_LARGE); // close the WebSocket connection with a frame too large error
+                            // close the WebSocket connection with a frame too large error
+                            close(FRAME_TOO_LARGE);
                             
                             // no need to memset as no data has been written to the array at this point
                             
@@ -2763,6 +2764,9 @@ bool lock_client::basic_read(){
                         data_array_new = new(std::nothrow) char[frame_data_len + 1024]; // we allocate 1KB more memory than the data frame length just to get some extra spacing and avoid some memory allocation for future data frames
                 
                         if(data_array_new == NULL){
+
+                            // we unblock the SIGPIPE signal because the close function internally blocks it
+                            unblock_sigpipe_signal();
                             
                             close(FRAME_TOO_LARGE); // close the WebSocket connection with a frame too large error
                                 
@@ -3150,13 +3154,16 @@ bool lock_client::basic_read(){
                     // we do not zero out the data array because the data isn't yet complete
                     
                 }
-                else{ // neither static nor already allocated memory is sufficient, so we check if memory has been allocated or not 
+                else{ // neither static nor already allocated memory is sufficient, so we check if memory has been allocated or not
                     
-                    if( data_array_new == NULL ){ // memory has not been allocated
+                    if(data_array_new == NULL){ // memory has not been allocated
                         
                         data_array_new = new(std::nothrow) char[frame_data_len + 1024]; // we allocate 1KB more than the frame length 
             
                         if(data_array_new == NULL){
+
+                            // we unblock the SIGPIPE signal because the close function internally blocks it
+                            unblock_sigpipe_signal();
                         
                             close(FRAME_TOO_LARGE);
                             
@@ -3250,6 +3257,9 @@ bool lock_client::basic_read(){
                         data_array_new = new(std::nothrow) char[frame_data_len + 1024]; // we allocate extra memory for future use
             
                         if(data_array_new == NULL){
+
+                            // we unblock the SIGPIPE signal because the close function internally blocks it
+                            unblock_sigpipe_signal();
                 
                             close(FRAME_TOO_LARGE);
                             
@@ -3487,7 +3497,7 @@ bool lock_client::basic_read(){
                 
                 // reaching here means that we encountered no errors thus far because if we encountered an error the function would have returned - SIGPIPE signal is still blocked
                 
-                uint64_t length_of_array_data = cursor - data_array; // this is used to store the length of data that the data array currently holds
+                int64_t length_of_array_data = cursor - data_array; // this is used to store the length of data that the data array currently holds
                 
                 if(frame_data_len < (length_of_array - length_of_array_data) ){ // array in use is large enough for incoming frame
                     
@@ -3636,7 +3646,7 @@ bool lock_client::basic_read(){
                 }
                 else if( (data_array == data_array_static) && ( (length_of_array_data + frame_data_len) > size_of_allocated_data_memory) ){ // there are two parts to this condition, either memory has been allocated of memory has not been allocated 
                     
-                    if( data_array_new == NULL ){ // memory has not been allocated
+                    if(data_array_new == NULL){ // memory has not been allocated
                         
                         data_array_new = new(std::nothrow) char[length_of_array_data + frame_data_len + 1024]; // allocate memory 1KB bigger than the length of array data + the length of the incoming continuation frame
             
@@ -3644,7 +3654,10 @@ bool lock_client::basic_read(){
                             
                             memset(data_array, '\0', length_of_array_data); // zero out already received data
                     
-                            cursor = data_array; // set cursor to point back to data array 
+                            cursor = data_array; // set cursor to point back to data array
+
+                            // we unblock the SIGPIPE signal because the close function internally blocks it
+                            unblock_sigpipe_signal();
                             
                             close(FRAME_TOO_LARGE); // we close the websocket connection with a frame too large error
                             
@@ -3747,7 +3760,10 @@ bool lock_client::basic_read(){
                     
                             memset(data_array, '\0', length_of_array_data); // zero out already received data
                         
-                            cursor = data_array; // set cursor to point back to data array 
+                            cursor = data_array; // set cursor to point back to data array
+
+                            // we unblock the SIGPIPE signal because the close function internally blocks it
+                            unblock_sigpipe_signal();
                                 
                             close(FRAME_TOO_LARGE); // we close the websocket connection with a frame too large error
                                 
@@ -3850,7 +3866,10 @@ bool lock_client::basic_read(){
                 
                         memset(data_array, '\0', length_of_array_data); // zero out already received data
                     
-                        cursor = data_array; // set cursor to point back to data array 
+                        cursor = data_array; // set cursor to point back to data array
+
+                        // we unblock the SIGPIPE signal because the close function internally blocks it
+                        unblock_sigpipe_signal();
                             
                         close(FRAME_TOO_LARGE); // we close the websocket connection with a frame too large error
                             
@@ -4091,7 +4110,7 @@ bool lock_client::basic_read(){
                     
                 }
                 
-                uint64_t length_of_array_data = cursor - data_array; // this is used to store the length of data that the data array currently holds
+                int64_t length_of_array_data = cursor - data_array; // this is used to store the length of data that the data array currently holds
                 
                 if(frame_data_len < (length_of_array - length_of_array_data) ){ // array in use is large enough for incoming frame
                     
@@ -4265,7 +4284,10 @@ bool lock_client::basic_read(){
                             
                             memset(data_array, '\0', length_of_array_data); // zero out already received data
                     
-                            cursor = data_array; // set cursor to point back to data array 
+                            cursor = data_array; // set cursor to point back to data array
+
+                            // we unblock the SIGPIPE signal because the close function internally blocks it
+                            unblock_sigpipe_signal();
                             
                             close(FRAME_TOO_LARGE);
                             
@@ -4375,7 +4397,10 @@ bool lock_client::basic_read(){
                     
                             memset(data_array, '\0', length_of_array_data); // zero out already received data
                         
-                            cursor = data_array; // set cursor to point back to data array 
+                            cursor = data_array; // set cursor to point back to data array
+
+                            // we unblock the SIGPIPE signal because the close function internally blocks it
+                            unblock_sigpipe_signal();
                                 
                             close(FRAME_TOO_LARGE);
                                 
@@ -4485,7 +4510,10 @@ bool lock_client::basic_read(){
                 
                         memset(data_array, '\0', length_of_array_data); // zero out already received data
                     
-                        cursor = data_array; // set cursor to point back to data array 
+                        cursor = data_array; // set cursor to point back to data array
+
+                        // we unblock the SIGPIPE signal because the close function internally blocks it
+                        unblock_sigpipe_signal();
                             
                         close(FRAME_TOO_LARGE);
                             
@@ -4953,6 +4981,9 @@ bool lock_client::basic_read(){
                 memset(data_array, '\0', (cursor - data_array) ); // zero out the data possibly already written to the data array if the an unrecognised frame is received when a fragmented message is still being transmitted.
                 
                 cursor = data_array; // set cursor to point back to data array
+
+                // we unblock the SIGPIPE signal because the fail ws connection function internally blocks it
+                unblock_sigpipe_signal();
                 
                 fail_ws_connection(PROTOCOL_ERROR); // fail the websocket connection
                 
@@ -8575,7 +8606,7 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
         
         if(client_state == OPEN){ // only continue if client is in open state
         
-            uint64_t payload_data_len = payload_data.size();
+            int64_t payload_data_len = payload_data.size();
             int i = 0; // variable for traversing the send data array
             
             if( (payload_data_len + biggest_header_len) < send_data_array_len ){ // static array is large enough
@@ -8732,10 +8763,10 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
                 i++;
 
                 // we store the frame length of the frame - we set the frame length of the individual frames to send_data_array_len - biggest_header_len so the frame can be fit into the static array irrespective of the websocket header length
-                uint64_t frame_data_len = send_data_array_len - biggest_header_len;
+                int64_t frame_data_len = send_data_array_len - biggest_header_len;
 
                 // this variable holds the index of the payload data that the sending continues from after each frame
-                uint64_t continuation_index = 0;
+                int64_t continuation_index = 0;
                 
                 // set the second byte
                 if(frame_data_len < 126){ // if frame data length is less than 126 the next 7 bits represent the frame length
@@ -8801,7 +8832,7 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
                 // mask the data and store the masked data in the send data array 
                 int k = 0; // variable used to store the mask index of the exact byte in the mask array to mask with
                 
-                for(uint64_t j = 0; j<frame_data_len; j++){
+                for(int64_t j = 0; j<frame_data_len; j++){
 
                     k = j % 4;
                     
@@ -8947,7 +8978,7 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
                         k = 0; // we reuse the variable used to store the mask index of the exact byte in the mask array to mask with
                         
                         // since this is the last frame we use continuation_index < payload_data_len as the conditional for this for loop
-                        for(uint64_t j = continuation_index; j<payload_data_len; j++){
+                        for(int64_t j = continuation_index; j<payload_data_len; j++){
 
                             send_data[i] = payload_data[j] ^ mask[k];
 
@@ -9014,7 +9045,7 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
                         i = 0;
                         
                         // we get our copy boundary index where our frame data for this frame stops
-                        uint64_t copy_bound = continuation_index + frame_data_len;
+                        int64_t copy_bound = continuation_index + frame_data_len;
 
                         // set the first byte
                         send_data[i] = FIN_BIT_NOT_SET | RSV_BIT_UNSET_ALL | CONTINUATION_FRAME;
@@ -9084,7 +9115,7 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
                         // mask the data and store the masked data in the send data array 
                         k = 0; // we reuse the variable used to store the mask index of the exact byte in the mask array to mask with
                         
-                        for(uint64_t j = continuation_index; j<copy_bound; j++){
+                        for(int64_t j = continuation_index; j<copy_bound; j++){
 
                             send_data[i] = payload_data[j] ^ mask[k];
 
@@ -9201,7 +9232,7 @@ bool lock_client_nb::basic_read(){
         
         if(client_state == OPEN){ // only continue if lock client is in open state
         
-            uint64_t frame_data_len = 0; // stores the length of the data frame received
+            int64_t frame_data_len = 0; // stores the length of the data frame received
             
             // block SIGPIPE signal before attempting to read data, just incase the connection is closed
             block_sigpipe_signal();
@@ -9472,7 +9503,7 @@ bool lock_client_nb::basic_read(){
                 
                 // reaching here means that we encountered no errors thus far because if we encountered an error the function would have returned. SIGPIPE signal is still blocked
                 
-                uint64_t length_of_array_data = 0;
+                int64_t length_of_array_data = 0;
                 
                 // test that the size of data to be received can fit into the static data array
                 if(frame_data_len < static_data_array_length){ // static data array would be sufficient
@@ -10464,7 +10495,7 @@ bool lock_client_nb::basic_read(){
                 
                 // reaching here means that we encountered no errors thus far because if we encountered an error the function would have returned - SIGPIPE signal is still blocked
                 
-                uint64_t length_of_array_data = cursor - data_array; // this is used to store the length of data that the data array currently holds
+                int64_t length_of_array_data = cursor - data_array; // this is used to store the length of data that the data array currently holds
                 
                 if(frame_data_len < (length_of_array - length_of_array_data) ){ // array in use is large enough for incoming frame
                     
@@ -11061,7 +11092,7 @@ bool lock_client_nb::basic_read(){
                     
                 }
                 
-                uint64_t length_of_array_data = cursor - data_array; // this is used to store the length of data that the data array currently holds
+                int64_t length_of_array_data = cursor - data_array; // this is used to store the length of data that the data array currently holds
                 
                 if(frame_data_len < (length_of_array - length_of_array_data) ){ // array in use is large enough for incoming frame
                     
