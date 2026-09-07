@@ -8915,24 +8915,8 @@ bool lock_client_nb::basic_read(){
                             // we check if the wolfssl library still expects more reads or if this is an actual error
                             if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
 
-                                // getting here WOLFSSL_ERROR_WANT_READ || WRITE returns true so we check if any data has been fetched in this basic read call
-                                if(total_read_bytes > 0){
-                                // getting here data has been gotten in this current basic read call so we continue the loop till the entire data is fetched
-
-                                    continue;
-
-                                }
-                                else{
-                                // getting here no data has been fetched in this basic read call so we unblock the sigpipe signal and exit
-
-                                    // we unblock the sigpipe signal
-                                    unblock_sigpipe_signal();
-
-                                    // we return error at this point because it is still 0 and it signals that basic read didn't fail there just is no data to read
-                                    return error;
-
-                                }
-
+                                // getting here WOLFSSL_ERROR_WANT_READ || WRITE returns true so we simply continue till we read the entire frame length because getting here we have gotten our first 2 bytes to indicate that there is data to be read
+                                continue;
 
                             }
                             else{
@@ -8983,10 +8967,10 @@ bool lock_client_nb::basic_read(){
                     // we keep reading till we have our total bytes to read
                     while(total_read_bytes < bytes_to_read){
 
-                        // we call wolfssl_read to attempt to read the bytes into the buffer
+                        // we call wolfSSL_read to attempt to read the bytes into the buffer
                         read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if wolfssl_read returns a value <= 0 we check if there is data available to be read
+                        // if wolfSSL_read returns a value <= 0 we check if there is data available to be read
                         if(read_bytes <= 0){
 
                             // we get the error message
@@ -8995,24 +8979,8 @@ bool lock_client_nb::basic_read(){
                             // we check if the wolfssl library still expects more reads or if this is an actual error
                             if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
 
-                                // getting here WOLFSSL_ERROR_WANT_READ || WRITE returns true so we check if any data has been fetched in this basic read call
-                                if(total_read_bytes > 0){
-                                // getting here data has been gotten in this current basic read call so we continue the loop till the entire data is fetched
-
-                                    continue;
-
-                                }
-                                else{
-                                // getting here no data has been fetched in this basic read call so we unblock the sigpipe signal and exit
-
-                                    // we unblock the sigpipe signal
-                                    unblock_sigpipe_signal();
-
-                                    // we return error at this point because it is still 0 and it signals that basic read didn't fail there just is no data to read
-                                    return error;
-
-                                }
-
+                                // getting here WOLFSSL_ERROR_WANT_READ || WRITE returns true so we simply continue till we read the entire frame length because getting here we have gotten our first 2 bytes to indicate that there is data to be read
+                                continue;
 
                             }
                             else{
@@ -9444,24 +9412,8 @@ bool lock_client_nb::basic_read(){
                             // we check if the wolfssl library still expects more reads or if this is an actual error
                             if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
 
-                                // getting here WOLFSSL_ERROR_WANT_READ || WRITE returns true so we check if any data has been fetched in this basic read call
-                                if(total_read_bytes > 0){
-                                // getting here data has been gotten in this current basic read call so we continue the loop till the entire data is fetched
-
-                                    continue;
-
-                                }
-                                else{
-                                // getting here no data has been fetched in this basic read call so we unblock the sigpipe signal and exit
-
-                                    // we unblock the sigpipe signal
-                                    unblock_sigpipe_signal();
-
-                                    // we return error at this point because it is still 0 and it signals that basic read didn't fail there just is no data to read
-                                    return error;
-
-                                }
-
+                                // getting here WOLFSSL_ERROR_WANT_READ || WRITE returns true so we simply continue till we read the entire frame length because getting here we have gotten our first 2 bytes to indicate that there is data to be read
+                                continue;
 
                             }
                             else{
@@ -9512,10 +9464,10 @@ bool lock_client_nb::basic_read(){
                     // we keep reading till we have our total bytes to read
                     while(total_read_bytes < bytes_to_read){
 
-                        // we call wolfssl_read to attempt to read the bytes into the buffer
+                        // we call wolfSSL_read to attempt to read the bytes into the buffer
                         read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if wolfssl_read returns a value <= 0 we check if there is data available to be read
+                        // if wolfSSL_read returns a value <= 0 we check if there is data available to be read
                         if(read_bytes <= 0){
 
                             // we get the error message
@@ -9524,24 +9476,8 @@ bool lock_client_nb::basic_read(){
                             // we check if the wolfssl library still expects more reads or if this is an actual error
                             if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
 
-                                // getting here WOLFSSL_ERROR_WANT_READ || WRITE returns true so we check if any data has been fetched in this basic read call
-                                if(total_read_bytes > 0){
-                                // getting here data has been gotten in this current basic read call so we continue the loop till the entire data is fetched
-
-                                    continue;
-
-                                }
-                                else{
-                                // getting here no data has been fetched in this basic read call so we unblock the sigpipe signal and exit
-
-                                    // we unblock the sigpipe signal
-                                    unblock_sigpipe_signal();
-
-                                    // we return error at this point because it is still 0 and it signals that basic read didn't fail there just is no data to read
-                                    return error;
-
-                                }
-
+                                // getting here WOLFSSL_ERROR_WANT_READ || WRITE returns true so we simply continue till we read the entire frame length because getting here we have gotten our first 2 bytes to indicate that there is data to be read
+                                continue;
 
                             }
                             else{
@@ -9959,24 +9895,8 @@ bool lock_client_nb::basic_read(){
                             // we check if the wolfssl library still expects more reads or if this is an actual error
                             if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
 
-                                // getting here WOLFSSL_ERROR_WANT_READ || WRITE returns true so we check if any data has been fetched in this basic read call
-                                if(total_read_bytes > 0){
-                                // getting here data has been gotten in this current basic read call so we continue the loop till the entire data is fetched
-
-                                    continue;
-
-                                }
-                                else{
-                                // getting here no data has been fetched in this basic read call so we unblock the sigpipe signal and exit
-
-                                    // we unblock the sigpipe signal
-                                    unblock_sigpipe_signal();
-
-                                    // we return error at this point because it is still 0 and it signals that basic read didn't fail there just is no data to read
-                                    return error;
-
-                                }
-
+                                // getting here WOLFSSL_ERROR_WANT_READ || WRITE returns true so we simply continue till we read the entire frame length because getting here we have gotten our first 2 bytes to indicate that there is data to be read
+                                continue;
 
                             }
                             else{
@@ -10027,10 +9947,10 @@ bool lock_client_nb::basic_read(){
                     // we keep reading till we have our total bytes to read
                     while(total_read_bytes < bytes_to_read){
 
-                        // we call wolfssl_read to attempt to read the bytes into the buffer
+                        // we call wolfSSL_read to attempt to read the bytes into the buffer
                         read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if wolfssl_read returns a value <= 0 we check if there is data available to be read
+                        // if wolfSSL_read returns a value <= 0 we check if there is data available to be read
                         if(read_bytes <= 0){
 
                             // we get the error message
@@ -10039,24 +9959,8 @@ bool lock_client_nb::basic_read(){
                             // we check if the wolfssl library still expects more reads or if this is an actual error
                             if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
 
-                                // getting here WOLFSSL_ERROR_WANT_READ || WRITE returns true so we check if any data has been fetched in this basic read call
-                                if(total_read_bytes > 0){
-                                // getting here data has been gotten in this current basic read call so we continue the loop till the entire data is fetched
-
-                                    continue;
-
-                                }
-                                else{
-                                // getting here no data has been fetched in this basic read call so we unblock the sigpipe signal and exit
-
-                                    // we unblock the sigpipe signal
-                                    unblock_sigpipe_signal();
-
-                                    // we return error at this point because it is still 0 and it signals that basic read didn't fail there just is no data to read
-                                    return error;
-
-                                }
-
+                                // getting here WOLFSSL_ERROR_WANT_READ || WRITE returns true so we simply continue till we read the entire frame length because getting here we have gotten our first 2 bytes to indicate that there is data to be read
+                                continue;
 
                             }
                             else{
@@ -10587,24 +10491,8 @@ bool lock_client_nb::basic_read(){
                             // we check if the wolfssl library still expects more reads or if this is an actual error
                             if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
 
-                                // getting here WOLFSSL_ERROR_WANT_READ || WRITE returns true so we check if any data has been fetched in this basic read call
-                                if(total_read_bytes > 0){
-                                // getting here data has been gotten in this current basic read call so we continue the loop till the entire data is fetched
-
-                                    continue;
-
-                                }
-                                else{
-                                // getting here no data has been fetched in this basic read call so we unblock the sigpipe signal and exit
-
-                                    // we unblock the sigpipe signal
-                                    unblock_sigpipe_signal();
-
-                                    // we return error at this point because it is still 0 and it signals that basic read didn't fail there just is no data to read
-                                    return error;
-
-                                }
-
+                                // getting here WOLFSSL_ERROR_WANT_READ || WRITE returns true so we simply continue till we read the entire frame length because getting here we have gotten our first 2 bytes to indicate that there is data to be read
+                                continue;
 
                             }
                             else{
@@ -10655,10 +10543,10 @@ bool lock_client_nb::basic_read(){
                     // we keep reading till we have our total bytes to read
                     while(total_read_bytes < bytes_to_read){
 
-                        // we call wolfssl_read to attempt to read the bytes into the buffer
+                        // we call wolfSSL_read to attempt to read the bytes into the buffer
                         read_bytes = wolfSSL_read(c_ssl, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if wolfssl_read returns a value <= 0 we check if there is data available to be read
+                        // if wolfSSL_read returns a value <= 0 we check if there is data available to be read
                         if(read_bytes <= 0){
 
                             // we get the error message
@@ -10667,24 +10555,8 @@ bool lock_client_nb::basic_read(){
                             // we check if the wolfssl library still expects more reads or if this is an actual error
                             if(err == WOLFSSL_ERROR_WANT_READ || err == WOLFSSL_ERROR_WANT_WRITE){
 
-                                // getting here WOLFSSL_ERROR_WANT_READ || WRITE returns true so we check if any data has been fetched in this basic read call
-                                if(total_read_bytes > 0){
-                                // getting here data has been gotten in this current basic read call so we continue the loop till the entire data is fetched
-
-                                    continue;
-
-                                }
-                                else{
-                                // getting here no data has been fetched in this basic read call so we unblock the sigpipe signal and exit
-
-                                    // we unblock the sigpipe signal
-                                    unblock_sigpipe_signal();
-
-                                    // we return error at this point because it is still 0 and it signals that basic read didn't fail there just is no data to read
-                                    return error;
-
-                                }
-
+                                // getting here WOLFSSL_ERROR_WANT_READ || WRITE returns true so we simply continue till we read the entire frame length because getting here we have gotten our first 2 bytes to indicate that there is data to be read
+                                continue;
 
                             }
                             else{
