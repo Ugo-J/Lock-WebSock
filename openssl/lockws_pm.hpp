@@ -8,7 +8,7 @@
 #pragma GCC diagnostic ignored "-Wshift-count-overflow"
 
 // constructor with url string
-lock_client_nb::lock_client_nb(std::string_view url){
+lock_client_pm::lock_client_pm(std::string_view url){
 
     // initialisation of class wide variables
     if(!openssl_init){
@@ -799,7 +799,7 @@ lock_client_nb::lock_client_nb(std::string_view url){
 }
 
 // constructor that binds to a network interface
-lock_client_nb::lock_client_nb(std::string_view url, in_addr* interface_address, char* interface_name){
+lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address, char* interface_name){
 
     // initialisation of class wide variables
     if(!openssl_init){
@@ -1582,7 +1582,7 @@ lock_client_nb::lock_client_nb(std::string_view url, in_addr* interface_address,
 }
 
 // parameterless constructor
-lock_client_nb::lock_client_nb(){
+lock_client_pm::lock_client_pm(){
     
     // initialisation of class wide variables
     if(!openssl_init){
@@ -1624,7 +1624,7 @@ lock_client_nb::lock_client_nb(){
 }
 
 // destructor
-lock_client_nb::~lock_client_nb(){
+lock_client_pm::~lock_client_pm(){
     
     // close the websocket connection if any
     if(client_state == OPEN){
@@ -1698,19 +1698,19 @@ lock_client_nb::~lock_client_nb(){
     
 }
 
-inline bool lock_client_nb::status(){ // returns the error status of a lock_client instance
+inline bool lock_client_pm::status(){ // returns the error status of a lock_client instance
     
     return error;
     
 }
 
-inline char* lock_client_nb::get_error_message(){ // returns the error message: the reason why a lock_client instance's error flag is set
+inline char* lock_client_pm::get_error_message(){ // returns the error message: the reason why a lock_client instance's error flag is set
     
     return error_buffer;
     
 }
 
-inline bool lock_client_nb::is_open(){
+inline bool lock_client_pm::is_open(){
 
     if(client_state == OPEN)
         return true;
@@ -1719,7 +1719,7 @@ inline bool lock_client_nb::is_open(){
     
 }
 
-bool lock_client_nb::ping(){ // sends a ping on an established websocket connection
+bool lock_client_pm::ping(){ // sends a ping on an established websocket connection
     
     if(!error){ // only continue if no error
         
@@ -1805,7 +1805,7 @@ bool lock_client_nb::ping(){ // sends a ping on an established websocket connect
     
 }
 
-bool lock_client_nb::pong(int ping_data_len){ // sends out a pong frame unsolicited or in response to a received ping frame
+bool lock_client_pm::pong(int ping_data_len){ // sends out a pong frame unsolicited or in response to a received ping frame
     
     if(!error){ // only continue if no error
         
@@ -1913,7 +1913,7 @@ bool lock_client_nb::pong(int ping_data_len){ // sends out a pong frame unsolici
     
 }
 
-inline bool lock_client_nb::set_ping_backlog(int backlog_num){
+inline bool lock_client_pm::set_ping_backlog(int backlog_num){
     
     if(!error){ // only continue if no error
         
@@ -1926,7 +1926,7 @@ inline bool lock_client_nb::set_ping_backlog(int backlog_num){
     
 }
 
-inline bool lock_client_nb::clear(){ // clear the error flag of a lock client in open state
+inline bool lock_client_pm::clear(){ // clear the error flag of a lock client in open state
 
     if(client_state == OPEN){
             
@@ -1940,7 +1940,7 @@ inline bool lock_client_nb::clear(){ // clear the error flag of a lock client in
     
 }
 
-bool lock_client_nb::send(std::string_view payload_data){ // sends data passed as parameter along an established websocket connection
+bool lock_client_pm::send(std::string_view payload_data){ // sends data passed as parameter along an established websocket connection
 
     if(!error){ // only continue if no error
         
@@ -2538,7 +2538,7 @@ bool lock_client_nb::send(std::string_view payload_data){ // sends data passed a
     
 }
     
-inline int lock_client_nb::default_receive(char* data_array, int length_of_array_data, int length_of_array){
+inline int lock_client_pm::default_receive(char* data_array, int length_of_array_data, int length_of_array){
     
     std::cout<<data_array<<std::endl;
     
@@ -2546,7 +2546,7 @@ inline int lock_client_nb::default_receive(char* data_array, int length_of_array
     
 }
 
-inline int lock_client_nb::default_pong_receive(char* data_array, int length_of_array_data, int length_of_array){
+inline int lock_client_pm::default_pong_receive(char* data_array, int length_of_array_data, int length_of_array){
     
     std::cout<<data_array<<std::endl;
     
@@ -2554,19 +2554,19 @@ inline int lock_client_nb::default_pong_receive(char* data_array, int length_of_
     
 }
 
-void lock_client_nb::set_receive_function(lock_function fn){
+void lock_client_pm::set_receive_function(lock_function fn){
     
     recv_data = std::move(fn);
     
 }
 
-void lock_client_nb::set_pong_function(lock_function fn){
+void lock_client_pm::set_pong_function(lock_function fn){
     
     recv_pong = std::move(fn);
     
 }
 
-bool lock_client_nb::basic_read(){
+bool lock_client_pm::basic_read(){
 
     if(!error){ // only continue if no error
         
@@ -5137,7 +5137,7 @@ bool lock_client_nb::basic_read(){
         
 }
        
-bool lock_client_nb::connect(std::string_view url){ // this is used to connect to connect to the url passed as a parameter, it can be used when a lock client object was created without establishing a websocket connection by using the parameterless constructor, or to connect an already established websocket connection and lock client instance to a different websocket server, it can also be used to retry connecting an instance that encountered an error during connection
+bool lock_client_pm::connect(std::string_view url){ // this is used to connect to connect to the url passed as a parameter, it can be used when a lock client object was created without establishing a websocket connection by using the parameterless constructor, or to connect an already established websocket connection and lock client instance to a different websocket server, it can also be used to retry connecting an instance that encountered an error during connection
     
     // we close the websocket connection - if this handle was connected before, if it wasn't close is still a safe operation
     close(NORMAL_CLOSE);
@@ -5914,7 +5914,7 @@ bool lock_client_nb::connect(std::string_view url){ // this is used to connect t
         
 }
 
-bool lock_client_nb::interface_connect(std::string_view url, in_addr* interface_address, char* interface_name){
+bool lock_client_pm::interface_connect(std::string_view url, in_addr* interface_address, char* interface_name){
     
     // we close the websocket connection - if this handle was connected before, if it wasn't close is still a safe operation
     close(NORMAL_CLOSE);
@@ -6671,7 +6671,7 @@ bool lock_client_nb::interface_connect(std::string_view url, in_addr* interface_
     return error;
 }
 
-int lock_client_nb::connect_to_server(const char *hostname, const char *port, in_addr* interface_address, const char *interface_name){
+int lock_client_pm::connect_to_server(const char *hostname, const char *port, in_addr* interface_address, const char *interface_name){
 
     struct addrinfo hints, *res = NULL, *p = NULL;
 
@@ -6764,7 +6764,7 @@ int lock_client_nb::connect_to_server(const char *hostname, const char *port, in
     return sock; // Return the connected socket
 }
 
-void lock_client_nb::block_sigpipe_signal(){
+void lock_client_pm::block_sigpipe_signal(){
 
     sigemptyset(&newset);
     sigemptyset(&oldset);
@@ -6773,7 +6773,7 @@ void lock_client_nb::block_sigpipe_signal(){
     
 }
 
-void lock_client_nb::unblock_sigpipe_signal(){
+void lock_client_pm::unblock_sigpipe_signal(){
 
     // clear out any SIGPIPE signal that came in while we blocked it
     while(sigtimedwait(&newset, &si, &ts) >= 0 || errno != EAGAIN);
@@ -6784,7 +6784,7 @@ void lock_client_nb::unblock_sigpipe_signal(){
     
 }
 
-void lock_client_nb::fail_ws_connection(unsigned short status_code){
+void lock_client_pm::fail_ws_connection(unsigned short status_code){
 
     if(cursor != NULL && data_array != NULL){
 
@@ -6855,7 +6855,7 @@ void lock_client_nb::fail_ws_connection(unsigned short status_code){
     
 }
      
-bool lock_client_nb::close(unsigned short status_code){ // this closes an established websocket connection although the object itself still exists till it goes out of scope, the object can be connected to a different or the same websocket server using the connect function
+bool lock_client_pm::close(unsigned short status_code){ // this closes an established websocket connection although the object itself still exists till it goes out of scope, the object can be connected to a different or the same websocket server using the connect function
     
     if(client_state == OPEN){ // only continue if client is in open state
     
