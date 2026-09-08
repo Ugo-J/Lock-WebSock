@@ -1060,7 +1060,7 @@ lock_client_nb_crtp<T>::lock_client_nb_crtp(std::string_view url, in_addr* inter
                     BIO* sock_bio = BIO_new_socket(sock, BIO_NOCLOSE);
                     if (!sock_bio) {
                         SSL_free(c_ssl);
-                        close(sock);
+                        ::close(sock);
                         strncpy(error_buffer, "Error creating BIO structure from socket", error_buffer_array_length);          
                         error = true;
                     }
@@ -6697,7 +6697,7 @@ int lock_client_nb_crtp<T>::connect_to_server(const char *hostname, const char *
             perror("setsockopt(SO_BINDTODEVICE)");
             strncpy(error_buffer, "Error binding socket to device", error_buffer_array_length);          
             error = true;
-            close(sock);
+            ::close(sock);
             return -1;
         }
         else{
@@ -6747,7 +6747,7 @@ int lock_client_nb_crtp<T>::connect_to_server(const char *hostname, const char *
         }
 
         perror("connect");
-        close(sock);
+        ::close(sock);
         sock = -1;
     }
 
