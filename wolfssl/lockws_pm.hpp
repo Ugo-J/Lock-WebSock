@@ -2638,8 +2638,8 @@ int lock_client_pm::fetch_data(unsigned char* dest, int sz){
     if(sz <= 0) return 0;
 
     // we fetch our local last read and last write - we use memory order relaxed to acquire our last read variable because it is updated by only the main thread that calls this fetch data function
-    int loc_last_read = last_read.load(std::memory_order_acquire);
-    int loc_last_write = last_write.load(std::memory_order_relaxed);
+    int loc_last_read = last_read.load(std::memory_order_relaxed);
+    int loc_last_write = last_write.load(std::memory_order_acquire);
 
     // we compute our available data
     int available_data = loc_last_write - loc_last_read;
@@ -4664,8 +4664,6 @@ bool lock_client_pm::basic_read(){
                 
                 // we point the upgrade request pointer to the upgrade_request_static variable because it isn't used by the program at this point
                 upgrade_request = upgrade_request_static;
-
-                // SIGPIPE signal is still blocked
 
                 int64_t len = 0;
 

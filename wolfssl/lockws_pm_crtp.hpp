@@ -2641,8 +2641,8 @@ int lock_client_pm_crtp<T>::fetch_data(unsigned char* dest, int sz){
     if(sz <= 0) return 0;
 
     // we fetch our local last read and last write - we use memory order relaxed to acquire our last read variable because it is updated by only the main thread that calls this fetch data function
-    int loc_last_read = last_read.load(std::memory_order_acquire);
-    int loc_last_write = last_write.load(std::memory_order_relaxed);
+    int loc_last_read = last_read.load(std::memory_order_relaxed);
+    int loc_last_write = last_write.load(std::memory_order_acquire);
 
     // we compute our available data
     int available_data = loc_last_write - loc_last_read;

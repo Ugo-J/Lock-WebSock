@@ -831,7 +831,7 @@ lock_client_pm::lock_client_pm(std::string_view url, int core, int read_chunk, i
 }
 
 // constructor that binds to a network interface
-lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address, char* interface_name){
+lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address, char* interface_name, int core, int read_chunk, int read_buffer_size){
 
     // initialisation of class wide variables
     if(!openssl_init){
@@ -847,6 +847,34 @@ lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address,
         for(int j = 0; j<mask_array_len; j++){
                 
             mask[j] = (unsigned char)(rand() % upper_bound);
+
+        }
+
+        // we only update our read buffer size if the supplied size is > our default buffer size and is a power of 2 else we leave the default read buffer size
+        if(read_buffer_size > READ_BUFFER_SIZE && ((read_buffer_size & (read_buffer_size - 1)) == 0)) READ_BUFFER_SIZE = read_buffer_size;
+
+        // we only update our read chunk if it is > our default read chunk
+        if(read_chunk > READ_CHUNK_SIZE) READ_CHUNK_SIZE = read_chunk;
+
+        // we allocate our read buffer
+        read_buffer = new(std::nothrow) unsigned char[READ_BUFFER_SIZE];
+
+        // we check that our read buffer was successfully allocated if it wasn't we set our error flag
+        if(read_buffer != nullptr){
+
+            // getting here our read buffer was successfully allocated so we start our poll_thread
+            poll_thread = std::thread(&lock_client_pm::poll_read, this, core);
+
+            // we wait till the poll thread sets its init flag before we continue because then we can check the error flag to know if the poll thread encountered any error while setting up
+            while(!poll_init.load(std::memory_order_acquire));
+
+        }
+        else{
+
+            // getting here our allocation of our read buffer was unsuccessful so we set our error flag to true
+            strcpy(error_buffer, "Error Allocating Poll Read Buffer.");
+
+            error.store(true, std::memory_order_release);
 
         }
         
@@ -1619,8 +1647,8 @@ lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address,
 
 }
 
-// parameterless constructor
-lock_client_pm::lock_client_pm(){
+// basic constructor
+lock_client_pm::lock_client_pm(int core, int read_chunk, int read_buffer_size){
     
     // initialisation of class wide variables
     if(!openssl_init){
@@ -1636,6 +1664,34 @@ lock_client_pm::lock_client_pm(){
         for(int j = 0; j<mask_array_len; j++){
                 
             mask[j] = (unsigned char)(rand() % upper_bound);
+
+        }
+
+        // we only update our read buffer size if the supplied size is > our default buffer size and is a power of 2 else we leave the default read buffer size
+        if(read_buffer_size > READ_BUFFER_SIZE && ((read_buffer_size & (read_buffer_size - 1)) == 0)) READ_BUFFER_SIZE = read_buffer_size;
+
+        // we only update our read chunk if it is > our default read chunk
+        if(read_chunk > READ_CHUNK_SIZE) READ_CHUNK_SIZE = read_chunk;
+
+        // we allocate our read buffer
+        read_buffer = new(std::nothrow) unsigned char[READ_BUFFER_SIZE];
+
+        // we check that our read buffer was successfully allocated if it wasn't we set our error flag
+        if(read_buffer != nullptr){
+
+            // getting here our read buffer was successfully allocated so we start our poll_thread
+            poll_thread = std::thread(&lock_client_pm::poll_read, this, core);
+
+            // we wait till the poll thread sets its init flag before we continue because then we can check the error flag to know if the poll thread encountered any error while setting up
+            while(!poll_init.load(std::memory_order_acquire));
+
+        }
+        else{
+
+            // getting here our allocation of our read buffer was unsuccessful so we set our error flag to true
+            strcpy(error_buffer, "Error Allocating Poll Read Buffer.");
+
+            error.store(true, std::memory_order_release);
 
         }
         
@@ -1663,13 +1719,19 @@ lock_client_pm::lock_client_pm(){
 
 // destructor
 lock_client_pm::~lock_client_pm(){
+
+    // we set our stop poll flag to stop the poll thread
+    stop_poll.store(true, std::memory_order_release);
     
     // close the websocket connection if any
-    if(client_state == OPEN){
+    if(client_state.load(std::memory_order_acquire) == OPEN){
         
         close();
         
     }
+
+    // we join our poll thread if it is joinable
+    if(poll_thread.joinable()) { poll_thread.join(); }
     
     // free url heap memory - this only runs if dynamic memory allocation is used to store the url
     if(c_url_new != NULL){
@@ -1744,7 +1806,7 @@ inline bool lock_client_pm::status(){ // returns the error status of a lock_clie
 
 inline char* lock_client_pm::get_error_message(){ // returns the error message: the reason why a lock_client instance's error flag is set
     
-    return error.load(std::memory_order_acquire)_buffer;
+    return error_buffer;
     
 }
 
@@ -1758,7 +1820,7 @@ bool lock_client_pm::ping(){ // sends a ping on an established websocket connect
     
     if(!error.load(std::memory_order_acquire)){ // only continue if no error
         
-        if(client_state == OPEN){ // continue if client is in open state 
+        if(client_state.load(std::memory_order_acquire) == OPEN){ // continue if client is in open state 
             
             int i = 0; // variable for traversing the send data array
             
@@ -1844,7 +1906,7 @@ bool lock_client_pm::pong(int ping_data_len){ // sends out a pong frame unsolici
     
     if(!error.load(std::memory_order_acquire)){ // only continue if no error
         
-        if(client_state == OPEN){ // continue if client is in open state
+        if(client_state.load(std::memory_order_acquire) == OPEN){ // continue if client is in open state
             
             int i = 0; // variable for traversing the send data array
             
@@ -1963,7 +2025,7 @@ inline bool lock_client_pm::set_ping_backlog(int backlog_num){
 
 inline bool lock_client_pm::clear(){ // clear the error flag of a lock client in open state
 
-    if(client_state == OPEN){
+    if(client_state.load(std::memory_order_acquire) == OPEN){
             
         memset(error_buffer, '\0', strlen(error_buffer));
             
@@ -1979,7 +2041,7 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
 
     if(!error.load(std::memory_order_acquire)){ // only continue if no error
         
-        if(client_state == OPEN){ // only continue if client is in open state
+        if(client_state.load(std::memory_order_acquire) == OPEN){ // only continue if client is in open state
         
             int64_t payload_data_len = payload_data.size();
             int i = 0; // variable for traversing the send data array
@@ -2601,41 +2663,193 @@ void lock_client_pm::set_pong_function(lock_function fn){
     
 }
 
+bool lock_client_pm::data_available(){
+
+    // we use memory order relaxed for loading last read because data available is called by the main thread that updates last read
+    return last_write.load(std::memory_order_acquire) - last_read.load(std::memory_order_relaxed) > 0 ? true : false;
+
+}
+
+bool lock_client_pm::poll_read(int core){
+
+    // we increase this thread priority
+    bool thread_priori_error = increase_thread_priority();
+
+    // if the increase thread priority error encounters an error we set our poll init and return
+    if(thread_priori_error){
+
+        // we set our poll init flag to true
+        poll_init.store(true, std::memory_order_release);
+
+        return error.load(std::memory_order_acquire);
+
+    }
+
+    // we set this thread cpu affinity
+    bool cpu_affinity_error = set_cpu_affinity(core);
+
+    // we set our poll init flag to true to indicate that that this thread is setup to run the read poll
+    poll_init.store(true, std::memory_order_release);
+
+    // we check if the set cpu affinity function encountered an error, if it did we return from the poll read function ending the poll thread - the poll init flag is already set after running the set cpu affinity function so we don't need to set it before returning
+    if(cpu_affinity_error) return error.load(std::memory_order_acquire);
+
+    // getting here the poll thread encountered no issue setting up so we set our poll thread running flag to true
+    poll_thread_running.store(true, std::memory_order_release);
+
+    // we keep polling till our stop poll flag is set
+    while(!stop_poll.load(std::memory_order_acquire)){
+
+        // we check that the client has no error
+        if(!error.load(std::memory_order_acquire)){
+
+            // we check that the client has an open websocket connection
+            if(client_state.load(std::memory_order_acquire) == OPEN){
+
+                // we fetch our last read and last write index - we use memory order relaxed for fetching the last write variable because it is only the poll thread that updates it
+                int loc_last_read = last_read.load(std::memory_order_acquire);
+                int loc_last_write = last_write.load(std::memory_order_relaxed);
+
+                // we fetch how much free space we have in our read buffer - free space here means how much empty spaces or spaces with data already consumed do we have
+                int free_space = READ_BUFFER_SIZE - (loc_last_write - loc_last_read);
+
+                // we simply continue if we have no free space in our read buffer
+                if(free_space == 0) continue;
+
+                // we fetch our write start index
+                int start_index = loc_last_write & (READ_BUFFER_SIZE - 1);
+
+                // now we compute how much contiguous memory we have because wolfssl read ca only be called to populate contiguous memory
+                int contiguous_space = READ_BUFFER_SIZE - start_index;
+
+                // now we compute our data size to read. our data size to read is the minimum of 3 values - our free space, our contiguous space and our read chunk size
+                int data_sz_to_read = std::min({free_space, contiguous_space, READ_CHUNK_SIZE});
+
+                // block SIGPIPE signal before attempting to read data, just incase the connection is closed
+                block_sigpipe_signal_pm();
+
+                // we call BIO_read to attempt to read the bytes into our read buffer
+                int data_size_read = BIO_read(c_bio, read_buffer + start_index, data_sz_to_read);
+
+                // we unblock the sigpipe signal because fail_ws_connection internally blocks it
+                unblock_sigpipe_signal_pm();
+
+                // we increment our write index if we successfully fetched more data
+                if(data_size_read > 0){
+
+                    last_write.store(loc_last_write + data_size_read, std::memory_order_release);
+
+                }
+                else{
+
+                    // we check if bio should retry is false to indicate that there is no data to read at this time or if bio read failed due to an error
+                    if(!BIO_should_retry(c_bio)){
+
+                        // we copy our error message to our error buffer
+                        strcpy(error_buffer, "Poll Error: Can't Fetch data from remote host: Check network connection");
+
+                        error.store(true, std::memory_order_release);
+                        
+                        // we don't break out from this loop we let it continue, the error flag set would prevent the poll thread from reading any more data till the main thread reconnects and clears the error flag
+
+                    }
+
+                }
+
+            }
+
+        }
+
+    }
+
+    return error.load(std::memory_order_acquire);
+
+}
+
+int lock_client_pm::fetch_data(unsigned char* dest, int sz){
+
+    // first we check if the supplied sz is <=0 in which case we simply return 0
+    if(sz <= 0) return 0;
+
+    // we fetch our local last read and last write - we use memory order relaxed to acquire our last read variable because it is updated by only the main thread that calls this fetch data function
+    int loc_last_read = last_read.load(std::memory_order_relaxed);
+    int loc_last_write = last_write.load(std::memory_order_acquire);
+
+    // we compute our available data
+    int available_data = loc_last_write - loc_last_read;
+
+    // we check if there is any available data if not we return retry
+    if(available_data <= 0) return RETRY;
+
+    // getting here there is available data so we compute the size to copy
+    int data_sz_to_copy = available_data < sz ? available_data : sz;
+
+    // now we fetch the start index our read would start from
+    int start_index = loc_last_read & (READ_BUFFER_SIZE - 1);
+
+    // now because we use bit masks to get our effective index and we need to know explicitly when to wrap around we check how much contiguous data there is to the end of the read buffer because we can only fetch ontiguous memory data with each memcpy call
+    int contiguous_data_sz = READ_BUFFER_SIZE - start_index;
+
+    // we check if our contiguous data sz is < our data sz to copy in which case we can fetch the available data in one memcpy call else we have to fetch our data sz to copy in two memcpy call
+    if(data_sz_to_copy <= contiguous_data_sz){
+
+        memcpy(dest, read_buffer + start_index, data_sz_to_copy);
+
+    }
+    else{
+
+        // getting here the available data is not contiguous so we fetch it in two memcpy calls
+        memcpy(dest, read_buffer + start_index, contiguous_data_sz);
+
+        // this second memcpy wraps around and copies from the start of the read buffer
+        memcpy(dest + contiguous_data_sz, read_buffer, data_sz_to_copy - contiguous_data_sz);
+
+    }
+
+    // we update our last read atomic variable
+    last_read.store(loc_last_read + data_sz_to_copy, std::memory_order_release);
+
+    return data_sz_to_copy;
+
+}
+
 bool lock_client_pm::basic_read(){
 
-    if(!error.load(std::memory_order_acquire)){ // only continue if no error
+    if(!error.load(std::memory_order_acquire) || data_available()){ // only continue if no error or data available
         
-        if(client_state == OPEN){ // only continue if lock client is in open state
+        if(client_state.load(std::memory_order_acquire) == OPEN){ // only continue if lock client is in open state
         
             int64_t frame_data_len = 0; // stores the length of the data frame received
-            
-            // block SIGPIPE signal before attempting to read data, just incase the connection is closed
-            block_sigpipe_signal();
 
             // attempt to read the first two bytes to test the FIN bit, the opcode and the size of the frame. We use the rand bytes array because it is not in use by the program at this point
 
             // we set our bytes to read variable to the number of bytes we are trying to read
             int bytes_to_read = 2;
 
-            // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array BIO_read should write to
+            // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array wolfSSL_read should write to
             int total_read_bytes = 0;
 
-            // we initialise our read bytes to 0, read bytes keeps track of how many bytes were read in each BIO_read call
+            // we initialise our read bytes to 0, read bytes keeps track of how many bytes were read in each wolfSSL_read call
             int read_bytes = 0;
 
             // we keep reading till we have our total bytes to read
             while(total_read_bytes < bytes_to_read){
 
-                // we call BIO_read to attempt to read the bytes into the buffer
-                read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
+                // we call fetch data function to attempt to read the bytes into the buffer
+                read_bytes = fetch_data(&rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                // if BIO_read returns a value <= 0 we check if there is data available to be read
+                // if wolfssl_read returns a value <= 0 we check if there is data available to be read
                 if(read_bytes <= 0){
 
-                    // we check if the BIO should retry
-                    if(BIO_should_retry(c_bio)){
+                    // for clarification fetch data returns either 0 or RETRY which is a negative number. 0 is returned when the supplied size parameter is invalid and retry when the read buffer has no new data
 
-                        // getting here BIO should retry returns true so we check if any ata has been fetched in this basic read call
+                    // we check if we still expects more reads or if the poll thread encountered an error
+                    if(read_bytes == RETRY){
+
+                        // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                        if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
+
+                        // getting here fetch data returned RETRY so we check if any data has been fetched in this basic read call
                         if(total_read_bytes > 0){
                         // getting here data has been gotten in this current basic read call so we continue the loop till the entire data is fetched
 
@@ -2643,33 +2857,13 @@ bool lock_client_pm::basic_read(){
 
                         }
                         else{
-                        // getting here no data has been fetched in this basic read call so we unblock the sigpipe signal and exit
+                        // getting here no data has been fetched in this basic read call so we simply exit
 
-                            // we unblock the sigpipe signal
-                            unblock_sigpipe_signal();
-
-                            // we return error.load(std::memory_order_acquire) at this point because it is still 0 and it signals that basic read didn't fail there just is no data to read
-                            return error.load(std::memory_order_acquire);
+                            // we return error at this point because it is still 0 and it signals that basic read didn't fail there just is no data to read - so we use memory order relaxed here to load the error flag
+                            return error.load(std::memory_order_relaxed);
 
                         }
 
-
-                    }
-                    else{
-                    // getting here the error number returned by BIO read isn't due to BIO should retry so we fail this websocket connection
-                    
-                        // here bio_read couldn't fetch any data
-                        strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                        error.store(true, std::memory_order_release);
-
-                        // we unblock the sigpipe signal because fail_ws_connection internally blocks it
-                        unblock_sigpipe_signal();
-                        
-                        fail_ws_connection(GOING_AWAY);
-                        // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
-                        
-                        return error.load(std::memory_order_acquire);
 
                     }
 
@@ -2679,8 +2873,7 @@ bool lock_client_pm::basic_read(){
                 total_read_bytes += read_bytes;
 
             }
-            
-            // SIGPIPE signal remains blocked   
+
             
             if( (rand_bytes[0] == (FIN_BIT_SET | RSV_BIT_UNSET_ALL | TEXT_FRAME)) || (rand_bytes[0] == (FIN_BIT_SET | RSV_BIT_UNSET_ALL | BINARY_FRAME)) ){ // this is the only frame of a text or binary frame data stream. We do not differentiate between text and binary frames since data copy happens the same way
                 
@@ -2690,52 +2883,39 @@ bool lock_client_pm::basic_read(){
                     frame_data_len = rand_bytes[1];
                     
                 }
-                else if( rand_bytes[1] == 126 ){ // next two bytes store the data length
-                    
-                    // getting here the SIGPIPE signal is still blocked
+                else if(rand_bytes[1] == 126){ // next two bytes store the data length
 
-                    // read the next 2 bytes from c_bio to get the length
+                    // read the next 2 bytes to get the length
 
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 2;
 
-                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array BIO_read should write to
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array fetch data should write to
                     total_read_bytes = 0;
 
-                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each BIO_read call
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each fetch data call
                     read_bytes = 0;
 
                     // we keep reading till we have our total bytes to read
                     while(total_read_bytes < bytes_to_read){
 
-                        // we call BIO_read to attempt to read the bytes into the buffer
-                        read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
+                        // we call fetch data function to attempt to read the bytes into the buffer
+                        read_bytes = fetch_data(&rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if BIO_read returns a value <= 0 we check if bio should retry is true
+                        // if wolfssl_read returns a value <= 0 we check if there is data available to be read
                         if(read_bytes <= 0){
 
-                            // we check if the BIO should retry
-                            if(BIO_should_retry(c_bio)){
+                            // for clarification fetch data returns either 0 or RETRY which is a negative number. 0 is returned when the supplied size parameter is invalid and retry when the read buffer has no new data
 
-                                // getting here BIO should retry returns true so we continue the loop because getting here we have fetched our first 2 frame bytes to indicate that there is an unread ws frame to be read
+                            // we check if we still expects more reads or if the poll thread encountered an error
+                            if(read_bytes == RETRY){
+
+                                // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                                if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
+
+                                // getting here since there is no error from the poll thread and we haven't fetched the entire data yet we just continue the loop
                                 continue;
 
-                            }
-                            else{
-                            // getting here the error number returned by BIO read isn't due to BIO should retry so we fail this websocket connection
-                            
-                                // here bio_read couldn't fetch any data
-                                strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                error.store(true, std::memory_order_release);
-
-                                // we unblock the sigpipe signal because fail_ws_connection internally blocks it
-                                unblock_sigpipe_signal();
-                                
-                                fail_ws_connection(GOING_AWAY);
-                                // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
-                                
-                                return error.load(std::memory_order_acquire);
 
                             }
 
@@ -2745,58 +2925,43 @@ bool lock_client_pm::basic_read(){
                         total_read_bytes += read_bytes;
 
                     }
-                
-                    // SIGPIPE signal still remains blocked
                     
                     frame_data_len = (rand_bytes[0] << 8) | rand_bytes[1];
                     
                 }
-                else if( rand_bytes[1] == 127 ){ // this would mean that the next 8 bytes is our length
-                    
-                    // getting here the SIGPIPE signal is still blocked
+                else if(rand_bytes[1] == 127){ // this would mean that the next 8 bytes is our length
 
-                    // read the next 8 bytes from c_bio to get our length
+                    // read the next 8 bytes to get our length
 
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 8;
 
-                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array BIO_read should write to
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array fetch data should write to
                     total_read_bytes = 0;
 
-                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each BIO_read call
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each fetch data call
                     read_bytes = 0;
 
                     // we keep reading till we have our total bytes to read
                     while(total_read_bytes < bytes_to_read){
 
-                        // we call BIO_read to attempt to read the bytes into the buffer
-                        read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
+                        // we call fetch data function to attempt to read the bytes into the buffer
+                        read_bytes = fetch_data(&rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if BIO_read returns a value <= 0 we check if bio should retry is true
+                        // if wolfssl_read returns a value <= 0 we check if there is data available to be read
                         if(read_bytes <= 0){
 
-                            // we check if the BIO should retry
-                            if(BIO_should_retry(c_bio)){
+                            // for clarification fetch data returns either 0 or RETRY which is a negative number. 0 is returned when the supplied size parameter is invalid and retry when the read buffer has no new data
 
-                                // getting here BIO should retry returns true so we continue the loop because getting here we have fetched our first 2 frame bytes to indicate that there is an unread ws frame to be read
+                            // we check if we still expects more reads or if the poll thread encountered an error
+                            if(read_bytes == RETRY){
+
+                                // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                                if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
+
+                                // getting here since there is no error from the poll thread and we haven't fetched the entire data yet we just continue the loop
                                 continue;
 
-                            }
-                            else{
-                            // getting here the error number returned by BIO read isn't due to BIO should retry so we fail this websocket connection
-                            
-                                // here bio_read couldn't fetch any data
-                                strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                error.store(true, std::memory_order_release);
-
-                                // we unblock the sigpipe signal because fail_ws_connection internally blocks it
-                                unblock_sigpipe_signal();
-                                
-                                fail_ws_connection(GOING_AWAY);
-                                // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
-                                
-                                return error.load(std::memory_order_acquire);
 
                             }
 
@@ -2807,20 +2972,20 @@ bool lock_client_pm::basic_read(){
 
                     }
 
-                    // getting here the frame length was successfully read but the SIGPIPE signal still remains blocked
+                    // getting here the frame length was successfully read
                 
-                    if((rand_bytes[0] & 128) != 0){ // most significant bit of most significant byte is set which is against protocol rules
+                    if((rand_bytes[0] & 128) != 0){
+
+                        // most significant bit of most significant byte is set which is against protocol rules
                         
-                        strncpy(error_buffer, "Protocol error: Most significant bit of 64-bit frame length set", error_buffer_array_length);
+                        strcpy(error_buffer, "Protocol error: Most significant bit of 64-bit frame length set");
                         
                         error.store(true, std::memory_order_release);
-
-                        // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                        unblock_sigpipe_signal();
                         
-                        fail_ws_connection(PROTOCOL_ERROR); // fail the websocket connection
+                        // fail the websocket connection
+                        fail_ws_connection(PROTOCOL_ERROR);
 
-                        return error.load(std::memory_order_acquire);
+                        return error.load(std::memory_order_relaxed);
                         
                     }
 
@@ -2833,20 +2998,18 @@ bool lock_client_pm::basic_read(){
                 }
                 else{ // unrecognised data length received. This is possible because a malicious of wrongly configured WebSocket server could set the mask bit to 1 hence the library should be able to handle that
                     
-                    strncpy(error_buffer, "Unrecognised data length received...WebSocket connection closed ", error_buffer_array_length);
+                    strcpy(error_buffer, "Unrecognised data length received...WebSocket connection closed ");
                     
                     error.store(true, std::memory_order_release);
-
-                    // we unblock the sigpipe signal because fail_ws_connection internally blocks it
-                    unblock_sigpipe_signal();
                     
-                    fail_ws_connection(PROTOCOL_ERROR); // fail the websocket connection
+                    // fail the websocket connection
+                    fail_ws_connection(PROTOCOL_ERROR);
 
-                    return error.load(std::memory_order_acquire);
+                    return error.load(std::memory_order_relaxed);
                     
                 }
                 
-                // reaching here means that we encountered no errors thus far because if we encountered an error the function would have returned. SIGPIPE signal is still blocked
+                // reaching here means that we encountered no errors thus far because if we encountered an error the function would have returned.
                 
                 int64_t length_of_array_data = 0;
                 
@@ -2857,18 +3020,16 @@ bool lock_client_pm::basic_read(){
                     cursor = data_array;
                     length_of_array = static_data_array_length;
                     length_of_array_data = frame_data_len;
-                    
-                    // SIGPIPE signal is still blocked
 
-                    int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
+                    int64_t len = 0; // we initialise our len variable
 
                     // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                     while(len < frame_data_len){
                     
-                        int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
-                            
+                        int extra_bytes_read = fetch_data(reinterpret_cast<unsigned char*>(cursor), frame_data_len - len);
+                        
                         if(extra_bytes_read > 0){
-                        // bio_read fetched extra data
+                        // fetch data fetched extra data
 
                             len += extra_bytes_read;
                             
@@ -2876,37 +3037,21 @@ bool lock_client_pm::basic_read(){
 
                         }
                         else{
-                        // bio_read couldn't fetch data
+                        // fetch data didn't fetch more data
 
-                            if(BIO_should_retry(c_bio)){
+                            if(extra_bytes_read == RETRY){
                             // no data available yet
+
+                                // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                                if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
 
                                 continue;
 
-                            }
-                            else{
-                            // an actual errror occurred
-
-                                // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                                unblock_sigpipe_signal();
-
-                                // here bio_read couldn't fetch any extra data
-                                strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                error.store(true, std::memory_order_release);
-
-                                fail_ws_connection(GOING_AWAY);
-
-                                return error.load(std::memory_order_acquire);
-                                
                             }
 
                         }
 
                     }
-
-                    // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                    unblock_sigpipe_signal();
                     
                     (void)recv_data(data_array, length_of_array_data, length_of_array); // call the receive function to handle the received data
                     
@@ -2924,15 +3069,15 @@ bool lock_client_pm::basic_read(){
                     
                     // SIGPIPE signal is still blocked
 
-                    int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
+                    int64_t len = 0; // we initialise our len variable
 
                     // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                     while(len < frame_data_len){
+                    
+                        int extra_bytes_read = fetch_data(reinterpret_cast<unsigned char*>(cursor), frame_data_len - len);
                         
-                        int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
-                            
                         if(extra_bytes_read > 0){
-                        // bio_read fetched extra data
+                        // fetch data fetched extra data
 
                             len += extra_bytes_read;
                             
@@ -2940,37 +3085,21 @@ bool lock_client_pm::basic_read(){
 
                         }
                         else{
-                        // bio_read couldn't fetch data
+                        // fetch data didn't fetch more data
 
-                            if(BIO_should_retry(c_bio)){
+                            if(extra_bytes_read == RETRY){
                             // no data available yet
+
+                                // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                                if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
 
                                 continue;
 
-                            }
-                            else{
-                            // an actual errror occurred
-
-                                // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                                unblock_sigpipe_signal();
-
-                                // here bio_read couldn't fetch any extra data
-                                strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                error.store(true, std::memory_order_release);
-
-                                fail_ws_connection(GOING_AWAY);
-
-                                return error.load(std::memory_order_acquire);
-                                
                             }
 
                         }
 
                     }
-
-                    // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                    unblock_sigpipe_signal();
                     
                     (void)recv_data(data_array, length_of_array_data, length_of_array); // call the receive function to handle the received data
                     
@@ -2986,20 +3115,16 @@ bool lock_client_pm::basic_read(){
                         data_array_new = new(std::nothrow) char[frame_data_len + 1024]; // we allocate 1KB more memory than is needed to store the frame so we could avoid some future memory allocations
             
                         if(data_array_new == NULL){
-
-                            // we unblock the sigpipe signal because close internally blocks it
-                            unblock_sigpipe_signal();
                             
-                            // close the WebSocket connection with a frame too large error
-                            close(FRAME_TOO_LARGE);
+                            close(FRAME_TOO_LARGE); // close the WebSocket connection with a frame too large error
                             
                             // no need to memset as no data has been written to the array at this point
                             
-                            strncpy(error_buffer, "Error allocating heap memory for receiving single frame data...frame too large ", error_buffer_array_length);
+                            strcpy(error_buffer, "Error allocating heap memory for receiving single frame data...frame too large ");
                     
                             error.store(true, std::memory_order_release);
 
-                            return error.load(std::memory_order_acquire);
+                            return error.load(std::memory_order_relaxed);
                     
                         }
                         else{
@@ -3012,15 +3137,15 @@ bool lock_client_pm::basic_read(){
                         
                             // SIGPIPE signal is still blocked
 
-                            int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
+                            int64_t len = 0; // we initialise our len variable
 
                             // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                             while(len < frame_data_len){
+                            
+                                int extra_bytes_read = fetch_data(reinterpret_cast<unsigned char*>(cursor), frame_data_len - len);
                                 
-                                int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
-                                    
                                 if(extra_bytes_read > 0){
-                                // bio_read fetched extra data
+                                // fetch data fetched extra data
 
                                     len += extra_bytes_read;
                                     
@@ -3028,37 +3153,21 @@ bool lock_client_pm::basic_read(){
 
                                 }
                                 else{
-                                // bio_read couldn't fetch data
+                                // fetch data didn't fetch more data
 
-                                    if(BIO_should_retry(c_bio)){
+                                    if(extra_bytes_read == RETRY){
                                     // no data available yet
+
+                                        // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                                        if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
 
                                         continue;
 
-                                    }
-                                    else{
-                                    // an actual errror occurred
-
-                                        // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                                        unblock_sigpipe_signal();
-
-                                        // here bio_read couldn't fetch any extra data
-                                        strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                        error.store(true, std::memory_order_release);
-
-                                        fail_ws_connection(GOING_AWAY);
-
-                                        return error.load(std::memory_order_acquire);
-                                        
                                     }
 
                                 }
 
                             }
-
-                            // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                            unblock_sigpipe_signal();
                         
                             (void)recv_data(data_array, length_of_array_data, length_of_array); // call the receive function to handle the received data
                             
@@ -3076,19 +3185,16 @@ bool lock_client_pm::basic_read(){
                         data_array_new = new(std::nothrow) char[frame_data_len + 1024]; // we allocate 1KB more memory than the data frame length just to get some extra spacing and avoid some memory allocation for future data frames
                 
                         if(data_array_new == NULL){
-
-                            // we unblock the sigpipe signal because close internally blocks it
-                            unblock_sigpipe_signal();
                             
                             close(FRAME_TOO_LARGE); // close the WebSocket connection with a frame too large error
                                 
                             // no need to memset as no data has been written to the array at this point
                             
-                            strncpy(error_buffer, "Error allocating heap memory for receiving single frame data after deleting previously allocated memory...frame too large", error_buffer_array_length);
+                            strcpy(error_buffer, "Error allocating heap memory for receiving single frame data after deleting previously allocated memory...frame too large");
                         
                             error.store(true, std::memory_order_release);
 
-                            return error.load(std::memory_order_acquire);
+                            return error.load(std::memory_order_relaxed);
                         
                         }
                         else{
@@ -3101,15 +3207,15 @@ bool lock_client_pm::basic_read(){
                         
                             // SIGPIPE signal is still blocked
 
-                            int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
+                            int64_t len = 0; // we initialise our len variable
 
                             // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                             while(len < frame_data_len){
+                            
+                                int extra_bytes_read = fetch_data(reinterpret_cast<unsigned char*>(cursor), frame_data_len - len);
                                 
-                                int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
-                                    
                                 if(extra_bytes_read > 0){
-                                // bio_read fetched extra data
+                                // fetch data fetched extra data
 
                                     len += extra_bytes_read;
                                     
@@ -3117,37 +3223,21 @@ bool lock_client_pm::basic_read(){
 
                                 }
                                 else{
-                                // bio_read couldn't fetch data
+                                // fetch data didn't fetch more data
 
-                                    if(BIO_should_retry(c_bio)){
+                                    if(extra_bytes_read == RETRY){
                                     // no data available yet
+
+                                        // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                                        if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
 
                                         continue;
 
-                                    }
-                                    else{
-                                    // an actual errror occurred
-
-                                        // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                                        unblock_sigpipe_signal();
-
-                                        // here bio_read couldn't fetch any extra data
-                                        strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                        error.store(true, std::memory_order_release);
-
-                                        fail_ws_connection(GOING_AWAY);
-
-                                        return error.load(std::memory_order_acquire);
-                                        
                                     }
 
                                 }
 
                             }
-
-                            // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                            unblock_sigpipe_signal();
                         
                             (void)recv_data(data_array, length_of_array_data, length_of_array); // call the receive function to handle the received data
                             
@@ -3170,52 +3260,39 @@ bool lock_client_pm::basic_read(){
                     frame_data_len = rand_bytes[1];
                     
                 }
-                else if( rand_bytes[1] == 126 ){ // next two bytes store the data length
-                    
-                    // getting here the SIGPIPE signal is still blocked
+                else if(rand_bytes[1] == 126){ // next two bytes store the data length
 
-                    // read the next 2 bytes from c_bio to get the length
+                    // read the next 2 bytes to get the length
 
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 2;
 
-                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array BIO_read should write to
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array fetch data should write to
                     total_read_bytes = 0;
 
-                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each BIO_read call
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each fetch data call
                     read_bytes = 0;
 
                     // we keep reading till we have our total bytes to read
                     while(total_read_bytes < bytes_to_read){
 
-                        // we call BIO_read to attempt to read the bytes into the buffer
-                        read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
+                        // we call fetch data function to attempt to read the bytes into the buffer
+                        read_bytes = fetch_data(&rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if BIO_read returns a value <= 0 we check if bio should retry is true
+                        // if wolfssl_read returns a value <= 0 we check if there is data available to be read
                         if(read_bytes <= 0){
 
-                            // we check if the BIO should retry
-                            if(BIO_should_retry(c_bio)){
+                            // for clarification fetch data returns either 0 or RETRY which is a negative number. 0 is returned when the supplied size parameter is invalid and retry when the read buffer has no new data
 
-                                // getting here BIO should retry returns true so we continue the loop because getting here we have fetched our first 2 frame bytes to indicate that there is an unread ws frame to be read
+                            // we check if we still expects more reads or if the poll thread encountered an error
+                            if(read_bytes == RETRY){
+
+                                // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                                if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
+
+                                // getting here since there is no error from the poll thread and we haven't fetched the entire data yet we just continue the loop
                                 continue;
 
-                            }
-                            else{
-                            // getting here the error number returned by BIO read isn't due to BIO should retry so we fail this websocket connection
-                            
-                                // here bio_read couldn't fetch any data
-                                strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                error.store(true, std::memory_order_release);
-
-                                // we unblock the sigpipe signal because fail_ws_connection internally blocks it
-                                unblock_sigpipe_signal();
-                                
-                                fail_ws_connection(GOING_AWAY);
-                                // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
-                                
-                                return error.load(std::memory_order_acquire);
 
                             }
 
@@ -3225,58 +3302,43 @@ bool lock_client_pm::basic_read(){
                         total_read_bytes += read_bytes;
 
                     }
-                
-                    // SIGPIPE signal still remains blocked
                     
                     frame_data_len = (rand_bytes[0] << 8) | rand_bytes[1];
                     
                 }
-                else if( rand_bytes[1] == 127 ){ // this would mean that the next 8 bytes is our length
-                    
-                    // getting here the SIGPIPE signal is still blocked
+                else if(rand_bytes[1] == 127){ // this would mean that the next 8 bytes is our length
 
-                    // read the next 8 bytes from c_bio to get our length
+                    // read the next 8 bytes to get our length
 
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 8;
 
-                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array BIO_read should write to
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array fetch data should write to
                     total_read_bytes = 0;
 
-                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each BIO_read call
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each fetch data call
                     read_bytes = 0;
 
                     // we keep reading till we have our total bytes to read
                     while(total_read_bytes < bytes_to_read){
 
-                        // we call BIO_read to attempt to read the bytes into the buffer
-                        read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
+                        // we call fetch data function to attempt to read the bytes into the buffer
+                        read_bytes = fetch_data(&rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if BIO_read returns a value <= 0 we check if bio should retry is true
+                        // if wolfssl_read returns a value <= 0 we check if there is data available to be read
                         if(read_bytes <= 0){
 
-                            // we check if the BIO should retry
-                            if(BIO_should_retry(c_bio)){
+                            // for clarification fetch data returns either 0 or RETRY which is a negative number. 0 is returned when the supplied size parameter is invalid and retry when the read buffer has no new data
 
-                                // getting here BIO should retry returns true so we continue the loop because getting here we have fetched our first 2 frame bytes to indicate that there is an unread ws frame to be read
+                            // we check if we still expects more reads or if the poll thread encountered an error
+                            if(read_bytes == RETRY){
+
+                                // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                                if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
+
+                                // getting here since there is no error from the poll thread and we haven't fetched the entire data yet we just continue the loop
                                 continue;
 
-                            }
-                            else{
-                            // getting here the error number returned by BIO read isn't due to BIO should retry so we fail this websocket connection
-                            
-                                // here bio_read couldn't fetch any data
-                                strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                error.store(true, std::memory_order_release);
-
-                                // we unblock the sigpipe signal because fail_ws_connection internally blocks it
-                                unblock_sigpipe_signal();
-                                
-                                fail_ws_connection(GOING_AWAY);
-                                // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
-                                
-                                return error.load(std::memory_order_acquire);
 
                             }
 
@@ -3287,20 +3349,20 @@ bool lock_client_pm::basic_read(){
 
                     }
 
-                    // getting here the frame length was successfully read but the SIGPIPE signal still remains blocked
+                    // getting here the frame length was successfully read
                 
-                    if((rand_bytes[0] & 128) != 0){ // most significant bit of most significant byte is set which is against protocol rules
+                    if((rand_bytes[0] & 128) != 0){
+
+                        // most significant bit of most significant byte is set which is against protocol rules
                         
-                        strncpy(error_buffer, "Protocol error: Most significant bit of 64-bit frame length set", error_buffer_array_length);
+                        strcpy(error_buffer, "Protocol error: Most significant bit of 64-bit frame length set");
                         
                         error.store(true, std::memory_order_release);
-
-                        // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                        unblock_sigpipe_signal();
                         
-                        fail_ws_connection(PROTOCOL_ERROR); // fail the websocket connection
+                        // fail the websocket connection
+                        fail_ws_connection(PROTOCOL_ERROR);
 
-                        return error.load(std::memory_order_acquire);
+                        return error.load(std::memory_order_relaxed);
                         
                     }
 
@@ -3313,20 +3375,18 @@ bool lock_client_pm::basic_read(){
                 }
                 else{ // unrecognised data length received. This is possible because a malicious of wrongly configured WebSocket server could set the mask bit to 1 hence the library should be able to handle that
                     
-                    strncpy(error_buffer, "Unrecognised data length received...WebSocket connection closed ", error_buffer_array_length);
+                    strcpy(error_buffer, "Unrecognised data length received...WebSocket connection closed ");
                     
                     error.store(true, std::memory_order_release);
-
-                    // we unblock the sigpipe signal because fail_ws_connection internally blocks it
-                    unblock_sigpipe_signal();
                     
-                    fail_ws_connection(PROTOCOL_ERROR); // fail the websocket connection
+                    // fail the websocket connection
+                    fail_ws_connection(PROTOCOL_ERROR);
 
-                    return error.load(std::memory_order_acquire);
+                    return error.load(std::memory_order_relaxed);
                     
                 }
                 
-                // reaching here means that we encountered no errors thus far because if we encountered an error the function would have returned - SIGPIPE signal is still blocked
+                // reaching here means that we encountered no errors thus far because if we encountered an error the function would have returned.
                 
                 // test that the size of data to be received can fit into the static data array
                 if(frame_data_len < static_data_array_length){ // static data array would be sufficient
@@ -3334,18 +3394,16 @@ bool lock_client_pm::basic_read(){
                     data_array = data_array_static;
                     cursor = data_array;
                     length_of_array = static_data_array_length;
-                    
-                    // SIGPIPE signal is still blocked
 
-                    int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
+                    int64_t len = 0; // we initialise our len variable
 
-                    // we keep polling till we have read the entire frame
+                    // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                     while(len < frame_data_len){
                     
-                        int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
-                            
+                        int extra_bytes_read = fetch_data(reinterpret_cast<unsigned char*>(cursor), frame_data_len - len);
+                        
                         if(extra_bytes_read > 0){
-                        // bio_read fetched extra data
+                        // fetch data fetched extra data
 
                             len += extra_bytes_read;
                             
@@ -3353,37 +3411,21 @@ bool lock_client_pm::basic_read(){
 
                         }
                         else{
-                        // bio_read couldn't fetch data
+                        // fetch data didn't fetch more data
 
-                            if(BIO_should_retry(c_bio)){
+                            if(extra_bytes_read == RETRY){
                             // no data available yet
+
+                                // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                                if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
 
                                 continue;
 
-                            }
-                            else{
-                            // an actual errror occurred
-
-                                // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                                unblock_sigpipe_signal();
-
-                                // here bio_read couldn't fetch any extra data
-                                strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                error.store(true, std::memory_order_release);
-
-                                fail_ws_connection(GOING_AWAY);
-
-                                return error.load(std::memory_order_acquire);
-                                
                             }
 
                         }
 
                     }
-
-                    // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                    unblock_sigpipe_signal();
                     
                     // we don't call user's receive function here because the data is still incomplete
                     
@@ -3395,18 +3437,16 @@ bool lock_client_pm::basic_read(){
                     data_array = data_array_new;
                     cursor = data_array;
                     length_of_array = size_of_allocated_data_memory;
-                    
-                    // SIGPIPE signal is still blocked
 
-                    int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
+                    int64_t len = 0; // we initialise our len variable
 
-                    // we keep polling till we have read the entire frame
+                    // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                     while(len < frame_data_len){
+                    
+                        int extra_bytes_read = fetch_data(reinterpret_cast<unsigned char*>(cursor), frame_data_len - len);
                         
-                        int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
-                            
                         if(extra_bytes_read > 0){
-                        // bio_read fetched extra data
+                        // fetch data fetched extra data
 
                             len += extra_bytes_read;
                             
@@ -3414,37 +3454,21 @@ bool lock_client_pm::basic_read(){
 
                         }
                         else{
-                        // bio_read couldn't fetch data
+                        // fetch data didn't fetch more data
 
-                            if(BIO_should_retry(c_bio)){
+                            if(extra_bytes_read == RETRY){
                             // no data available yet
+
+                                // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                                if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
 
                                 continue;
 
-                            }
-                            else{
-                            // an actual errror occurred
-
-                                // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                                unblock_sigpipe_signal();
-
-                                // here bio_read couldn't fetch any extra data
-                                strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                error.store(true, std::memory_order_release);
-
-                                fail_ws_connection(GOING_AWAY);
-
-                                return error.load(std::memory_order_acquire);
-                                
                             }
 
                         }
 
                     }
-
-                    // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                    unblock_sigpipe_signal();
                     
                     // we don't call user's receive function here because the data is still incomplete
                     
@@ -3458,19 +3482,16 @@ bool lock_client_pm::basic_read(){
                         data_array_new = new(std::nothrow) char[frame_data_len + 1024]; // we allocate 1KB more memory than is needed to store the frame so we could avoid some future memory allocations
             
                         if(data_array_new == NULL){
-
-                            // we unblock the sigpipe signal because close internally blocks it
-                            unblock_sigpipe_signal();
                             
                             close(FRAME_TOO_LARGE); // close the WebSocket connection with a frame too large error
                             
                             // no need to memset as no data has been written to the array at this point
                             
-                            strncpy(error_buffer, "Error allocating heap memory for receiving single frame data...frame too large ", error_buffer_array_length);
+                            strcpy(error_buffer, "Error allocating heap memory for receiving single frame data...frame too large ");
                     
                             error.store(true, std::memory_order_release);
 
-                            return error.load(std::memory_order_acquire);
+                            return error.load(std::memory_order_relaxed);
                     
                         }
                         else{
@@ -3479,18 +3500,16 @@ bool lock_client_pm::basic_read(){
                             cursor = data_array;
                             size_of_allocated_data_memory = frame_data_len + 1024;
                             length_of_array = size_of_allocated_data_memory;
-                        
-                            // SIGPIPE signal is still blocked
 
-                            int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
+                            int64_t len = 0; // we initialise our len variable
 
-                            // we keep polling till we have read the entire frame
+                            // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                             while(len < frame_data_len){
+                            
+                                int extra_bytes_read = fetch_data(reinterpret_cast<unsigned char*>(cursor), frame_data_len - len);
                                 
-                                int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
-                                    
                                 if(extra_bytes_read > 0){
-                                // bio_read fetched extra data
+                                // fetch data fetched extra data
 
                                     len += extra_bytes_read;
                                     
@@ -3498,37 +3517,21 @@ bool lock_client_pm::basic_read(){
 
                                 }
                                 else{
-                                // bio_read couldn't fetch data
+                                // fetch data didn't fetch more data
 
-                                    if(BIO_should_retry(c_bio)){
+                                    if(extra_bytes_read == RETRY){
                                     // no data available yet
+
+                                        // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                                        if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
 
                                         continue;
 
-                                    }
-                                    else{
-                                    // an actual errror occurred
-
-                                        // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                                        unblock_sigpipe_signal();
-
-                                        // here bio_read couldn't fetch any extra data
-                                        strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                        error.store(true, std::memory_order_release);
-
-                                        fail_ws_connection(GOING_AWAY);
-
-                                        return error.load(std::memory_order_acquire);
-                                        
                                     }
 
                                 }
 
                             }
-
-                            // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                            unblock_sigpipe_signal();
                         
                             // we don't call user's receive function here because the data is still incomplete
                     
@@ -3539,24 +3542,21 @@ bool lock_client_pm::basic_read(){
                     }
                     else{ // there is already allocated memory but it is not sufficient
                         
-                        delete [] data_array_new; //delete already allocated memory
+                        delete [] data_array_new; // delete already allocated memory
                         
                         data_array_new = new(std::nothrow) char[frame_data_len + 1024]; // we allocate 1KB more memory than the data frame length just to get some extra spacing and avoid some memory allocation for future data frames
                 
                         if(data_array_new == NULL){
-
-                            // we unblock the sigpipe signal because close internally blocks it
-                            unblock_sigpipe_signal();
                             
                             close(FRAME_TOO_LARGE); // close the WebSocket connection with a frame too large error
                                 
                             // no need to memset as no data has been written to the array at this point
                             
-                            strncpy(error_buffer, "Error allocating heap memory for receiving single frame data after deleting previously allocated memory...frame too large", error_buffer_array_length);
+                            strcpy(error_buffer, "Error allocating heap memory for receiving single frame data after deleting previously allocated memory...frame too large");
                         
                             error.store(true, std::memory_order_release);
 
-                            return error.load(std::memory_order_acquire);
+                            return error.load(std::memory_order_relaxed);
                         
                         }
                         else{
@@ -3565,18 +3565,16 @@ bool lock_client_pm::basic_read(){
                             cursor = data_array;
                             size_of_allocated_data_memory = frame_data_len + 1024;
                             length_of_array = size_of_allocated_data_memory;
-                        
-                            // SIGPIPE signal is still blocked
 
-                            int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
+                            int64_t len = 0; // we initialise our len variable to 0
 
-                            // we keep polling till we have read the entire frame
+                            // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                             while(len < frame_data_len){
+                            
+                                int extra_bytes_read = fetch_data(reinterpret_cast<unsigned char*>(cursor), frame_data_len - len);
                                 
-                                int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
-                                    
                                 if(extra_bytes_read > 0){
-                                // bio_read fetched extra data
+                                // fetch data fetched extra data
 
                                     len += extra_bytes_read;
                                     
@@ -3584,37 +3582,21 @@ bool lock_client_pm::basic_read(){
 
                                 }
                                 else{
-                                // bio_read couldn't fetch data
+                                // fetch data didn't fetch more data
 
-                                    if(BIO_should_retry(c_bio)){
+                                    if(extra_bytes_read == RETRY){
                                     // no data available yet
+
+                                        // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                                        if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
 
                                         continue;
 
-                                    }
-                                    else{
-                                    // an actual errror occurred
-
-                                        // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                                        unblock_sigpipe_signal();
-
-                                        // here bio_read couldn't fetch any extra data
-                                        strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                        error.store(true, std::memory_order_release);
-
-                                        fail_ws_connection(GOING_AWAY);
-
-                                        return error.load(std::memory_order_acquire);
-                                        
                                     }
 
                                 }
 
                             }
-
-                            // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                            unblock_sigpipe_signal();
                         
                             // we don't call user's receive function here because the data is still incomplete
                     
@@ -3635,52 +3617,39 @@ bool lock_client_pm::basic_read(){
                     frame_data_len = rand_bytes[1];
                     
                 }
-                else if( rand_bytes[1] == 126 ){ // next two bytes store the data length
-                    
-                    // getting here the SIGPIPE signal is still blocked
+                else if(rand_bytes[1] == 126){ // next two bytes store the data length
 
-                    // read the next 2 bytes from c_bio to get the length
+                    // read the next 2 bytes to get the length
 
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 2;
 
-                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array BIO_read should write to
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array fetch data should write to
                     total_read_bytes = 0;
 
-                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each BIO_read call
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each fetch data call
                     read_bytes = 0;
 
                     // we keep reading till we have our total bytes to read
                     while(total_read_bytes < bytes_to_read){
 
-                        // we call BIO_read to attempt to read the bytes into the buffer
-                        read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
+                        // we call fetch data function to attempt to read the bytes into the buffer
+                        read_bytes = fetch_data(&rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if BIO_read returns a value <= 0 we check if bio should retry is true
+                        // if wolfssl_read returns a value <= 0 we check if there is data available to be read
                         if(read_bytes <= 0){
 
-                            // we check if the BIO should retry
-                            if(BIO_should_retry(c_bio)){
+                            // for clarification fetch data returns either 0 or RETRY which is a negative number. 0 is returned when the supplied size parameter is invalid and retry when the read buffer has no new data
 
-                                // getting here BIO should retry returns true so we continue the loop because getting here we have fetched our first 2 frame bytes to indicate that there is an unread ws frame to be read
+                            // we check if we still expects more reads or if the poll thread encountered an error
+                            if(read_bytes == RETRY){
+
+                                // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                                if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
+
+                                // getting here since there is no error from the poll thread and we haven't fetched the entire data yet we just continue the loop
                                 continue;
 
-                            }
-                            else{
-                            // getting here the error number returned by BIO read isn't due to BIO should retry so we fail this websocket connection
-                            
-                                // here bio_read couldn't fetch any data
-                                strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                error.store(true, std::memory_order_release);
-
-                                // we unblock the sigpipe signal because fail_ws_connection internally blocks it
-                                unblock_sigpipe_signal();
-                                
-                                fail_ws_connection(GOING_AWAY);
-                                // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
-                                
-                                return error.load(std::memory_order_acquire);
 
                             }
 
@@ -3690,58 +3659,43 @@ bool lock_client_pm::basic_read(){
                         total_read_bytes += read_bytes;
 
                     }
-                
-                    // SIGPIPE signal still remains blocked
                     
                     frame_data_len = (rand_bytes[0] << 8) | rand_bytes[1];
                     
                 }
-                else if( rand_bytes[1] == 127 ){ // this would mean that the next 8 bytes is our length
-                    
-                    // getting here the SIGPIPE signal is still blocked
+                else if(rand_bytes[1] == 127){ // this would mean that the next 8 bytes is our length
 
-                    // read the next 8 bytes from c_bio to get our length
+                    // read the next 8 bytes to get our length
 
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 8;
 
-                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array BIO_read should write to
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array fetch data should write to
                     total_read_bytes = 0;
 
-                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each BIO_read call
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each fetch data call
                     read_bytes = 0;
 
                     // we keep reading till we have our total bytes to read
                     while(total_read_bytes < bytes_to_read){
 
-                        // we call BIO_read to attempt to read the bytes into the buffer
-                        read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
+                        // we call fetch data function to attempt to read the bytes into the buffer
+                        read_bytes = fetch_data(&rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if BIO_read returns a value <= 0 we check if bio should retry is true
+                        // if wolfssl_read returns a value <= 0 we check if there is data available to be read
                         if(read_bytes <= 0){
 
-                            // we check if the BIO should retry
-                            if(BIO_should_retry(c_bio)){
+                            // for clarification fetch data returns either 0 or RETRY which is a negative number. 0 is returned when the supplied size parameter is invalid and retry when the read buffer has no new data
 
-                                // getting here BIO should retry returns true so we continue the loop because getting here we have fetched our first 2 frame bytes to indicate that there is an unread ws frame to be read
+                            // we check if we still expects more reads or if the poll thread encountered an error
+                            if(read_bytes == RETRY){
+
+                                // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                                if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
+
+                                // getting here since there is no error from the poll thread and we haven't fetched the entire data yet we just continue the loop
                                 continue;
 
-                            }
-                            else{
-                            // getting here the error number returned by BIO read isn't due to BIO should retry so we fail this websocket connection
-                            
-                                // here bio_read couldn't fetch any data
-                                strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                error.store(true, std::memory_order_release);
-
-                                // we unblock the sigpipe signal because fail_ws_connection internally blocks it
-                                unblock_sigpipe_signal();
-                                
-                                fail_ws_connection(GOING_AWAY);
-                                // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
-                                
-                                return error.load(std::memory_order_acquire);
 
                             }
 
@@ -3752,20 +3706,20 @@ bool lock_client_pm::basic_read(){
 
                     }
 
-                    // getting here the frame length was successfully read but the SIGPIPE signal still remains blocked
+                    // getting here the frame length was successfully read
                 
-                    if((rand_bytes[0] & 128) != 0){ // most significant bit of most significant byte is set which is against protocol rules
+                    if((rand_bytes[0] & 128) != 0){
+
+                        // most significant bit of most significant byte is set which is against protocol rules
                         
-                        strncpy(error_buffer, "Protocol error: Most significant bit of 64-bit frame length set", error_buffer_array_length);
+                        strcpy(error_buffer, "Protocol error: Most significant bit of 64-bit frame length set");
                         
                         error.store(true, std::memory_order_release);
-
-                        // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                        unblock_sigpipe_signal();
                         
-                        fail_ws_connection(PROTOCOL_ERROR); // fail the websocket connection
+                        // fail the websocket connection
+                        fail_ws_connection(PROTOCOL_ERROR);
 
-                        return error.load(std::memory_order_acquire);
+                        return error.load(std::memory_order_relaxed);
                         
                     }
 
@@ -3778,36 +3732,32 @@ bool lock_client_pm::basic_read(){
                 }
                 else{ // unrecognised data length received. This is possible because a malicious of wrongly configured WebSocket server could set the mask bit to 1 hence the library should be able to handle that
                     
-                    strncpy(error_buffer, "Unrecognised data length received...WebSocket connection closed ", error_buffer_array_length);
+                    strcpy(error_buffer, "Unrecognised data length received...WebSocket connection closed ");
                     
                     error.store(true, std::memory_order_release);
-
-                    // we unblock the sigpipe signal because fail_ws_connection internally blocks it
-                    unblock_sigpipe_signal();
                     
-                    fail_ws_connection(PROTOCOL_ERROR); // fail the websocket connection
+                    // fail the websocket connection
+                    fail_ws_connection(PROTOCOL_ERROR);
 
-                    return error.load(std::memory_order_acquire);
+                    return error.load(std::memory_order_relaxed);
                     
                 }
                 
-                // reaching here means that we encountered no errors thus far because if we encountered an error the function would have returned - SIGPIPE signal is still blocked
+                // reaching here means that we encountered no errors thus far because if we encountered an error the function would have returned.
                 
                 int64_t length_of_array_data = cursor - data_array; // this is used to store the length of data that the data array currently holds
                 
                 if(frame_data_len < (length_of_array - length_of_array_data) ){ // array in use is large enough for incoming frame
-                    
-                    // SIGPIPE signal is still blocked
 
-                    int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
+                    int64_t len = 0; // we initialise our len variable
 
-                    // we keep polling till we have read the entire frame
+                    // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                     while(len < frame_data_len){
                     
-                        int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
-                            
+                        int extra_bytes_read = fetch_data(reinterpret_cast<unsigned char*>(cursor), frame_data_len - len);
+                        
                         if(extra_bytes_read > 0){
-                        // bio_read fetched extra data
+                        // fetch data fetched extra data
 
                             len += extra_bytes_read;
                             
@@ -3815,37 +3765,21 @@ bool lock_client_pm::basic_read(){
 
                         }
                         else{
-                        // bio_read couldn't fetch data
+                        // fetch data didn't fetch more data
 
-                            if(BIO_should_retry(c_bio)){
+                            if(extra_bytes_read == RETRY){
                             // no data available yet
+
+                                // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                                if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
 
                                 continue;
 
-                            }
-                            else{
-                            // an actual errror occurred
-
-                                // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                                unblock_sigpipe_signal();
-
-                                // here bio_read couldn't fetch any extra data
-                                strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                error.store(true, std::memory_order_release);
-
-                                fail_ws_connection(GOING_AWAY);
-
-                                return error.load(std::memory_order_acquire);
-                                
                             }
 
                         }
 
                     }
-
-                    // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                    unblock_sigpipe_signal();
                     
                     // we don't call user's receive function here because the data is still incomplete
                     
@@ -3864,18 +3798,16 @@ bool lock_client_pm::basic_read(){
                     memset(data_array_static, '\0', length_of_array_data); // zero out the static memory since it is no longer in use
                     
                     cursor += length_of_array_data; // move the cursor forward to point to to the next empty location in the array 
-                    
-                    // SIGPIPE signal is still blocked
 
-                    int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
+                    int64_t len = 0; // we initialise our len variable
 
-                    // we keep polling till we have read the entire frame
+                    // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                     while(len < frame_data_len){
                     
-                        int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
-                            
+                        int extra_bytes_read = fetch_data(reinterpret_cast<unsigned char*>(cursor), frame_data_len - len);
+                        
                         if(extra_bytes_read > 0){
-                        // bio_read fetched extra data
+                        // fetch data fetched extra data
 
                             len += extra_bytes_read;
                             
@@ -3883,37 +3815,21 @@ bool lock_client_pm::basic_read(){
 
                         }
                         else{
-                        // bio_read couldn't fetch data
+                        // fetch data didn't fetch more data
 
-                            if(BIO_should_retry(c_bio)){
+                            if(extra_bytes_read == RETRY){
                             // no data available yet
+
+                                // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                                if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
 
                                 continue;
 
-                            }
-                            else{
-                            // an actual errror occurred
-
-                                // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                                unblock_sigpipe_signal();
-
-                                // here bio_read couldn't fetch any extra data
-                                strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                error.store(true, std::memory_order_release);
-
-                                fail_ws_connection(GOING_AWAY);
-
-                                return error.load(std::memory_order_acquire);
-                                
                             }
 
                         }
 
                     }
-
-                    // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                    unblock_sigpipe_signal();
                     
                     // we don't call user's receive function here because the data is still incomplete
                     
@@ -3930,18 +3846,15 @@ bool lock_client_pm::basic_read(){
                             
                             memset(data_array, '\0', length_of_array_data); // zero out already received data
                     
-                            cursor = data_array; // set cursor to point back to data array
-
-                            // we unblock the sigpipe signal because close internally blocks it
-                            unblock_sigpipe_signal();
+                            cursor = data_array; // set cursor to point back to data array 
                             
                             close(FRAME_TOO_LARGE); // we close the websocket connection with a frame too large error
                             
-                            strncpy(error_buffer, "Error allocating heap memory for receiving non fin continuation frame data...frame too large ", error_buffer_array_length);
+                            strcpy(error_buffer, "Error allocating heap memory for receiving non fin continuation frame data...frame too large ");
                     
                             error.store(true, std::memory_order_release);
 
-                            return error.load(std::memory_order_acquire);
+                            return error.load(std::memory_order_relaxed);
                     
                         }
                         else{
@@ -3956,18 +3869,16 @@ bool lock_client_pm::basic_read(){
                             memset(data_array_static, '\0', length_of_array_data); // zero out the static memory since it is no longer in use
                             
                             cursor += length_of_array_data; // move the cursor forward to point to to the next empty location in the array 
-                            
-                            // SIGPIPE signal is still blocked
 
-                            int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
+                            int64_t len = 0; // we initialise our len variable
 
-                            // we keep polling till we have read the entire frame
+                            // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                             while(len < frame_data_len){
                             
-                                int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
-                                    
+                                int extra_bytes_read = fetch_data(reinterpret_cast<unsigned char*>(cursor), frame_data_len - len);
+                                
                                 if(extra_bytes_read > 0){
-                                // bio_read fetched extra data
+                                // fetch data fetched extra data
 
                                     len += extra_bytes_read;
                                     
@@ -3975,37 +3886,21 @@ bool lock_client_pm::basic_read(){
 
                                 }
                                 else{
-                                // bio_read couldn't fetch data
+                                // fetch data didn't fetch more data
 
-                                    if(BIO_should_retry(c_bio)){
+                                    if(extra_bytes_read == RETRY){
                                     // no data available yet
+
+                                        // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                                        if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
 
                                         continue;
 
-                                    }
-                                    else{
-                                    // an actual errror occurred
-
-                                        // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                                        unblock_sigpipe_signal();
-
-                                        // here bio_read couldn't fetch any extra data
-                                        strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                        error.store(true, std::memory_order_release);
-
-                                        fail_ws_connection(GOING_AWAY);
-
-                                        return error.load(std::memory_order_acquire);
-                                        
                                     }
 
                                 }
 
                             }
-
-                            // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                            unblock_sigpipe_signal();
                             
                             // we don't call user's receive function here because the data is still incomplete
                             
@@ -4024,18 +3919,15 @@ bool lock_client_pm::basic_read(){
                     
                             memset(data_array, '\0', length_of_array_data); // zero out already received data
                         
-                            cursor = data_array; // set cursor to point back to data array
-
-                            // we unblock the sigpipe signal because close internally blocks it
-                            unblock_sigpipe_signal();
+                            cursor = data_array; // set cursor to point back to data array 
                                 
                             close(FRAME_TOO_LARGE); // we close the websocket connection with a frame too large error
                                 
-                            strncpy(error_buffer, "Error allocating heap memory for receiving non fin continuation frame data...frame too large ", error_buffer_array_length);
+                            strcpy(error_buffer, "Error allocating heap memory for receiving non fin continuation frame data...frame too large ");
                         
                             error.store(true, std::memory_order_release);
 
-                            return error.load(std::memory_order_acquire);
+                            return error.load(std::memory_order_relaxed);
                         
                         }
                         else{
@@ -4050,18 +3942,16 @@ bool lock_client_pm::basic_read(){
                             memset(data_array_static, '\0', length_of_array_data); // zero out the static memory since it is no longer in use
                             
                             cursor += length_of_array_data; // move the cursor forward to point to to the next empty location in the array 
-                            
-                            // SIGPIPE signal is still blocked
 
-                            int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
+                            int64_t len = 0; // we initialise our len variable
 
-                            // we keep polling till we have read the entire frame
+                            // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                             while(len < frame_data_len){
                             
-                                int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
-                                    
+                                int extra_bytes_read = fetch_data(reinterpret_cast<unsigned char*>(cursor), frame_data_len - len);
+                                
                                 if(extra_bytes_read > 0){
-                                // bio_read fetched extra data
+                                // fetch data fetched extra data
 
                                     len += extra_bytes_read;
                                     
@@ -4069,37 +3959,21 @@ bool lock_client_pm::basic_read(){
 
                                 }
                                 else{
-                                // bio_read couldn't fetch data
+                                // fetch data didn't fetch more data
 
-                                    if(BIO_should_retry(c_bio)){
+                                    if(extra_bytes_read == RETRY){
                                     // no data available yet
+
+                                        // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                                        if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
 
                                         continue;
 
-                                    }
-                                    else{
-                                    // an actual errror occurred
-
-                                        // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                                        unblock_sigpipe_signal();
-
-                                        // here bio_read couldn't fetch any extra data
-                                        strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                        error.store(true, std::memory_order_release);
-
-                                        fail_ws_connection(GOING_AWAY);
-
-                                        return error.load(std::memory_order_acquire);
-                                        
                                     }
 
                                 }
 
                             }
-
-                            // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                            unblock_sigpipe_signal();
                             
                             // we don't call user's receive function here because the data is still incomplete
                             
@@ -4118,18 +3992,15 @@ bool lock_client_pm::basic_read(){
                 
                         memset(data_array, '\0', length_of_array_data); // zero out already received data
                     
-                        cursor = data_array; // set cursor to point back to data array
-
-                        // we unblock the sigpipe signal because close internally blocks it
-                        unblock_sigpipe_signal();
+                        cursor = data_array; // set cursor to point back to data array 
                             
                         close(FRAME_TOO_LARGE); // we close the websocket connection with a frame too large error
                             
-                        strncpy(error_buffer, "Error allocating heap memory for receiving non fin continuation frame data...frame too large ", error_buffer_array_length);
+                        strcpy(error_buffer, "Error allocating heap memory for receiving non fin continuation frame data...frame too large ");
                     
                         error.store(true, std::memory_order_release);
 
-                        return error.load(std::memory_order_acquire);
+                        return error.load(std::memory_order_relaxed);
                     
                     }
                     else{
@@ -4145,18 +4016,16 @@ bool lock_client_pm::basic_read(){
                         length_of_array = size_of_allocated_data_memory;
                         
                         cursor += length_of_array_data; // move the cursor forward to point to to the next empty location in the array 
-                        
-                        // SIGPIPE signal is still blocked
 
-                        int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
+                        int64_t len = 0; // we initialise our len variable
 
-                        // we keep polling till we have read the entire frame
+                        // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                         while(len < frame_data_len){
                         
-                            int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
-                                
+                            int extra_bytes_read = fetch_data(reinterpret_cast<unsigned char*>(cursor), frame_data_len - len);
+                            
                             if(extra_bytes_read > 0){
-                            // bio_read fetched extra data
+                            // fetch data fetched extra data
 
                                 len += extra_bytes_read;
                                 
@@ -4164,37 +4033,21 @@ bool lock_client_pm::basic_read(){
 
                             }
                             else{
-                            // bio_read couldn't fetch data
+                            // fetch data didn't fetch more data
 
-                                if(BIO_should_retry(c_bio)){
+                                if(extra_bytes_read == RETRY){
                                 // no data available yet
+
+                                    // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                                    if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
 
                                     continue;
 
-                                }
-                                else{
-                                // an actual errror occurred
-
-                                    // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                                    unblock_sigpipe_signal();
-
-                                    // here bio_read couldn't fetch any extra data
-                                    strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                    error.store(true, std::memory_order_release);
-
-                                    fail_ws_connection(GOING_AWAY);
-
-                                    return error.load(std::memory_order_acquire);
-                                    
                                 }
 
                             }
 
                         }
-
-                        // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                        unblock_sigpipe_signal();
                         
                         // we don't call user's receive function here because the data is still incomplete
                         
@@ -4213,52 +4066,39 @@ bool lock_client_pm::basic_read(){
                     frame_data_len = rand_bytes[1];
                     
                 }
-                else if( rand_bytes[1] == 126 ){ // next two bytes store the data length
-                    
-                    // getting here the SIGPIPE signal is still blocked
+                else if(rand_bytes[1] == 126){ // next two bytes store the data length
 
-                    // read the next 2 bytes from c_bio to get the length
+                    // read the next 2 bytes to get the length
 
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 2;
 
-                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array BIO_read should write to
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array fetch data should write to
                     total_read_bytes = 0;
 
-                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each BIO_read call
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each fetch data call
                     read_bytes = 0;
 
                     // we keep reading till we have our total bytes to read
                     while(total_read_bytes < bytes_to_read){
 
-                        // we call BIO_read to attempt to read the bytes into the buffer
-                        read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
+                        // we call fetch data function to attempt to read the bytes into the buffer
+                        read_bytes = fetch_data(&rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if BIO_read returns a value <= 0 we check if bio should retry is true
+                        // if wolfssl_read returns a value <= 0 we check if there is data available to be read
                         if(read_bytes <= 0){
 
-                            // we check if the BIO should retry
-                            if(BIO_should_retry(c_bio)){
+                            // for clarification fetch data returns either 0 or RETRY which is a negative number. 0 is returned when the supplied size parameter is invalid and retry when the read buffer has no new data
 
-                                // getting here BIO should retry returns true so we continue the loop because getting here we have fetched our first 2 frame bytes to indicate that there is an unread ws frame to be read
+                            // we check if we still expects more reads or if the poll thread encountered an error
+                            if(read_bytes == RETRY){
+
+                                // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                                if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
+
+                                // getting here since there is no error from the poll thread and we haven't fetched the entire data yet we just continue the loop
                                 continue;
 
-                            }
-                            else{
-                            // getting here the error number returned by BIO read isn't due to BIO should retry so we fail this websocket connection
-                            
-                                // here bio_read couldn't fetch any data
-                                strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                error.store(true, std::memory_order_release);
-
-                                // we unblock the sigpipe signal because fail_ws_connection internally blocks it
-                                unblock_sigpipe_signal();
-                                
-                                fail_ws_connection(GOING_AWAY);
-                                // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
-                                
-                                return error.load(std::memory_order_acquire);
 
                             }
 
@@ -4268,58 +4108,43 @@ bool lock_client_pm::basic_read(){
                         total_read_bytes += read_bytes;
 
                     }
-                
-                    // SIGPIPE signal still remains blocked
                     
                     frame_data_len = (rand_bytes[0] << 8) | rand_bytes[1];
                     
                 }
-                else if( rand_bytes[1] == 127 ){ // this would mean that the next 8 bytes is our length
-                    
-                    // getting here the SIGPIPE signal is still blocked
+                else if(rand_bytes[1] == 127){ // this would mean that the next 8 bytes is our length
 
-                    // read the next 8 bytes from c_bio to get our length
+                    // read the next 8 bytes to get our length
 
                     // we set our bytes to read variable to the number of bytes we are trying to read
                     bytes_to_read = 8;
 
-                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array BIO_read should write to
+                    // the total read bytes shows how many bytes have been read in total out of the number of bytes to be read - this also indicates where next in the rand bytes array fetch data should write to
                     total_read_bytes = 0;
 
-                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each BIO_read call
+                    // we reset our read bytes to 0, read bytes keeps track of how many bytes were read in each fetch data call
                     read_bytes = 0;
 
                     // we keep reading till we have our total bytes to read
                     while(total_read_bytes < bytes_to_read){
 
-                        // we call BIO_read to attempt to read the bytes into the buffer
-                        read_bytes = BIO_read(c_bio, &rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
+                        // we call fetch data function to attempt to read the bytes into the buffer
+                        read_bytes = fetch_data(&rand_bytes[total_read_bytes], bytes_to_read - total_read_bytes);
 
-                        // if BIO_read returns a value <= 0 we check if bio should retry is true
+                        // if wolfssl_read returns a value <= 0 we check if there is data available to be read
                         if(read_bytes <= 0){
 
-                            // we check if the BIO should retry
-                            if(BIO_should_retry(c_bio)){
+                            // for clarification fetch data returns either 0 or RETRY which is a negative number. 0 is returned when the supplied size parameter is invalid and retry when the read buffer has no new data
 
-                                // getting here BIO should retry returns true so we continue the loop because getting here we have fetched our first 2 frame bytes to indicate that there is an unread ws frame to be read
+                            // we check if we still expects more reads or if the poll thread encountered an error
+                            if(read_bytes == RETRY){
+
+                                // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                                if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
+
+                                // getting here since there is no error from the poll thread and we haven't fetched the entire data yet we just continue the loop
                                 continue;
 
-                            }
-                            else{
-                            // getting here the error number returned by BIO read isn't due to BIO should retry so we fail this websocket connection
-                            
-                                // here bio_read couldn't fetch any data
-                                strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                error.store(true, std::memory_order_release);
-
-                                // we unblock the sigpipe signal because fail_ws_connection internally blocks it
-                                unblock_sigpipe_signal();
-                                
-                                fail_ws_connection(GOING_AWAY);
-                                // losing the network connection isn't in itself an error, it just puts the lock client back in closed state
-                                
-                                return error.load(std::memory_order_acquire);
 
                             }
 
@@ -4330,20 +4155,20 @@ bool lock_client_pm::basic_read(){
 
                     }
 
-                    // getting here the frame length was successfully read but the SIGPIPE signal still remains blocked
+                    // getting here the frame length was successfully read
                 
-                    if((rand_bytes[0] & 128) != 0){ // most significant bit of most significant byte is set which is against protocol rules
+                    if((rand_bytes[0] & 128) != 0){
+
+                        // most significant bit of most significant byte is set which is against protocol rules
                         
-                        strncpy(error_buffer, "Protocol error: Most significant bit of 64-bit frame length set", error_buffer_array_length);
+                        strcpy(error_buffer, "Protocol error: Most significant bit of 64-bit frame length set");
                         
                         error.store(true, std::memory_order_release);
-
-                        // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                        unblock_sigpipe_signal();
                         
-                        fail_ws_connection(PROTOCOL_ERROR); // fail the websocket connection
+                        // fail the websocket connection
+                        fail_ws_connection(PROTOCOL_ERROR);
 
-                        return error.load(std::memory_order_acquire);
+                        return error.load(std::memory_order_relaxed);
                         
                     }
 
@@ -4356,18 +4181,18 @@ bool lock_client_pm::basic_read(){
                 }
                 else{ // unrecognised data length received. This is possible because a malicious of wrongly configured WebSocket server could set the mask bit to 1 hence the library should be able to handle that
                     
-                    strncpy(error_buffer, "Unrecognised data length received...WebSocket connection closed ", error_buffer_array_length);
+                    strcpy(error_buffer, "Unrecognised data length received...WebSocket connection closed ");
                     
                     error.store(true, std::memory_order_release);
-
-                    // we unblock the sigpipe signal because fail_ws_connection internally blocks it
-                    unblock_sigpipe_signal();
                     
-                    fail_ws_connection(PROTOCOL_ERROR); // fail the websocket connection
+                    // fail the websocket connection
+                    fail_ws_connection(PROTOCOL_ERROR);
 
-                    return error.load(std::memory_order_acquire);
+                    return error.load(std::memory_order_relaxed);
                     
                 }
+                
+                // reaching here means that we encountered no errors thus far because if we encountered an error the function would have returned.
                 
                 int64_t length_of_array_data = cursor - data_array; // this is used to store the length of data that the data array currently holds
                 
@@ -4375,15 +4200,15 @@ bool lock_client_pm::basic_read(){
                     
                     // SIGPIPE signal is still blocked
 
-                    int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
+                    int64_t len = 0; // we initialise our len variable
 
-                    // we keep polling till we have read the entire frame
+                    // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                     while(len < frame_data_len){
                     
-                        int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
-                            
+                        int extra_bytes_read = fetch_data(reinterpret_cast<unsigned char*>(cursor), frame_data_len - len);
+                        
                         if(extra_bytes_read > 0){
-                        // bio_read fetched extra data
+                        // fetch data fetched extra data
 
                             len += extra_bytes_read;
                             
@@ -4391,37 +4216,21 @@ bool lock_client_pm::basic_read(){
 
                         }
                         else{
-                        // bio_read couldn't fetch data
+                        // fetch data didn't fetch more data
 
-                            if(BIO_should_retry(c_bio)){
+                            if(extra_bytes_read == RETRY){
                             // no data available yet
+
+                                // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                                if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
 
                                 continue;
 
-                            }
-                            else{
-                            // an actual errror occurred
-
-                                // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                                unblock_sigpipe_signal();
-
-                                // here bio_read couldn't fetch any extra data
-                                strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                error.store(true, std::memory_order_release);
-
-                                fail_ws_connection(GOING_AWAY);
-
-                                return error.load(std::memory_order_acquire);
-                                
                             }
 
                         }
 
                     }
-
-                    // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                    unblock_sigpipe_signal();
                     
                     // getting here would mean we did not encounter any error in receiving the frame data because if we did the websocket connection would have been failed
 
@@ -4445,19 +4254,17 @@ bool lock_client_pm::basic_read(){
                     
                     memset(data_array_static, '\0', length_of_array_data); // zero out the static memory since it is no longer in use
                     
-                    cursor += length_of_array_data; // move the cursor forward to point to to the next empty location in the array 
-                    
-                    // SIGPIPE signal is still blocked
+                    cursor += length_of_array_data; // move the cursor forward to point to to the next empty location in the array
 
-                    int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
+                    int64_t len = 0; // we initialise our len variable
 
-                    // we keep polling till we have read the entire frame
+                    // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                     while(len < frame_data_len){
                     
-                        int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
-                            
+                        int extra_bytes_read = fetch_data(reinterpret_cast<unsigned char*>(cursor), frame_data_len - len);
+                        
                         if(extra_bytes_read > 0){
-                        // bio_read fetched extra data
+                        // fetch data fetched extra data
 
                             len += extra_bytes_read;
                             
@@ -4465,37 +4272,21 @@ bool lock_client_pm::basic_read(){
 
                         }
                         else{
-                        // bio_read couldn't fetch data
+                        // fetch data didn't fetch more data
 
-                            if(BIO_should_retry(c_bio)){
+                            if(extra_bytes_read == RETRY){
                             // no data available yet
+
+                                // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                                if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
 
                                 continue;
 
-                            }
-                            else{
-                            // an actual errror occurred
-
-                                // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                                unblock_sigpipe_signal();
-
-                                // here bio_read couldn't fetch any extra data
-                                strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                error.store(true, std::memory_order_release);
-
-                                fail_ws_connection(GOING_AWAY);
-
-                                return error.load(std::memory_order_acquire);
-                                
                             }
 
                         }
 
                     }
-
-                    // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                    unblock_sigpipe_signal();
                     
                     // getting here would mean we did not encounter any error in receiving the frame data because if we did the websocket connection would have been failed
                     
@@ -4509,7 +4300,7 @@ bool lock_client_pm::basic_read(){
                     cursor = data_array; // set the cursor back to point to the array pointed at by data array
                     
                 }
-                else if( (data_array == data_array_static) && ( (length_of_array_data + frame_data_len) > size_of_allocated_data_memory) ){ // there are two parts to this condition, either memory has been allocated of memory has not been allocated
+                else if( (data_array == data_array_static) && ( (length_of_array_data + frame_data_len) > size_of_allocated_data_memory) ){ // there are two parts to this condition, either memory has been allocated of memory has not been allocated 
                     
                     if(data_array_new == NULL){ // memory has not been allocated
                         
@@ -4519,18 +4310,15 @@ bool lock_client_pm::basic_read(){
                             
                             memset(data_array, '\0', length_of_array_data); // zero out already received data
                     
-                            cursor = data_array; // set cursor to point back to data array
-
-                            // we unblock the sigpipe signal because close internally blocks it
-                            unblock_sigpipe_signal();
+                            cursor = data_array; // set cursor to point back to data array 
                             
                             close(FRAME_TOO_LARGE);
                             
-                            strncpy(error_buffer, "Error allocating heap memory for receiving non fin continuation frame data...frame too large ", error_buffer_array_length);
+                            strcpy(error_buffer, "Error allocating heap memory for receiving non fin continuation frame data...frame too large ");
                     
                             error.store(true, std::memory_order_release);
 
-                            return error.load(std::memory_order_acquire);
+                            return error.load(std::memory_order_relaxed);
                     
                         }
                         else{
@@ -4548,15 +4336,15 @@ bool lock_client_pm::basic_read(){
                             
                             // SIGPIPE signal is still blocked
 
-                            int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
+                            int64_t len = 0; // we initialise our len variable
 
-                            // we keep polling till we have read the entire frame
+                            // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                             while(len < frame_data_len){
                             
-                                int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
-                                    
+                                int extra_bytes_read = fetch_data(reinterpret_cast<unsigned char*>(cursor), frame_data_len - len);
+                                
                                 if(extra_bytes_read > 0){
-                                // bio_read fetched extra data
+                                // fetch data fetched extra data
 
                                     len += extra_bytes_read;
                                     
@@ -4564,37 +4352,21 @@ bool lock_client_pm::basic_read(){
 
                                 }
                                 else{
-                                // bio_read couldn't fetch data
+                                // fetch data didn't fetch more data
 
-                                    if(BIO_should_retry(c_bio)){
+                                    if(extra_bytes_read == RETRY){
                                     // no data available yet
+
+                                        // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                                        if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
 
                                         continue;
 
-                                    }
-                                    else{
-                                    // an actual errror occurred
-
-                                        // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                                        unblock_sigpipe_signal();
-
-                                        // here bio_read couldn't fetch any extra data
-                                        strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                        error.store(true, std::memory_order_release);
-
-                                        fail_ws_connection(GOING_AWAY);
-
-                                        return error.load(std::memory_order_acquire);
-                                        
                                     }
 
                                 }
 
                             }
-
-                            // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                            unblock_sigpipe_signal();
                             
                             // getting here would mean we did not encounter any error in receiving the frame data because if we did the websocket connection would have been failed
                             
@@ -4620,18 +4392,15 @@ bool lock_client_pm::basic_read(){
                     
                             memset(data_array, '\0', length_of_array_data); // zero out already received data
                         
-                            cursor = data_array; // set cursor to point back to data array
-
-                            // we unblock the sigpipe signal because close internally blocks it
-                            unblock_sigpipe_signal();
+                            cursor = data_array; // set cursor to point back to data array 
                                 
                             close(FRAME_TOO_LARGE);
                                 
-                            strncpy(error_buffer, "Error allocating heap memory for receiving non fin continuation frame data...total frame too large ", error_buffer_array_length);
+                            strcpy(error_buffer, "Error allocating heap memory for receiving non fin continuation frame data...total frame too large ");
                         
                             error.store(true, std::memory_order_release);
 
-                            return error.load(std::memory_order_acquire);
+                            return error.load(std::memory_order_relaxed);
                         
                         }
                         else{
@@ -4645,19 +4414,17 @@ bool lock_client_pm::basic_read(){
                             
                             memset(data_array_static, '\0', length_of_array_data); // zero out the static memory since it is no longer in use
                             
-                            cursor += length_of_array_data; // move the cursor forward to point to to the next empty location in the array 
-                            
-                            // SIGPIPE signal is still blocked
+                            cursor += length_of_array_data; // move the cursor forward to point to to the next empty location in the array
 
-                            int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
+                            int64_t len = 0; // we initialise our len variable
 
-                            // we keep polling till we have read the entire frame
+                            // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                             while(len < frame_data_len){
                             
-                                int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
-                                    
+                                int extra_bytes_read = fetch_data(reinterpret_cast<unsigned char*>(cursor), frame_data_len - len);
+                                
                                 if(extra_bytes_read > 0){
-                                // bio_read fetched extra data
+                                // fetch data fetched extra data
 
                                     len += extra_bytes_read;
                                     
@@ -4665,37 +4432,22 @@ bool lock_client_pm::basic_read(){
 
                                 }
                                 else{
-                                // bio_read couldn't fetch data
+                                // fetch data didn't fetch more data
 
-                                    if(BIO_should_retry(c_bio)){
+                                    if(extra_bytes_read == RETRY){
                                     // no data available yet
+
+                                        // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                                        if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
 
                                         continue;
 
-                                    }
-                                    else{
-                                    // an actual errror occurred
-
-                                        // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                                        unblock_sigpipe_signal();
-
-                                        // here bio_read couldn't fetch any extra data
-                                        strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                        error.store(true, std::memory_order_release);
-
-                                        fail_ws_connection(GOING_AWAY);
-
-                                        return error.load(std::memory_order_acquire);
-                                        
                                     }
 
                                 }
 
                             }
 
-                            // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                            unblock_sigpipe_signal();
                             // getting here would mean we did not encounter any error in receiving the frame data because if we did the websocket connection would have been failed
                             
                             // update the array data length
@@ -4720,18 +4472,15 @@ bool lock_client_pm::basic_read(){
                 
                         memset(data_array, '\0', length_of_array_data); // zero out already received data
                     
-                        cursor = data_array; // set cursor to point back to data array
-
-                        // we unblock the sigpipe signal because close internally blocks it
-                        unblock_sigpipe_signal();
+                        cursor = data_array; // set cursor to point back to data array 
                             
                         close(FRAME_TOO_LARGE);
                             
-                        strncpy(error_buffer, "Error allocating heap memory for receiving non fin continuation frame data...total frame too large ", error_buffer_array_length);
+                        strcpy(error_buffer, "Error allocating heap memory for receiving non fin continuation frame data...total frame too large ");
                     
                         error.store(true, std::memory_order_release);
 
-                        return error.load(std::memory_order_acquire);
+                        return error.load(std::memory_order_relaxed);
                     
                     }
                     else{
@@ -4750,15 +4499,15 @@ bool lock_client_pm::basic_read(){
                         
                         // SIGPIPE signal is still blocked
 
-                        int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
+                        int64_t len = 0; // we initialise our len variable
 
-                        // we keep polling till we have read the entire frame
+                        // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                         while(len < frame_data_len){
                         
-                            int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
-                                
+                            int extra_bytes_read = fetch_data(reinterpret_cast<unsigned char*>(cursor), frame_data_len - len);
+                            
                             if(extra_bytes_read > 0){
-                            // bio_read fetched extra data
+                            // fetch data fetched extra data
 
                                 len += extra_bytes_read;
                                 
@@ -4766,37 +4515,21 @@ bool lock_client_pm::basic_read(){
 
                             }
                             else{
-                            // bio_read couldn't fetch data
+                            // fetch data didn't fetch more data
 
-                                if(BIO_should_retry(c_bio)){
+                                if(extra_bytes_read == RETRY){
                                 // no data available yet
+
+                                    // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                                    if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
 
                                     continue;
 
-                                }
-                                else{
-                                // an actual errror occurred
-
-                                    // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                                    unblock_sigpipe_signal();
-
-                                    // here bio_read couldn't fetch any extra data
-                                    strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                    error.store(true, std::memory_order_release);
-
-                                    fail_ws_connection(GOING_AWAY);
-
-                                    return error.load(std::memory_order_acquire);
-                                    
                                 }
 
                             }
 
                         }
-
-                        // getting here all the frame data has been fetched so we unblock the SIGPIPE signal
-                        unblock_sigpipe_signal();
                         
                         // getting here would mean we did not encounter any error in receiving the frame data because if we did the websocket connection would have been failed
                         
@@ -4820,20 +4553,17 @@ bool lock_client_pm::basic_read(){
                     
                     if(rand_bytes[1] > 125){ // protocol error as the frame length of control frames should not be more than 125
                     
-                        strncpy(error_buffer, "Protocol error: Ping frame received with length greater than 125 bytes", error_buffer_array_length);
+                        strcpy(error_buffer, "Protocol error: Ping frame received with length greater than 125 bytes");
                     
                         error.store(true, std::memory_order_release);
                         
                         memset(data_array, '\0', (cursor - data_array) ); // zero out the data possibly already written to the data array if the faulty ping frame is received when a fragmented message is still being transmitted.
                         
                         cursor = data_array; // set cursor to point back to data array
-
-                        // we unblock the sigpipe signal because fail_ws_connection internally blocks it
-                        unblock_sigpipe_signal();
                         
                         fail_ws_connection(PROTOCOL_ERROR); // fail the websocket connection
 
-                        return error.load(std::memory_order_acquire);
+                        return error.load(std::memory_order_relaxed);
                 
                     }
                 
@@ -4841,7 +4571,7 @@ bool lock_client_pm::basic_read(){
                     
                     frame_data_len = rand_bytes[1];
                     
-                    int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
+                    int64_t len = 0; // we initialise our len variable
 
                     // point the upgrade request pointer to the upgrade request static array
                     upgrade_request = upgrade_request_static;
@@ -4851,40 +4581,27 @@ bool lock_client_pm::basic_read(){
                     // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                     while(len < frame_data_len){
                     
-                        int64_t extra_bytes_read = BIO_read(c_bio, upgrade_request, frame_data_len - len);
-                            
+                        int extra_bytes_read = fetch_data(reinterpret_cast<unsigned char*>(cursor), frame_data_len - len);
+                        
                         if(extra_bytes_read > 0){
-                        // bio_read fetched extra data
+                        // fetch data fetched extra data
 
                             len += extra_bytes_read;
                             
-                            upgrade_request += extra_bytes_read;
+                            cursor += extra_bytes_read;
 
                         }
                         else{
-                        // bio_read couldn't fetch data
+                        // fetch data didn't fetch more data
 
-                            if(BIO_should_retry(c_bio)){
+                            if(extra_bytes_read == RETRY){
                             // no data available yet
+
+                                // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                                if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
 
                                 continue;
 
-                            }
-                            else{
-                            // an actual errror occurred
-
-                                // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                                unblock_sigpipe_signal();
-
-                                // here bio_read couldn't fetch any extra data
-                                strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                                error.store(true, std::memory_order_release);
-
-                                fail_ws_connection(GOING_AWAY);
-
-                                return error.load(std::memory_order_acquire);
-                                
                             }
 
                         }
@@ -4892,9 +4609,6 @@ bool lock_client_pm::basic_read(){
                     }
 
                     // getting here the ping frame payload data has been fetched
-
-                    // we unblock the SIGPIPE signal because the pong function internally blocks it
-                    unblock_sigpipe_signal();
                 
                     // send a pong frame response - the num_of_pings_received variable is set back to 0 in the pong function
                     pong(frame_data_len);
@@ -4914,16 +4628,13 @@ bool lock_client_pm::basic_read(){
                 
                 if(rand_bytes[1] > 125){ // protocol error as the frame length should not be more than 125
                     
-                    strncpy(error_buffer, "Protocol error: Close frame received with length greater than 125 bytes", error_buffer_array_length);
+                    strcpy(error_buffer, "Protocol error: Close frame received with length greater than 125 bytes");
                     
                     error.store(true, std::memory_order_release);
-
-                    // we unblock the sigpipe signal because fail_ws_connection internally blocks it
-                    unblock_sigpipe_signal();
                     
                     fail_ws_connection(PROTOCOL_ERROR); // fail the websocket connection
 
-                    return error.load(std::memory_order_acquire);
+                    return error.load(std::memory_order_relaxed);
                 
                 }
                 
@@ -4933,18 +4644,16 @@ bool lock_client_pm::basic_read(){
                 
                 
                 int i = 0; // variable for traversing the send array and building up the close data frame response
-                
-                // SIGPIPE signal is still blocked
 
-                int64_t len = 0; // we initialise our len variable to 0 first as opposed to the return value from bio read because bio read could return a negative value which would make frame data len - len calculation be wrong
+                int64_t len = 0; // we initialise our len variable
 
                 // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                 while(len < frame_data_len){
                 
-                    int64_t extra_bytes_read = BIO_read(c_bio, cursor, (frame_data_len - len) );
-                        
+                    int extra_bytes_read = fetch_data(reinterpret_cast<unsigned char*>(cursor), frame_data_len - len);
+                    
                     if(extra_bytes_read > 0){
-                    // bio_read fetched extra data
+                    // fetch data fetched extra data
 
                         len += extra_bytes_read;
                         
@@ -4952,36 +4661,21 @@ bool lock_client_pm::basic_read(){
 
                     }
                     else{
-                    // bio_read couldn't fetch data
+                    // fetch data didn't fetch more data
 
-                        if(BIO_should_retry(c_bio)){
+                        if(extra_bytes_read == RETRY){
                         // no data available yet
+
+                            // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                            if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
 
                             continue;
 
-                        }
-                        else{
-                        // an actual errror occurred
-
-                            // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                            unblock_sigpipe_signal();
-
-                            // here bio_read couldn't fetch any extra data
-                            strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                            error.store(true, std::memory_order_release);
-
-                            fail_ws_connection(GOING_AWAY);
-
-                            return error.load(std::memory_order_acquire);
-                            
                         }
 
                     }
 
                 }
-
-                // we leave the sigpipe signal blocked because we still need to send a close frame response
             
                 // build up the close frame response message
             
@@ -5014,6 +4708,9 @@ bool lock_client_pm::basic_read(){
                     i++;
                 
                 }
+
+                // we block our SIGPIPE signal
+                block_sigpipe_signal();
                 
                 // send the close frame response - we do not test the return code of bio_read in this case neither do we poll to ensure it sends
                 (void)BIO_write(c_bio, send_data, i);
@@ -5023,11 +4720,31 @@ bool lock_client_pm::basic_read(){
                 
                 BIO_reset(c_bio); // close the existing connection and reset the bio
                 
-                // set error flag to indicate that the lock client instance connection has been closed by foreign host
-                strcpy(error_buffer, "Lock client WebSocket connection mutually closed after instance received unsolicited close frame from foreign host");
+                // before we set the error flag for the unsolicited close frame we first check if the poll thread already set the error flag
+                if(!error.load(std::memory_order_acquire)){
+                
+                    // getting here the error flag isn't set so we copy our error message to the error buffer
+
+                    // set error flag to indicate that the lock client instance connection has been closed by foreign host
+                    strcpy(error_buffer, "Lock client WebSocket connection mutually closed after instance received unsolicited close frame from foreign host");
+
+                    // we set our error flag
+                    error.store(true, std::memory_order_release);
+
+                }
+                else{
+
+                    // getting here the error flag is set so we concatenate our error message to the error buffer
+
+                    // set error flag to indicate that the lock client instance connection has been closed by foreign host
+                    strcat(error_buffer, "\nClient Error: Lock client WebSocket connection mutually closed after instance received unsolicited close frame from foreign host");
+
+                    // getting here our error flag is already set so we don't have to set it
+
+                }
 
                 // now the received close frame application data may contain a server reason for closing after the first 2 bytes which is the status code for the close frame, so we check if the application data length is > 2 if it is we append it to the error buffer
-                
+                    
                 int server_reason = static_cast<int>(frame_data_len) - 2;
 
                 // we check if there is a received close reason
@@ -5053,16 +4770,14 @@ bool lock_client_pm::basic_read(){
                 
                 cursor = data_array; // set cursor to point back to data array
                 
-                error.store(true, std::memory_order_release);
-                
-                client_state.store(CLOSED, std::memory_order_release);;
+                client_state.store(CLOSED, std::memory_order_release);
                 
             }
             else if( rand_bytes[0] == (FIN_BIT_SET | RSV_BIT_UNSET_ALL | PONG) ){
                 
                 if(rand_bytes[1] > 125){ // protocol error as the frame length of control frames should not be more than 125
                     
-                    strncpy(error_buffer, "Protocol error: Pong frame received with length greater than 125 bytes", error_buffer_array_length);
+                    strcpy(error_buffer, "Protocol error: Pong frame received with length greater than 125 bytes");
                     
                     error.store(true, std::memory_order_release);
                     
@@ -5072,7 +4787,7 @@ bool lock_client_pm::basic_read(){
                     
                     fail_ws_connection(PROTOCOL_ERROR); // fail the websocket connection
 
-                    return error.load(std::memory_order_acquire); 
+                    return error.load(std::memory_order_relaxed);
                 
                 }
                 
@@ -5083,47 +4798,32 @@ bool lock_client_pm::basic_read(){
                 // we point the upgrade request pointer to the upgrade_request_static variable because it isn't used by the program at this point
                 upgrade_request = upgrade_request_static;
 
-                // SIGPIPE signal is still blocked
-
                 int64_t len = 0;
 
                 // we keep polling till we have read the entire frame - this case already handles instances where frame data len is 0, the while loop won't run
                 while(len < frame_data_len){
                 
-                    int64_t extra_bytes_read = BIO_read(c_bio, upgrade_request, frame_data_len - len);
-                        
+                    int extra_bytes_read = fetch_data(reinterpret_cast<unsigned char*>(cursor), frame_data_len - len);
+                    
                     if(extra_bytes_read > 0){
-                    // bio_read fetched extra data
+                    // fetch data fetched extra data
 
                         len += extra_bytes_read;
                         
-                        upgrade_request += extra_bytes_read;
+                        cursor += extra_bytes_read;
 
                     }
                     else{
-                    // bio_read couldn't fetch data
+                    // fetch data didn't fetch more data
 
-                        if(BIO_should_retry(c_bio)){
+                        if(extra_bytes_read == RETRY){
                         // no data available yet
+
+                            // getting a retry means that there is no data to read from the read buffer so we check if the error flag has been set in the poll thread in which case we would simply return here - we use memory order acquire to load the error flag in the if condition but use memory order relaxed to return in the if brace because the condition already loaded it
+                            if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
 
                             continue;
 
-                        }
-                        else{
-                        // an actual errror occurred
-
-                            // we unblock the SIGPIPE signal because the fail_ws_connection function internally blocks it
-                            unblock_sigpipe_signal();
-
-                            // here bio_read couldn't fetch any extra data
-                            strncpy(error_buffer, "Can't Fetch data from remote host: Check network connection", error_buffer_array_length);
-
-                            error.store(true, std::memory_order_release);
-
-                            fail_ws_connection(GOING_AWAY);
-
-                            return error.load(std::memory_order_acquire);
-                            
                         }
 
                     }
@@ -5131,9 +4831,6 @@ bool lock_client_pm::basic_read(){
                 }
 
                 // getting here the pong frame payload data has been fetched
-
-                // we unblock the SIGPIPE signal because the pong function internally blocks it
-                unblock_sigpipe_signal();
                 
                 (void)recv_pong(upgrade_request_static, frame_data_len, upgrade_request_array_length); // call te receive pong function
                 
@@ -5142,16 +4839,13 @@ bool lock_client_pm::basic_read(){
             }
             else{ // unrecognised protocol opcode received
                 
-                strncpy(error_buffer, "Unrecognised data frame received ", error_buffer_array_length);
+                strcpy(error_buffer, "Unrecognised data frame received ");
                 
                 error.store(true, std::memory_order_release);
                 
                 memset(data_array, '\0', (cursor - data_array) ); // zero out the data possibly already written to the data array if the an unrecognised frame is received when a fragmented message is still being transmitted.
                 
                 cursor = data_array; // set cursor to point back to data array
-
-                // we unblock the sigpipe signal because fail ws connection internally blocks it
-                unblock_sigpipe_signal();
                 
                 fail_ws_connection(PROTOCOL_ERROR); // fail the websocket connection
                 
@@ -5160,7 +4854,7 @@ bool lock_client_pm::basic_read(){
         }
         else{
             
-            strncpy(error_buffer, "Lock Client not connected yet", error_buffer_array_length);
+            strcpy(error_buffer, "Lock Client not connected yet");
                 
             error.store(true, std::memory_order_release);
             
@@ -5168,11 +4862,15 @@ bool lock_client_pm::basic_read(){
         
     }
         
-    return error.load(std::memory_order_acquire);
+    // in order to accomodate the scenario where the poll thread sets the error flag to true but there is still data to read we check if data is still available and if so we return false masking the error till there is no more data available. this way calling basic read in a loop that checks if any error was encountered can run till all available data is exhausted
+    return data_available() ? false : error.load(std::memory_order_relaxed);
         
 }
        
 bool lock_client_pm::connect(std::string_view url){ // this is used to connect to connect to the url passed as a parameter, it can be used when a lock client object was created without establishing a websocket connection by using the parameterless constructor, or to connect an already established websocket connection and lock client instance to a different websocket server, it can also be used to retry connecting an instance that encountered an error during connection
+
+    // we check that the poll thread is running if it isn't we return our error flag which would be set already if the poll thread isn't running - we return the error with memory order relaxed because we have already loaded the poll thread running flag which was written to after the error flag so we should already have an updated error flag
+    if(!poll_thread_running.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
     
     // we close the websocket connection - if this handle was connected before, if it wasn't close is still a safe operation
     close(NORMAL_CLOSE);
@@ -5955,6 +5653,9 @@ bool lock_client_pm::connect(std::string_view url){ // this is used to connect t
 
 bool lock_client_pm::interface_connect(std::string_view url, in_addr* interface_address, char* interface_name){
     
+    // we check that the poll thread is running if it isn't we return our error flag which would be set already if the poll thread isn't running - we return the error with memory order relaxed because we have already loaded the poll thread running flag which was written to after the error flag so we should already have an updated error flag
+    if(!poll_thread_running.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
+
     // we close the websocket connection - if this handle was connected before, if it wasn't close is still a safe operation
     close(NORMAL_CLOSE);
 
@@ -6827,6 +6528,26 @@ void lock_client_pm::unblock_sigpipe_signal(){
     
 }
 
+void lock_client_pm::block_sigpipe_signal_pm(){
+
+    sigemptyset(&newset_pm);
+    sigemptyset(&oldset_pm);
+    sigaddset(&newset_pm, SIGPIPE);
+    pthread_sigmask(SIG_BLOCK, &newset_pm, &oldset_pm);
+    
+}
+
+void lock_client_pm::unblock_sigpipe_signal_pm(){
+
+    // clear out any SIGPIPE signal that came in while we blocked it
+    while(sigtimedwait(&newset_pm, &si_pm, &ts_pm) >= 0 || errno != EAGAIN);
+    
+    // restore the previous signal mask of the calling thread
+    pthread_sigmask(SIG_SETMASK, &oldset_pm, NULL);
+    
+    
+}
+
 void lock_client_pm::fail_ws_connection(unsigned short status_code){
 
     if(cursor != NULL && data_array != NULL){
@@ -6884,7 +6605,7 @@ void lock_client_pm::fail_ws_connection(unsigned short status_code){
     // close the underlying connection, don't wait for server response
     BIO_reset(c_bio);
             
-    client_state.store(CLOSED, std::memory_order_release);; // sets the client state back to closed
+    client_state.store(CLOSED, std::memory_order_release); // sets the client state back to closed
 
     if(!error.load(std::memory_order_acquire)){
     // we only set the error message and error flag if the error flag was not set already
@@ -6897,10 +6618,88 @@ void lock_client_pm::fail_ws_connection(unsigned short status_code){
     }
     
 }
+
+bool lock_client_pm::set_cpu_affinity(int core){
+    
+    // thread id structure used to identify the calling thread
+    pthread_t thread_id = pthread_self();
+    
+    // cpu affinity variables
+    cpu_set_t cpuset;
+    
+    // zero out our cpu set
+    CPU_ZERO(&cpuset);
+    
+    // set in the cpuset struct to pin the thread to the specific core in the parameter
+    CPU_SET(core, &cpuset);
+    
+    // now set the cpu affinity to the core specified above
+    int set_affinity_error = pthread_setaffinity_np(thread_id, sizeof(cpuset), &cpuset);
+    
+    // we check if there was any error setting thr cpu affinity, we set our error flag if there was an error setting thr cpu affinity
+    if(set_affinity_error != 0){   
+
+        strcpy(error_buffer, "Error Pinning Thread To CPU Core ");
+
+        // we convert our core number to a char, store it in our error buffer and null terminate our error buffer
+        *(std::to_chars(error_buffer + strlen(error_buffer), error_buffer + error_buffer_array_length - 1, core).ptr) = '\0';
+
+        // we set our error flag to true
+        error.store(true, std::memory_order_release);
+
+    }
+    
+    return error;
+}
+
+bool lock_client_pm::increase_thread_priority(int p_policy, int priority){
+    
+    // local variables used by the increase priority function
+    pthread_t thread_id = pthread_self();
+    int policy = 0;
+    sched_param param;
+    
+    // the policy will now be set to the value of policy and its priority set to the value of priority, understand that policies for which priorities can be set - SCHED_FIFO and SCHED_RR have a max priority of 99 and a min priority of 0
+    
+    // we set our local policy variable to the p_policy parameter passed
+    policy = p_policy;
+    
+    // we set our scheduling priority to the parameter passed
+    param.sched_priority = priority;
+    
+    // we change our scheduling policy to scheduling policy supplied, the default is SCHED_FIFO and the default priority is 90
+    int sched_error = pthread_setschedparam(thread_id, policy, &param);
+    
+    if(sched_error != 0) [[unlikely]] {
+        
+        if(sched_error == ESRCH){
+        
+            strcpy(error_buffer, "No Thread With The Thread ID Could Be Found In Setting Scheduling Parameters\n");
+
+        }
+        else if(sched_error == EINVAL){
+            
+            strcpy(error_buffer, "Invalid Scheduling Policy\n");
+
+        }
+        else if(sched_error == EPERM){
+
+            strcpy(error_buffer, "Permission Denied For Setting Scheduling Parameters\n");
+
+        }
+
+        // we set our error flag to true
+        error.store(true, std::memory_order_release);
+        
+    }
+    
+    return error.load(std::memory_order_acquire);
+
+}
      
 bool lock_client_pm::close(unsigned short status_code){ // this closes an established websocket connection although the object itself still exists till it goes out of scope, the object can be connected to a different or the same websocket server using the connect function
     
-    if(client_state == OPEN){ // only continue if client is in open state
+    if(client_state.load(std::memory_order_acquire) == OPEN){ // only continue if client is in open state
     
         int i = 0; // variable for traversing the send array and building up the close data frame
         unsigned short frame_len = (unsigned short)2; // holds the length of the close data frame - sizeof unsigned short
@@ -6947,7 +6746,7 @@ bool lock_client_pm::close(unsigned short status_code){ // this closes an establ
         // unblock SIGPIPE signal
         unblock_sigpipe_signal();
             
-        client_state.store(CLOSED, std::memory_order_release);;
+        client_state.store(CLOSED, std::memory_order_release);
     
     }
     

@@ -8,7 +8,7 @@ public:
     //constructors
     lock_client_pm(std::string_view url, int core, int read_chunk = 0, int read_buffer_size = 0);
     lock_client_pm(std::string_view url, in_addr* interface_address, char* interface_name, int core, int read_chunk = 0, int read_buffer_size = 0); // constructor that binds to a particular interface before connection
-    lock_client_pm(int core, int read_chunk = 0, int read_buffer_size = 0); // parameterless constructor
+    lock_client_pm(int core, int read_chunk = 0, int read_buffer_size = 0); // basic constructor
     
     // destructor
     ~lock_client_pm();
@@ -37,10 +37,10 @@ private:
 // pointers to receive functions
     
     // receive function pointer
-    lock_function recv_data = lock_client::default_receive;
+    lock_function recv_data = lock_client_pm::default_receive;
     
     // receive pong function pointer
-    lock_function recv_pong = lock_client::default_pong_receive;
+    lock_function recv_pong = lock_client_pm::default_pong_receive;
     
 // private class functions
 private:
@@ -72,8 +72,8 @@ private:
 // class wide variables    
 private:    
     
-    inline static bool openssl_init = false; // bool variable to test if openssl initialisations have been done
-    inline static SSL_CTX* ssl_ctx = NULL;
+    bool openssl_init = false; // bool variable to test if openssl initialisations have been done
+    SSL_CTX* ssl_ctx = NULL;
     inline static const char string_to_append[] = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"; // this string is appended to the base64 encoded nonce to calculate the Sec-WebSocket-Accept header value and compare with the server's
     inline static const int size_of_SHA1_digest = 20;
     
