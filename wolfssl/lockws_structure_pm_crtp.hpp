@@ -118,8 +118,8 @@ private:
     static inline constexpr std::size_t CACHE_LINE_SIZE = 64;
 
     // last read and last write variables are declared with size alignment to prevent false sharing
-    alignas(CACHE_LINE_SIZE) std::atomic<int> last_read{0};
-    alignas(CACHE_LINE_SIZE) std::atomic<int> last_write{0};
+    alignas(CACHE_LINE_SIZE) std::atomic<uint64_t> last_read{0};
+    alignas(CACHE_LINE_SIZE) std::atomic<uint64_t> last_write{0};
 
     // pointer to our internal read buffer
     unsigned char* read_buffer = nullptr;
