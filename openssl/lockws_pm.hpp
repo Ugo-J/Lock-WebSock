@@ -1859,7 +1859,7 @@ bool lock_client_pm::ping(){ // sends a ping on an established websocket connect
 
                 }
                 else{
-                    if(BIO_should_retry(c_bio)){
+                    if(BIO_should_write(c_bio)){
                         continue;
                     }
                     else{
@@ -1958,7 +1958,7 @@ bool lock_client_pm::pong(int ping_data_len){ // sends out a pong frame unsolici
 
                 }
                 else{
-                    if(BIO_should_retry(c_bio)){
+                    if(BIO_should_write(c_bio)){
                     
                         continue;
 
@@ -2157,7 +2157,7 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
                         }
                         else{
                             
-                            if(BIO_should_retry(c_bio)){
+                            if(BIO_should_write(c_bio)){
                             
                                 continue;
 
@@ -2301,7 +2301,7 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
 
                     }
                     else{
-                        if(BIO_should_retry(c_bio)){
+                        if(BIO_should_write(c_bio)){
                         
                             continue;
 
@@ -2444,7 +2444,7 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
 
                             }
                             else{
-                                if(BIO_should_retry(c_bio)){
+                                if(BIO_should_write(c_bio)){
                                 
                                     continue;
 
@@ -2581,7 +2581,7 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
 
                             }
                             else{
-                                if(BIO_should_retry(c_bio)){
+                                if(BIO_should_write(c_bio)){
                                 
                                     continue;
 
@@ -2747,10 +2747,10 @@ bool lock_client_pm::poll_read(int core){
                 }
                 else{
 
-                    std::cout<<"BIO Should Retry "<<BIO_should_retry(c_bio)<<std::endl;
+                    std::cout<<"BIO Should Read "<<BIO_should_read(c_bio)<<std::endl;
 
                     // we check if bio should retry is false to indicate that there is no data to read at this time or if bio read failed due to an error
-                    if(!BIO_should_retry(c_bio)){
+                    if(!BIO_should_read(c_bio)){
 
                         // we copy our error message to our error buffer
                         strcpy(error_buffer, "Poll Error: Can't Fetch data from remote host: Check network connection");
