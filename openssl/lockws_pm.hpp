@@ -2046,7 +2046,7 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
             int64_t payload_data_len = payload_data.size();
             int i = 0; // variable for traversing the send data array
             
-            if( (payload_data_len + biggest_header_len) < send_data_array_len ){ // static array is large enough
+            if((payload_data_len + biggest_header_len) < send_data_array_len){ // static array is large enough
                 
                 send_data = (char*)send_data_static;
                 
@@ -2156,6 +2156,7 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
 
                         }
                         else{
+                            
                             if(BIO_should_retry(c_bio)){
                             
                                 continue;
@@ -2734,13 +2735,19 @@ bool lock_client_pm::poll_read(int core){
                 // we unblock the sigpipe signal because fail_ws_connection internally blocks it
                 unblock_sigpipe_signal_pm();
 
+                std::cout<<"Data Size Read: "<<data_size_read<<std::endl;
+
                 // we increment our write index if we successfully fetched more data
                 if(data_size_read > 0){
+
+                    std::cout<<"Data Received"<<std::endl;
 
                     last_write.store(loc_last_write + data_size_read, std::memory_order_release);
 
                 }
                 else{
+
+                    std::cout<<"BIO Should Retry "<<BIO_should_retry(c_bio)<<std::endl;
 
                     // we check if bio should retry is false to indicate that there is no data to read at this time or if bio read failed due to an error
                     if(!BIO_should_retry(c_bio)){
@@ -2873,7 +2880,6 @@ bool lock_client_pm::basic_read(){
                 total_read_bytes += read_bytes;
 
             }
-
             
             if( (rand_bytes[0] == (FIN_BIT_SET | RSV_BIT_UNSET_ALL | TEXT_FRAME)) || (rand_bytes[0] == (FIN_BIT_SET | RSV_BIT_UNSET_ALL | BINARY_FRAME)) ){ // this is the only frame of a text or binary frame data stream. We do not differentiate between text and binary frames since data copy happens the same way
                 
@@ -6505,7 +6511,8 @@ int lock_client_pm::connect_to_server(const char *hostname, const char *port, in
     int flags = fcntl(sock, F_GETFL, 0);
     fcntl(sock, F_SETFL, flags | O_NONBLOCK);
 
-    return sock; // Return the connected socket
+    // return the connected socket
+    return sock;
 }
 
 void lock_client_pm::block_sigpipe_signal(){
