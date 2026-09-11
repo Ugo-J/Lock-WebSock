@@ -760,8 +760,8 @@ lock_client_pm::lock_client_pm(std::string_view url, int core, int read_chunk, i
                                                 if(strncmp(local_sec_ws_accept_key, cursor, strlen(local_sec_ws_accept_key)) == 0){
 
                                                     // we set our last read index and last write index to 0 so the poll thread ignores any messages from a previous connection and starts polling for messages from this connection
-                                                    last_read.store(0, std::memory_order_release);
-                                                    last_write.store(0, std::memory_order_release);
+                                                    read_last_read.store(0, std::memory_order_release);
+                                                    read_last_write.store(0, std::memory_order_release);
                                                     
                                                     client_state.store(OPEN, std::memory_order_release);
 
@@ -1479,8 +1479,8 @@ lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address,
                                                         if(strncmp(local_sec_ws_accept_key, cursor, strlen(local_sec_ws_accept_key)) == 0){
 
                                                             // we set our last read index and last write index to 0 so the poll thread ignores any messages from a previous connection and starts polling for messages from this connection
-                                                            last_read.store(0, std::memory_order_release);
-                                                            last_write.store(0, std::memory_order_release);
+                                                            read_last_read.store(0, std::memory_order_release);
+                                                            read_last_write.store(0, std::memory_order_release);
                                                             
                                                             client_state.store(OPEN, std::memory_order_release);
 
@@ -2667,7 +2667,7 @@ void lock_client_pm::set_pong_function(lock_function fn){
 bool lock_client_pm::data_available(){
 
     // we use memory order relaxed for loading last read because data available is called by the main thread that updates last read
-    return last_write.load(std::memory_order_acquire) - last_read.load(std::memory_order_relaxed) > 0 ? true : false;
+    return read_last_write.load(std::memory_order_acquire) - read_last_read.load(std::memory_order_relaxed) > 0 ? true : false;
 
 }
 
@@ -2708,8 +2708,8 @@ bool lock_client_pm::poll_read(int core){
             if(client_state.load(std::memory_order_acquire) == OPEN){
 
                 // we fetch our last read and last write index - we use memory order relaxed for fetching the last write variable because it is only the poll thread that updates it
-                int loc_last_read = last_read.load(std::memory_order_acquire);
-                int loc_last_write = last_write.load(std::memory_order_relaxed);
+                int loc_last_read = read_last_read.load(std::memory_order_acquire);
+                int loc_last_write = read_last_write.load(std::memory_order_relaxed);
 
                 // we fetch how much free space we have in our read buffer - free space here means how much empty spaces or spaces with data already consumed do we have
                 int free_space = READ_BUFFER_SIZE - (loc_last_write - loc_last_read);
@@ -2742,7 +2742,7 @@ bool lock_client_pm::poll_read(int core){
 
                     std::cout<<"Data Received"<<std::endl;
 
-                    last_write.store(loc_last_write + data_size_read, std::memory_order_release);
+                    read_last_write.store(loc_last_write + data_size_read, std::memory_order_release);
 
                 }
                 else{
@@ -2779,8 +2779,8 @@ int lock_client_pm::fetch_data(unsigned char* dest, int sz){
     if(sz <= 0) return 0;
 
     // we fetch our local last read and last write - we use memory order relaxed to acquire our last read variable because it is updated by only the main thread that calls this fetch data function
-    int loc_last_read = last_read.load(std::memory_order_relaxed);
-    int loc_last_write = last_write.load(std::memory_order_acquire);
+    int loc_last_read = read_last_read.load(std::memory_order_relaxed);
+    int loc_last_write = read_last_write.load(std::memory_order_acquire);
 
     // we compute our available data
     int available_data = loc_last_write - loc_last_read;
@@ -2814,7 +2814,7 @@ int lock_client_pm::fetch_data(unsigned char* dest, int sz){
     }
 
     // we update our last read atomic variable
-    last_read.store(loc_last_read + data_sz_to_copy, std::memory_order_release);
+    read_last_read.store(loc_last_read + data_sz_to_copy, std::memory_order_release);
 
     return data_sz_to_copy;
 
@@ -5585,8 +5585,8 @@ bool lock_client_pm::connect(std::string_view url){ // this is used to connect t
                                                 if(strncmp(local_sec_ws_accept_key, cursor, strlen(local_sec_ws_accept_key)) == 0){
                                                     
                                                     // we set our last read index and last write index to 0 so the poll thread ignores any messages from a previous connection and starts polling for messages from this connection
-                                                    last_read.store(0, std::memory_order_release);
-                                                    last_write.store(0, std::memory_order_release);
+                                                    read_last_read.store(0, std::memory_order_release);
+                                                    read_last_write.store(0, std::memory_order_release);
 
                                                     client_state.store(OPEN, std::memory_order_release);
 
@@ -6252,8 +6252,8 @@ bool lock_client_pm::interface_connect(std::string_view url, in_addr* interface_
                                                         if(strncmp(local_sec_ws_accept_key, cursor, strlen(local_sec_ws_accept_key)) == 0){
 
                                                             // we set our last read index and last write index to 0 so the poll thread ignores any messages from a previous connection and starts polling for messages from this connection
-                                                            last_read.store(0, std::memory_order_release);
-                                                            last_write.store(0, std::memory_order_release);
+                                                            read_last_read.store(0, std::memory_order_release);
+                                                            read_last_write.store(0, std::memory_order_release);
                                                             
                                                             client_state.store(OPEN, std::memory_order_release);
 

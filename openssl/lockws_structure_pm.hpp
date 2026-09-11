@@ -116,18 +116,28 @@ private:
     // cache line size for aligning our last read and last write variables
     static inline constexpr std::size_t CACHE_LINE_SIZE = 64;
 
-    // last read and last write variables are declared with size alignment to prevent false sharing
-    alignas(CACHE_LINE_SIZE) std::atomic<uint64_t> last_read{0};
-    alignas(CACHE_LINE_SIZE) std::atomic<uint64_t> last_write{0};
+    // read last read and read last write variables are declared with size alignment to prevent false sharing
+    alignas(CACHE_LINE_SIZE) std::atomic<uint64_t> read_last_read{0};
+    alignas(CACHE_LINE_SIZE) std::atomic<uint64_t> read_last_write{0};
 
     // pointer to our internal read buffer
     unsigned char* read_buffer = nullptr;
 
     // read buffer size, this is static and can be increased but the lockclient falls back to this size if the caller supplies a size smaller than this size - 16MB
-    static inline int READ_BUFFER_SIZE = 16 * 1024 * 1024;
+    int READ_BUFFER_SIZE = 16 * 1024 * 1024;
 
     // read chunk size, this variable defines how much data the poll thread polls for with every read call
-    static inline int READ_CHUNK_SIZE = 64 * 1024;
+    int READ_CHUNK_SIZE = 64 * 1024;
+
+    // write last read and write last write variables are declared with size alignment to prevent false sharing
+    alignas(CACHE_LINE_SIZE) std::atomic<uint64_t> write_last_read{0};
+    alignas(CACHE_LINE_SIZE) std::atomic<uint64_t> write_last_write{0};
+
+    // pointer to our internal write buffer
+    unsigned char* write_buffer = nullptr;
+
+    // write buffer size, this can be increased but the lockclient falls back to this size if the caller supplies a size smaller than this size - 2MB
+    int WRITE_BUFFER_SIZE = 2 * 1024 * 1024;
 
     // poll init flag used to indicate to the main thread that the poll thread has finished initialisations so the main thread can check if there was any error in the poll thread initialisation
     std::atomic<bool> poll_init{false};

@@ -130,10 +130,10 @@ private:
     unsigned char* read_buffer = nullptr;
 
     // read buffer size, this is static and can be increased but the lockclient falls back to this size if the caller supplies a size smaller than this size - 16MB
-    static inline int READ_BUFFER_SIZE = 16 * 1024 * 1024;
+    int READ_BUFFER_SIZE = 16 * 1024 * 1024;
 
     // read chunk size, this variable defines how much data the poll thread polls for with every read call
-    static inline int READ_CHUNK_SIZE = 64 * 1024;
+    int READ_CHUNK_SIZE = 64 * 1024;
 
     // poll init flag used to indicate to the main thread that the poll thread has finished initialisations so the main thread can check if there was any error in the poll thread initialisation
     std::atomic<bool> poll_init{false};
