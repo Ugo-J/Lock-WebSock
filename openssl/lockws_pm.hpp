@@ -1888,7 +1888,7 @@ bool lock_client_pm::ping(){ // sends a ping on an established websocket connect
     
     if(!error.load(std::memory_order_acquire)){ // only continue if no error
         
-        if(client_state.load(std::memory_order_acquire) == OPEN){ // continue if client is in open state 
+        if(client_state.load(std::memory_order_acquire) == OPEN){ // continue if client is in open state
             
             int i = 0; // variable for traversing the send data array
             
@@ -1907,58 +1907,42 @@ bool lock_client_pm::ping(){ // sends a ping on an established websocket connect
                 i++;
                     
             }
-            // mask storing end 
-            
-            // block SIGPIPE signal before attempting to send data, just incase the connection is closed
-            block_sigpipe_signal();
+
+            // mask storing end
             
             int64_t len = 0;
 
-            // keep polling till we have sent the entire frame
+            // keep polling till we have written the entire frame to the write buffer
             while(len < i){
 
-                int64_t local_len = BIO_write(c_bio, send_data, i - len);
+                int64_t local_len = write_data(reinterpret_cast<unsigned char*>(send_data), i - len);
 
-                if(local_len > 0){
+                if(local_len <= 0){
 
-                    len += local_len;
-                            
-                    send_data += local_len;
+                    // getting here local len <= 0 we check if we got a retry error. we don't check for a 0 error because the write data function only returns 0 when there is a problem with the write data parameters
+                    if(local_len == RETRY){
 
-                }
-                else{
-                    if(BIO_should_retry(c_bio)){
+                        // we check if a error has occured if it has we simply return - we can return the error using memory order relaxed because the if condition check already loaded it
+                        if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
+                    
                         continue;
+
                     }
-                    else{
 
-                        // here bio_read couldn't fetch any extra data
-                        strncpy(error_buffer, "Websocket Connection Lost", error_buffer_array_length);
-
-                        error.store(true, std::memory_order_release);
-                        
-                        unblock_sigpipe_signal();
-
-                        fail_ws_connection(GOING_AWAY);
-                        
-                        // the connection getting lost isn't in itself an error it just puts the lock client in a closed state
-
-                        // we return from this function
-                        return error.load(std::memory_order_acquire);
-                        
-                    }
                 }
+
+                len += local_len;
+                        
+                send_data += local_len;
 
             }
 
-            // getting here all ping data has been sent
-
-            unblock_sigpipe_signal();
+            // getting here all ping data has been written to the write buffer
             
         }
         else{ // set the error flag if lock client is not in open state
             
-            strncpy(error_buffer, "Lock Client not connected", error_buffer_array_length);
+            strcpy(error_buffer, "Lock Client not connected");
                 
             error.store(true, std::memory_order_release);
             
@@ -2008,54 +1992,34 @@ bool lock_client_pm::pong(int ping_data_len){ // sends out a pong frame unsolici
                     
             }
             
-            // block SIGPIPE signal before attempting to send data, just incase the connection is closed
-            block_sigpipe_signal();
-            
             int64_t len = 0;
 
-            // keep polling till we have sent the entire frame
+            // keep polling till we have written the entire frame to the write buffer
             while(len < i){
 
-                int64_t local_len = BIO_write(c_bio, send_data, i - len);
+                int64_t local_len = write_data(reinterpret_cast<unsigned char*>(send_data), i - len);
 
-                if(local_len > 0){
+                if(local_len <= 0){
 
-                    len += local_len;
-                            
-                    send_data += local_len;
+                    // getting here local len <= 0 we check if we got a retry error. we don't check for a 0 error because the write data function only returns 0 when there is a problem with the write data parameters
+                    if(local_len == RETRY){
 
-                }
-                else{
-                    if(BIO_should_retry(c_bio)){
+                        // we check if a error has occured if it has we simply return - we can return the error using memory order relaxed because the if condition check already loaded it
+                        if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
                     
                         continue;
 
                     }
-                    else{
 
-                        // here bio_read couldn't fetch any extra data
-                        strncpy(error_buffer, "Websocket Connection Lost", error_buffer_array_length);
-
-                        error.store(true, std::memory_order_release);
-                        
-                        // we unblock the sigpipe signal because fail_ws_connection internally blocks it
-                        unblock_sigpipe_signal();
-
-                        fail_ws_connection(GOING_AWAY);
-                        
-                        // the connection getting lost isn't in itself an error it just puts the lock client in a closed state
-
-                        return error.load(std::memory_order_acquire);
-
-                    }
                 }
+
+                len += local_len;
+                        
+                send_data += local_len;
 
             }
 
-            // getting here the pong request send succeeds
-
-            // we unblock the sigpipe signal
-            unblock_sigpipe_signal();
+            // getting here all ping data has been written to the write buffer
 
             // we set the num_of_pings_received back to 0
             num_of_pings_received = 0;
@@ -2205,56 +2169,34 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
                         
                     }
                     
-                    // block SIGPIPE signal before attempting to send data, just incase the connection is closed
-                    block_sigpipe_signal();
-                    
-                    // send the data
                     int64_t len = 0;
 
-                    // keep polling till we have sent the entire frame
+                    // keep polling till we have written the entire frame to the write buffer
                     while(len < i){
 
-                        int64_t local_len = BIO_write(c_bio, send_data, i - len);
+                        int64_t local_len = write_data(reinterpret_cast<unsigned char*>(send_data), i - len);
 
-                        if(local_len > 0){
+                        if(local_len <= 0){
 
-                            len += local_len;
-                                    
-                            send_data += local_len;
+                            // getting here local len <= 0 we check if we got a retry error. we don't check for a 0 error because the write data function only returns 0 when there is a problem with the write data parameters
+                            if(local_len == RETRY){
 
-                        }
-                        else{
-                            
-                            if(BIO_should_retry(c_bio)){
+                                // we check if a error has occured if it has we simply return - we can return the error using memory order relaxed because the if condition check already loaded it
+                                if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
                             
                                 continue;
 
                             }
-                            else{
 
-                                // here bio_read couldn't fetch any extra data
-                                strncpy(error_buffer, "Websocket Connection Lost", error_buffer_array_length);
-
-                                error.store(true, std::memory_order_release);
-                                
-                                // we unblock the sigpipe signal because fail_ws_connection internally blocks it
-                                unblock_sigpipe_signal();
-
-                                fail_ws_connection(GOING_AWAY);
-                                
-                                // the connection getting lost isn't in itself an error it just puts the lock client in a closed state
-
-                                return error.load(std::memory_order_acquire);
-
-                            }
                         }
+
+                        len += local_len;
+                                
+                        send_data += local_len;
 
                     }
 
-                    // getting here the send request succeeds
-
-                    // we unblock the sigpipe signal
-                    unblock_sigpipe_signal();
+                    // getting here all ping data has been written to the write buffer
                 
                 }
                   
@@ -2351,54 +2293,34 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
                 // increment the continuation index by frame data len
                 continuation_index += frame_data_len;
 
-                // block SIGPIPE signal before attempting to send data, just incase the connection is closed
-                block_sigpipe_signal();
-                
                 int64_t len = 0;
 
-                // keep polling till we have sent the entire frame
+                // keep polling till we have written the entire frame to the write buffer
                 while(len < i){
 
-                    int64_t local_len = BIO_write(c_bio, send_data, i - len);
+                    int64_t local_len = write_data(reinterpret_cast<unsigned char*>(send_data), i - len);
 
-                    if(local_len > 0){
+                    if(local_len <= 0){
 
-                        len += local_len;
-                                
-                        send_data += local_len;
+                        // getting here local len <= 0 we check if we got a retry error. we don't check for a 0 error because the write data function only returns 0 when there is a problem with the write data parameters
+                        if(local_len == RETRY){
 
-                    }
-                    else{
-                        if(BIO_should_retry(c_bio)){
+                            // we check if a error has occured if it has we simply return - we can return the error using memory order relaxed because the if condition check already loaded it
+                            if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
                         
                             continue;
 
                         }
-                        else{
 
-                            // here bio_read couldn't fetch any extra data
-                            strncpy(error_buffer, "Websocket Connection Lost", error_buffer_array_length);
-
-                            error.store(true, std::memory_order_release);
-                            
-                            // we unblock the sigpipe signal because fail_ws_connection internally blocks it
-                            unblock_sigpipe_signal();
-
-                            fail_ws_connection(GOING_AWAY);
-                            
-                            // the connection getting lost isn't in itself an error it just puts the lock client in a closed state
-
-                            return error.load(std::memory_order_acquire);
-
-                        }
                     }
+
+                    len += local_len;
+                            
+                    send_data += local_len;
 
                 }
 
-                // getting here the send request for this frame succeeds
-
-                // we unblock the sigpipe signal
-                unblock_sigpipe_signal();
+                // getting here all ping data has been written to the write buffer
 
                 // we now build up the continuation frames
 
@@ -2494,54 +2416,34 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
                             
                         }
 
-                        // block SIGPIPE signal before attempting to send data, just incase the connection is closed
-                        block_sigpipe_signal();
-                        
                         int64_t len = 0;
 
-                        // keep polling till we have sent the entire frame
+                        // keep polling till we have written the entire frame to the write buffer
                         while(len < i){
 
-                            int64_t local_len = BIO_write(c_bio, send_data, i - len);
+                            int64_t local_len = write_data(reinterpret_cast<unsigned char*>(send_data), i - len);
 
-                            if(local_len > 0){
+                            if(local_len <= 0){
 
-                                len += local_len;
-                                        
-                                send_data += local_len;
+                                // getting here local len <= 0 we check if we got a retry error. we don't check for a 0 error because the write data function only returns 0 when there is a problem with the write data parameters
+                                if(local_len == RETRY){
 
-                            }
-                            else{
-                                if(BIO_should_retry(c_bio)){
+                                    // we check if a error has occured if it has we simply return - we can return the error using memory order relaxed because the if condition check already loaded it
+                                    if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
                                 
                                     continue;
 
                                 }
-                                else{
 
-                                    // here bio_read couldn't fetch any extra data
-                                    strncpy(error_buffer, "Websocket Connection Lost", error_buffer_array_length);
-
-                                    error.store(true, std::memory_order_release);
-                                    
-                                    // we unblock the sigpipe signal because fail_ws_connection internally blocks it
-                                    unblock_sigpipe_signal();
-
-                                    fail_ws_connection(GOING_AWAY);
-                                    
-                                    // the connection getting lost isn't in itself an error it just puts the lock client in a closed state
-
-                                    return error.load(std::memory_order_acquire);
-
-                                }
                             }
+
+                            len += local_len;
+                                    
+                            send_data += local_len;
 
                         }
 
-                        // getting here the pong request send succeeds
-
-                        // we unblock the sigpipe signal
-                        unblock_sigpipe_signal();
+                        // getting here all ping data has been written to the write buffer
 
                     }
                     else{
@@ -2631,54 +2533,34 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
                             
                         }
 
-                        // block SIGPIPE signal before attempting to send data, just incase the connection is closed
-                        block_sigpipe_signal();
-                        
                         int64_t len = 0;
 
-                        // keep polling till we have sent the entire frame
+                        // keep polling till we have written the entire frame to the write buffer
                         while(len < i){
 
-                            int64_t local_len = BIO_write(c_bio, send_data, i - len);
+                            int64_t local_len = write_data(reinterpret_cast<unsigned char*>(send_data), i - len);
 
-                            if(local_len > 0){
+                            if(local_len <= 0){
 
-                                len += local_len;
-                                        
-                                send_data += local_len;
+                                // getting here local len <= 0 we check if we got a retry error. we don't check for a 0 error because the write data function only returns 0 when there is a problem with the write data parameters
+                                if(local_len == RETRY){
 
-                            }
-                            else{
-                                if(BIO_should_retry(c_bio)){
+                                    // we check if a error has occured if it has we simply return - we can return the error using memory order relaxed because the if condition check already loaded it
+                                    if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
                                 
                                     continue;
 
                                 }
-                                else{
 
-                                    // here bio_read couldn't fetch any extra data
-                                    strncpy(error_buffer, "Websocket Connection Lost", error_buffer_array_length);
-
-                                    error.store(true, std::memory_order_release);
-                                    
-                                    // we unblock the sigpipe signal because fail_ws_connection internally blocks it
-                                    unblock_sigpipe_signal();
-
-                                    fail_ws_connection(GOING_AWAY);
-                                    
-                                    // the connection getting lost isn't in itself an error it just puts the lock client in a closed state
-
-                                    return error.load(std::memory_order_acquire);
-
-                                }
                             }
+
+                            len += local_len;
+                                    
+                            send_data += local_len;
 
                         }
 
-                        // getting here the send request succeeds
-
-                        // we unblock the sigpipe signal
-                        unblock_sigpipe_signal();
+                        // getting here all ping data has been written to the write buffer
 
                     }
 
@@ -2803,19 +2685,13 @@ bool lock_client_pm::poll_io(int core){
                     // we unblock the sigpipe signal
                     unblock_sigpipe_signal_pm();
 
-                    std::cout<<"Data Size Read: "<<data_size_read<<std::endl;
-
                     // we increment our write index if we successfully fetched more data
                     if(data_size_read > 0){
-
-                        std::cout<<"Data Received"<<std::endl;
 
                         read_last_write.store(loc_last_write + data_size_read, std::memory_order_release);
 
                     }
                     else{
-
-                        std::cout<<"BIO Should Retry "<<BIO_should_retry(c_bio)<<std::endl;
 
                         // we check if bio should read is false to indicate that there is no data to read at this time or if bio read failed due to an error
                         if(!BIO_should_retry(c_bio)){
@@ -2866,14 +2742,10 @@ bool lock_client_pm::poll_io(int core){
                     // we increment our write last read index if we successfully sent data
                     if(data_size_written > 0){
 
-                        std::cout<<"Data Sent"<<std::endl;
-
                         write_last_read.store(loc_last_read + data_size_written, std::memory_order_release);
 
                     }
                     else{
-
-                        std::cout<<"BIO Should Retry "<<BIO_should_retry(c_bio)<<std::endl;
 
                         // we check if bio should write is false to indicate that the operation would block or if bio write failed due to an error
                         if(!BIO_should_retry(c_bio)){
