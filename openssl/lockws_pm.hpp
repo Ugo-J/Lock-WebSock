@@ -39,11 +39,27 @@ lock_client_pm::lock_client_pm(std::string_view url, int core, int read_chunk, i
         // we check that our read buffer was successfully allocated if it wasn't we set our error flag
         if(read_buffer != nullptr){
 
-            // getting here our read buffer was successfully allocated so we start our poll_thread
-            poll_thread = std::thread(&lock_client_pm::poll_read, this, core);
+            // getting here our read buffer was allocated successfully now we allocate our write buffer
+            write_buffer = new(std::nothrow) unsigned char[WRITE_BUFFER_SIZE];
 
-            // we wait till the poll thread sets its init flag before we continue because then we can check the error flag to know if the poll thread encountered any error while setting up
-            while(!poll_init.load(std::memory_order_acquire));
+            // we check that our write buffer was successfully allocated if it wasn't we set our error flag
+            if(write_buffer != nullptr){
+
+                // getting here our write buffer was successfully allocated so we start our poll_thread
+                poll_thread = std::thread(&lock_client_pm::poll_read, this, core);
+
+                // we wait till the poll thread sets its init flag before we continue because then we can check the error flag to know if the poll thread encountered any error while setting up
+                while(!poll_init.load(std::memory_order_acquire));
+
+            }
+            else{
+
+                // getting here our allocation of our write buffer was unsuccessful so we set our error flag to true
+                strcpy(error_buffer, "Error Allocating Poll Write Buffer.");
+
+                error.store(true, std::memory_order_release);
+
+            }
 
         }
         else{
@@ -862,11 +878,27 @@ lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address,
         // we check that our read buffer was successfully allocated if it wasn't we set our error flag
         if(read_buffer != nullptr){
 
-            // getting here our read buffer was successfully allocated so we start our poll_thread
-            poll_thread = std::thread(&lock_client_pm::poll_read, this, core);
+            // getting here our read buffer was allocated successfully now we allocate our write buffer
+            write_buffer = new(std::nothrow) unsigned char[WRITE_BUFFER_SIZE];
 
-            // we wait till the poll thread sets its init flag before we continue because then we can check the error flag to know if the poll thread encountered any error while setting up
-            while(!poll_init.load(std::memory_order_acquire));
+            // we check that our write buffer was successfully allocated if it wasn't we set our error flag
+            if(write_buffer != nullptr){
+
+                // getting here our write buffer was successfully allocated so we start our poll_thread
+                poll_thread = std::thread(&lock_client_pm::poll_read, this, core);
+
+                // we wait till the poll thread sets its init flag before we continue because then we can check the error flag to know if the poll thread encountered any error while setting up
+                while(!poll_init.load(std::memory_order_acquire));
+
+            }
+            else{
+
+                // getting here our allocation of our write buffer was unsuccessful so we set our error flag to true
+                strcpy(error_buffer, "Error Allocating Poll Write Buffer.");
+
+                error.store(true, std::memory_order_release);
+
+            }
 
         }
         else{
@@ -1679,11 +1711,27 @@ lock_client_pm::lock_client_pm(int core, int read_chunk, int read_buffer_size){
         // we check that our read buffer was successfully allocated if it wasn't we set our error flag
         if(read_buffer != nullptr){
 
-            // getting here our read buffer was successfully allocated so we start our poll_thread
-            poll_thread = std::thread(&lock_client_pm::poll_read, this, core);
+            // getting here our read buffer was allocated successfully now we allocate our write buffer
+            write_buffer = new(std::nothrow) unsigned char[WRITE_BUFFER_SIZE];
 
-            // we wait till the poll thread sets its init flag before we continue because then we can check the error flag to know if the poll thread encountered any error while setting up
-            while(!poll_init.load(std::memory_order_acquire));
+            // we check that our write buffer was successfully allocated if it wasn't we set our error flag
+            if(write_buffer != nullptr){
+
+                // getting here our write buffer was successfully allocated so we start our poll_thread
+                poll_thread = std::thread(&lock_client_pm::poll_read, this, core);
+
+                // we wait till the poll thread sets its init flag before we continue because then we can check the error flag to know if the poll thread encountered any error while setting up
+                while(!poll_init.load(std::memory_order_acquire));
+
+            }
+            else{
+
+                // getting here our allocation of our write buffer was unsuccessful so we set our error flag to true
+                strcpy(error_buffer, "Error Allocating Poll Write Buffer.");
+
+                error.store(true, std::memory_order_release);
+
+            }
 
         }
         else{
@@ -1792,6 +1840,18 @@ lock_client_pm::~lock_client_pm(){
         
         delete [] data_array_new; // free the memory used to receive data
         
+    }
+
+    if(read_buffer != NULL){
+
+        delete [] read_buffer;
+
+    }
+
+    if(write_buffer != NULL){
+
+        delete [] write_buffer;
+
     }
     
     BIO_free(out_bio); // frees the output printing bio
