@@ -2803,6 +2803,9 @@ bool lock_client_pm::poll_io(int core){
 
             }
             
+            // we reset our BIO object
+            BIO_reset(c_bio);
+
             // we set the client state to CLOSED
             client_state.store(CLOSED, std::memory_order_release);
 
@@ -4806,16 +4809,39 @@ bool lock_client_pm::basic_read(){
                 
                 }
 
-                // we block our SIGPIPE signal
-                block_sigpipe_signal();
+                // we reset our len variable to 0
+                len = 0;
+
+                // keep polling till we have written the entire frame to the write buffer
+                while(len < i){
+
+                    int64_t local_len = write_data(reinterpret_cast<unsigned char*>(send_data), i - len);
+
+                    if(local_len <= 0){
+
+                        // getting here local len <= 0 we check if we got a retry error. we don't check for a 0 error because the write data function only returns 0 when there is a problem with the write data parameters
+                        if(local_len == RETRY){
+
+                            // we check if a error has occured if it has because this is the close frame we don't return we simply break out from this loop and wait for the poll thread to set the client state back to CLOSED
+                            if(error.load(std::memory_order_acquire)) break;
+                        
+                            continue;
+
+                        }
+
+                    }
+
+                    len += local_len;
+                            
+                    send_data += local_len;
+
+                }
+
+                // now we set our close connection flag to true
+                close_connection.store(true, std::memory_order_release);
                 
-                // send the close frame response - we do not test the return code of bio_read in this case neither do we poll to ensure it sends
-                (void)BIO_write(c_bio, send_data, i);
-                
-                // unblock SIGPIPE signal
-                unblock_sigpipe_signal();
-                
-                BIO_reset(c_bio); // close the existing connection and reset the bio
+                // now we wait till the client state is back to CLOSED
+                while(client_state.load(std::memory_order_acquire) != CLOSED);
                 
                 // before we set the error flag for the unsolicited close frame we first check if the poll thread already set the error flag
                 if(!error.load(std::memory_order_acquire)){
@@ -4866,8 +4892,6 @@ bool lock_client_pm::basic_read(){
                 memset(data_array, '\0', frame_data_len); // zero out the data array
                 
                 cursor = data_array; // set cursor to point back to data array
-                
-                client_state.store(CLOSED, std::memory_order_release);
                 
             }
             else if( rand_bytes[0] == (FIN_BIT_SET | RSV_BIT_UNSET_ALL | PONG) ){
