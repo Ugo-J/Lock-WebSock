@@ -46,7 +46,7 @@ lock_client_pm::lock_client_pm(std::string_view url, int core, int read_chunk, i
             if(write_buffer != nullptr){
 
                 // getting here our write buffer was successfully allocated so we start our poll_thread
-                poll_thread = std::thread(&lock_client_pm::poll_read, this, core);
+                poll_thread = std::thread(&lock_client_pm::poll_io, this, core);
 
                 // we wait till the poll thread sets its init flag before we continue because then we can check the error flag to know if the poll thread encountered any error while setting up
                 while(!poll_init.load(std::memory_order_acquire));
@@ -885,7 +885,7 @@ lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address,
             if(write_buffer != nullptr){
 
                 // getting here our write buffer was successfully allocated so we start our poll_thread
-                poll_thread = std::thread(&lock_client_pm::poll_read, this, core);
+                poll_thread = std::thread(&lock_client_pm::poll_io, this, core);
 
                 // we wait till the poll thread sets its init flag before we continue because then we can check the error flag to know if the poll thread encountered any error while setting up
                 while(!poll_init.load(std::memory_order_acquire));
@@ -1718,7 +1718,7 @@ lock_client_pm::lock_client_pm(int core, int read_chunk, int read_buffer_size){
             if(write_buffer != nullptr){
 
                 // getting here our write buffer was successfully allocated so we start our poll_thread
-                poll_thread = std::thread(&lock_client_pm::poll_read, this, core);
+                poll_thread = std::thread(&lock_client_pm::poll_io, this, core);
 
                 // we wait till the poll thread sets its init flag before we continue because then we can check the error flag to know if the poll thread encountered any error while setting up
                 while(!poll_init.load(std::memory_order_acquire));
@@ -1919,7 +1919,7 @@ bool lock_client_pm::ping(){ // sends a ping on an established websocket connect
 
                 }
                 else{
-                    if(BIO_should_write(c_bio)){
+                    if(BIO_should_retry(c_bio)){
                         continue;
                     }
                     else{
@@ -2018,7 +2018,7 @@ bool lock_client_pm::pong(int ping_data_len){ // sends out a pong frame unsolici
 
                 }
                 else{
-                    if(BIO_should_write(c_bio)){
+                    if(BIO_should_retry(c_bio)){
                     
                         continue;
 
@@ -2217,7 +2217,7 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
                         }
                         else{
                             
-                            if(BIO_should_write(c_bio)){
+                            if(BIO_should_retry(c_bio)){
                             
                                 continue;
 
@@ -2361,7 +2361,7 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
 
                     }
                     else{
-                        if(BIO_should_write(c_bio)){
+                        if(BIO_should_retry(c_bio)){
                         
                             continue;
 
@@ -2504,7 +2504,7 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
 
                             }
                             else{
-                                if(BIO_should_write(c_bio)){
+                                if(BIO_should_retry(c_bio)){
                                 
                                     continue;
 
@@ -2641,7 +2641,7 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
 
                             }
                             else{
-                                if(BIO_should_write(c_bio)){
+                                if(BIO_should_retry(c_bio)){
                                 
                                     continue;
 
@@ -2731,7 +2731,7 @@ bool lock_client_pm::data_available(){
 
 }
 
-bool lock_client_pm::poll_read(int core){
+bool lock_client_pm::poll_io(int core){
 
     // we increase this thread priority
     bool thread_priori_error = increase_thread_priority();
@@ -2767,59 +2767,120 @@ bool lock_client_pm::poll_read(int core){
             // we check that the client has an open websocket connection
             if(client_state.load(std::memory_order_acquire) == OPEN){
 
-                // we fetch our last read and last write index - we use memory order relaxed for fetching the last write variable because it is only the poll thread that updates it
-                int loc_last_read = read_last_read.load(std::memory_order_acquire);
-                int loc_last_write = read_last_write.load(std::memory_order_relaxed);
+                // we fetch our read last read and read last write index - we use memory order relaxed for fetching the read last write variable because it is only the poll thread that updates it
+                int64_t loc_last_read = read_last_read.load(std::memory_order_acquire);
+                int64_t loc_last_write = read_last_write.load(std::memory_order_relaxed);
 
                 // we fetch how much free space we have in our read buffer - free space here means how much empty spaces or spaces with data already consumed do we have
                 int free_space = READ_BUFFER_SIZE - (loc_last_write - loc_last_read);
 
-                // we simply continue if we have no free space in our read buffer
-                if(free_space == 0) continue;
+                // we only continue if we have free space in our read buffer
+                if(free_space > 0){
 
-                // we fetch our write start index
-                int start_index = loc_last_write & (READ_BUFFER_SIZE - 1);
+                    // we fetch our write start index
+                    int start_index = loc_last_write & (READ_BUFFER_SIZE - 1);
 
-                // now we compute how much contiguous memory we have because BIO read can only be called to populate contiguous memory
-                int contiguous_space = READ_BUFFER_SIZE - start_index;
+                    // now we compute how much contiguous memory we have because BIO read can only be called to populate contiguous memory
+                    int contiguous_space = READ_BUFFER_SIZE - start_index;
 
-                // now we compute our data size to read. our data size to read is the minimum of 3 values - our free space, our contiguous space and our read chunk size
-                int data_sz_to_read = std::min({free_space, contiguous_space, READ_CHUNK_SIZE});
+                    // now we compute our data size to read. our data size to read is the minimum of 3 values - our free space, our contiguous space and our read chunk size
+                    int data_sz_to_read = std::min({free_space, contiguous_space, READ_CHUNK_SIZE});
 
-                // block SIGPIPE signal before attempting to read data, just incase the connection is closed
-                block_sigpipe_signal_pm();
+                    // block SIGPIPE signal before attempting to read data, just incase the connection is closed
+                    block_sigpipe_signal_pm();
 
-                // we call BIO_read to attempt to read the bytes into our read buffer
-                int data_size_read = BIO_read(c_bio, read_buffer + start_index, data_sz_to_read);
+                    // we call BIO_read to attempt to read the bytes into our read buffer
+                    int data_size_read = BIO_read(c_bio, read_buffer + start_index, data_sz_to_read);
 
-                // we unblock the sigpipe signal because fail_ws_connection internally blocks it
-                unblock_sigpipe_signal_pm();
+                    // we unblock the sigpipe signal
+                    unblock_sigpipe_signal_pm();
 
-                std::cout<<"Data Size Read: "<<data_size_read<<std::endl;
+                    std::cout<<"Data Size Read: "<<data_size_read<<std::endl;
 
-                // we increment our write index if we successfully fetched more data
-                if(data_size_read > 0){
+                    // we increment our write index if we successfully fetched more data
+                    if(data_size_read > 0){
 
-                    std::cout<<"Data Received"<<std::endl;
+                        std::cout<<"Data Received"<<std::endl;
 
-                    read_last_write.store(loc_last_write + data_size_read, std::memory_order_release);
-
-                }
-                else{
-
-                    std::cout<<"BIO Should Read "<<BIO_should_read(c_bio)<<std::endl;
-
-                    // we check if bio should retry is false to indicate that there is no data to read at this time or if bio read failed due to an error
-                    if(!BIO_should_read(c_bio)){
-
-                        // we copy our error message to our error buffer
-                        strcpy(error_buffer, "Poll Error: Can't Fetch data from remote host: Check network connection");
-
-                        error.store(true, std::memory_order_release);
-                        
-                        // we don't break out from this loop we let it continue, the error flag set would prevent the poll thread from reading any more data till the main thread reconnects and clears the error flag
+                        read_last_write.store(loc_last_write + data_size_read, std::memory_order_release);
 
                     }
+                    else{
+
+                        std::cout<<"BIO Should Retry "<<BIO_should_retry(c_bio)<<std::endl;
+
+                        // we check if bio should read is false to indicate that there is no data to read at this time or if bio read failed due to an error
+                        if(!BIO_should_retry(c_bio)){
+
+                            // we copy our error message to our error buffer
+                            strcpy(error_buffer, "Poll Error: Can't Fetch data from remote host: Check network connection");
+
+                            error.store(true, std::memory_order_release);
+                            
+                            // we don't break out from this loop we let it continue, the error flag set would prevent the poll thread from reading any more data till the main thread reconnects and clears the error flag
+
+                        }
+
+                    }
+
+                }
+
+                // now we check our write buffer if there is any data to write
+
+                // we fetch our write last read and write last write index - we use memory order relaxed for fetching the write last read variable because it is only the poll thread that updates it
+                loc_last_read = write_last_read.load(std::memory_order_relaxed);
+                loc_last_write = write_last_write.load(std::memory_order_acquire);
+
+                // we fetch how much data we have to write
+                int data_to_write = loc_last_write - loc_last_read;
+
+                // we only continue if we have data to write
+                if(data_to_write > 0){
+
+                    // we fetch our read start index
+                    int start_index = loc_last_read & (WRITE_BUFFER_SIZE - 1);
+
+                    // now we compute how much contiguous data we have because BIO write can only be called to sed contiguous data
+                    int contiguous_data = WRITE_BUFFER_SIZE - start_index;
+
+                    // now we compute our data size to write. our data size to write is the minimum of 2 values - our data to write & our contiguous data
+                    int data_sz_to_write = std::min(contiguous_data, data_to_write);
+
+                    // block SIGPIPE signal before attempting to write data, just incase the connection is closed
+                    block_sigpipe_signal_pm();
+
+                    // we call BIO_write to attempt to send the bytes in our write buffer
+                    int data_size_written = BIO_write(c_bio, write_buffer + start_index, data_sz_to_write);
+
+                    // we unblock the sigpipe signal
+                    unblock_sigpipe_signal_pm();
+
+                    // we increment our write last read index if we successfully sent data
+                    if(data_size_written > 0){
+
+                        std::cout<<"Data Sent"<<std::endl;
+
+                        write_last_read.store(loc_last_read + data_size_written, std::memory_order_release);
+
+                    }
+                    else{
+
+                        std::cout<<"BIO Should Retry "<<BIO_should_retry(c_bio)<<std::endl;
+
+                        // we check if bio should write is false to indicate that the operation would block or if bio write failed due to an error
+                        if(!BIO_should_retry(c_bio)){
+
+                            // we copy our error message to our error buffer
+                            strcpy(error_buffer, "Poll Error: Can't Send data to remote host: Check network connection");
+
+                            error.store(true, std::memory_order_release);
+                            
+                            // we don't break out from this loop we let it continue, the error flag set would prevent the poll thread from reading or writing any more data till the main thread reconnects and clears the error flag
+
+                        }
+
+                    }
+
 
                 }
 

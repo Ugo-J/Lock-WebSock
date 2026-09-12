@@ -158,7 +158,7 @@ private:
     bool data_available();
 
     // function that continuously polls for network data on the poll thread - it takes as parameter the cpu core it should pin to
-    bool poll_read(int core);
+    bool poll_io(int core);
 
     // function to fetch data from the read buffer
     int fetch_data(unsigned char* dest, int sz);

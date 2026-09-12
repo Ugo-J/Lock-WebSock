@@ -2571,8 +2571,8 @@ bool lock_client_pm::poll_read(int core){
             if(client_state.load(std::memory_order_acquire) == OPEN){
 
                 // we fetch our last read and last write index - we use memory order relaxed for fetching the last write variable because it is only the poll thread that updates it
-                int loc_last_read = last_read.load(std::memory_order_acquire);
-                int loc_last_write = last_write.load(std::memory_order_relaxed);
+                int64_t loc_last_read = last_read.load(std::memory_order_acquire);
+                int64_t loc_last_write = last_write.load(std::memory_order_relaxed);
 
                 // we fetch how much free space we have in our read buffer - free space here means how much empty spaces or spaces with data already consumed do we have
                 int free_space = READ_BUFFER_SIZE - (loc_last_write - loc_last_read);
@@ -2595,7 +2595,7 @@ bool lock_client_pm::poll_read(int core){
                 // we read our data using our wolfssl read
                 int data_size_read = wolfSSL_read(c_ssl, read_buffer + start_index, data_sz_to_read);
 
-                // we unblock the sigpipe signal because fail_ws_connection internally blocks it
+                // we unblock the sigpipe signal
                 unblock_sigpipe_signal_pm();
 
                 // we increment our write index if we successfully fetched more data
