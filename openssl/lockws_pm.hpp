@@ -4840,7 +4840,7 @@ bool lock_client_pm::basic_read(){
                 // now we set our close connection flag to true
                 close_connection.store(true, std::memory_order_release);
                 
-                // now we wait till the client state is back to CLOSED
+                // now we wait till the client state is back to CLOSED by the poll thread
                 while(client_state.load(std::memory_order_acquire) != CLOSED);
                 
                 // before we set the error flag for the unsolicited close frame we first check if the poll thread already set the error flag
@@ -6709,6 +6709,7 @@ void lock_client_pm::fail_ws_connection(unsigned short status_code){
         i++;
 
     }
+
     // mask storing end 
             
     // mask the data and store the masked data in the send data array 
@@ -6724,18 +6725,38 @@ void lock_client_pm::fail_ws_connection(unsigned short status_code){
                 
     }
             
-    // block SIGPIPE signal before attempting to send data, just incase the connection is closed
-    block_sigpipe_signal();
+    int64_t len = 0;
+
+    // keep polling till we have written the entire frame to the write buffer
+    while(len < i){
+
+        int64_t local_len = write_data(reinterpret_cast<unsigned char*>(send_data), i - len);
+
+        if(local_len <= 0){
+
+            // getting here local len <= 0 we check if we got a retry error. we don't check for a 0 error because the write data function only returns 0 when there is a problem with the write data parameters
+            if(local_len == RETRY){
+
+                // we check if a error has occured if it has because this is the close frame we don't return we simply break out from this loop and wait for the poll thread to set the client state back to CLOSED
+                if(error.load(std::memory_order_acquire)) break;
             
-    // send the close frame
-    (void)BIO_write(c_bio, send_data, i); // no need checking whether it was successfully sent through we close the connection nonetheless
-            
-    unblock_sigpipe_signal();
-            
-    // close the underlying connection, don't wait for server response
-    BIO_reset(c_bio);
-            
-    client_state.store(CLOSED, std::memory_order_release); // sets the client state back to closed
+                continue;
+
+            }
+
+        }
+
+        len += local_len;
+                
+        send_data += local_len;
+
+    }
+
+    // now we set our close connection flag to true
+    close_connection.store(true, std::memory_order_release);
+    
+    // now we wait till the client state is back to CLOSED by the poll thread
+    while(client_state.load(std::memory_order_acquire) != CLOSED);
 
     if(!error.load(std::memory_order_acquire)){
     // we only set the error message and error flag if the error flag was not set already
@@ -6900,7 +6921,7 @@ bool lock_client_pm::close(unsigned short status_code){ // this closes an establ
         // now we set our close connection flag to true
         close_connection.store(true, std::memory_order_release);
         
-        // now we wait till the client state is back to CLOSED
+        // now we wait till the client state is back to CLOSED by the poll thread
         while(client_state.load(std::memory_order_acquire) != CLOSED);
     
     }
