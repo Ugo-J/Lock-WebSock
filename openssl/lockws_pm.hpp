@@ -2019,7 +2019,7 @@ bool lock_client_pm::pong(int ping_data_len){ // sends out a pong frame unsolici
 
             }
 
-            // getting here all ping data has been written to the write buffer
+            // getting here all pong data has been written to the write buffer
 
             // we set the num_of_pings_received back to 0
             num_of_pings_received = 0;
@@ -2196,7 +2196,7 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
 
                     }
 
-                    // getting here all ping data has been written to the write buffer
+                    // getting here all data has been written to the write buffer
                 
                 }
                   
@@ -2320,7 +2320,7 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
 
                 }
 
-                // getting here all ping data has been written to the write buffer
+                // getting here all data has been written to the write buffer
 
                 // we now build up the continuation frames
 
@@ -2443,7 +2443,7 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
 
                         }
 
-                        // getting here all ping data has been written to the write buffer
+                        // getting here all data has been written to the write buffer
 
                     }
                     else{
@@ -2560,7 +2560,7 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
 
                         }
 
-                        // getting here all ping data has been written to the write buffer
+                        // getting here all data has been written to the write buffer
 
                     }
 
@@ -2765,6 +2765,49 @@ bool lock_client_pm::poll_io(int core){
                 }
 
             }
+
+        }
+
+        // we check if the main thread set the close connection flag to indicate to the poll thread to close the websocket connection - we check this flag outside the error check flag so the main thread can signal to the order thread to close the ws connection even when the client is in an error state
+        if(close_connection.load(std::memory_order_acquire)){
+
+            // getting here the order thread would have writted the entire close frame data to the write buffer, we make a one pass attempt to send this data to the server before closing the connection. we don't check the return value from the send function
+
+            // we fetch our write last read and write last write index - we use memory order relaxed for fetching the write last read variable because it is only the poll thread that updates it
+            int64_t loc_last_read = write_last_read.load(std::memory_order_relaxed);
+            int64_t loc_last_write = write_last_write.load(std::memory_order_acquire);
+
+            // we fetch how much data we have to write
+            int data_to_write = loc_last_write - loc_last_read;
+
+            // we only continue if we have data to write
+            if(data_to_write > 0){
+
+                // we fetch our read start index
+                int start_index = loc_last_read & (WRITE_BUFFER_SIZE - 1);
+
+                // now we compute how much contiguous data we have because BIO write can only be called to sed contiguous data
+                int contiguous_data = WRITE_BUFFER_SIZE - start_index;
+
+                // now we compute our data size to write. our data size to write is the minimum of 2 values - our data to write & our contiguous data
+                int data_sz_to_write = std::min(contiguous_data, data_to_write);
+
+                // block SIGPIPE signal before attempting to write data, just incase the connection is closed
+                block_sigpipe_signal_pm();
+
+                // we call BIO_write to attempt to send the bytes in our write buffer which should include the close frame
+                (void)BIO_write(c_bio, write_buffer + start_index, data_sz_to_write);
+
+                // we unblock the sigpipe signal
+                unblock_sigpipe_signal_pm();
+
+            }
+            
+            // we set the client state to CLOSED
+            client_state.store(CLOSED, std::memory_order_release);
+
+            // finally we set the close connection flag back to false
+            close_connection.store(false, std::memory_order_release);
 
         }
 
@@ -6762,6 +6805,7 @@ bool lock_client_pm::increase_thread_priority(int p_policy, int priority){
      
 bool lock_client_pm::close(unsigned short status_code){ // this closes an established websocket connection although the object itself still exists till it goes out of scope, the object can be connected to a different or the same websocket server using the connect function
     
+    // acquiring the client state here already syncs the main thread to the poll thread because it is only the poll thread that can set the client state to CLOSED and if the state is still OPEN we set it to close here, syncing with the poll thread in the process
     if(client_state.load(std::memory_order_acquire) == OPEN){ // only continue if client is in open state
     
         int i = 0; // variable for traversing the send array and building up the close data frame
@@ -6800,16 +6844,40 @@ bool lock_client_pm::close(unsigned short status_code){ // this closes an establ
                 
         }
             
-        // block SIGPIPE signal before attempting to send data, just incase the connection is closed
-        block_sigpipe_signal();
+        // mask storing end
             
-        // send the close frame
-        (void)BIO_write(c_bio, send_data, i); // no need checking whether it was successfully sent through we close the connection nonetheless
+        int64_t len = 0;
+
+        // keep polling till we have written the entire frame to the write buffer
+        while(len < i){
+
+            int64_t local_len = write_data(reinterpret_cast<unsigned char*>(send_data), i - len);
+
+            if(local_len <= 0){
+
+                // getting here local len <= 0 we check if we got a retry error. we don't check for a 0 error because the write data function only returns 0 when there is a problem with the write data parameters
+                if(local_len == RETRY){
+
+                    // we check if a error has occured if it has because this is the close frame we don't return we simply break out from this loop and wait for the poll thread to set the client state back to CLOSED
+                    if(error.load(std::memory_order_acquire)) break;
+                
+                    continue;
+
+                }
+
+            }
+
+            len += local_len;
+                    
+            send_data += local_len;
+
+        }
+
+        // now we set our close connection flag to true
+        close_connection.store(true, std::memory_order_release);
         
-        // unblock SIGPIPE signal
-        unblock_sigpipe_signal();
-            
-        client_state.store(CLOSED, std::memory_order_release);
+        // now we wait till the client state is back to CLOSED
+        while(client_state.load(std::memory_order_acquire) != CLOSED);
     
     }
     

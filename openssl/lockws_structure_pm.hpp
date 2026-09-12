@@ -108,7 +108,7 @@ private:
     std::atomic<unsigned char> client_state{CLOSED}; // this variable is used to store the lock client state, OPEN meaning there is an active websocket connection and CLOSED meaning that there isn't
 
     // this variable is used to indicate to the poll thread that it should close the websocket connection
-    bool close_connection = false;
+    std::atomic<bool> close_connection = false;
 
 // poll read variables
 private:
