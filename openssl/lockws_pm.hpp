@@ -775,9 +775,13 @@ lock_client_pm::lock_client_pm(std::string_view url, int core, int read_chunk, i
                                                 // compare server's response with our calculation
                                                 if(strncmp(local_sec_ws_accept_key, cursor, strlen(local_sec_ws_accept_key)) == 0){
 
-                                                    // we set our last read index and last write index to 0 so the poll thread ignores any messages from a previous connection and starts polling for messages from this connection
+                                                    // we set our read last read index and read last write index to 0 so the poll thread ignores any messages from a previous connection and starts polling for messages from this connection
                                                     read_last_read.store(0, std::memory_order_release);
                                                     read_last_write.store(0, std::memory_order_release);
+
+                                                    // we set our write last read index and write last write index to 0 so the poll thread ignores any messages from a previous connection and starts polling for messages from this connection
+                                                    write_last_read.store(0, std::memory_order_release);
+                                                    write_last_write.store(0, std::memory_order_release);
                                                     
                                                     client_state.store(OPEN, std::memory_order_release);
 
@@ -1513,6 +1517,10 @@ lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address,
                                                             // we set our last read index and last write index to 0 so the poll thread ignores any messages from a previous connection and starts polling for messages from this connection
                                                             read_last_read.store(0, std::memory_order_release);
                                                             read_last_write.store(0, std::memory_order_release);
+
+                                                            // we set our write last read index and write last write index to 0 so the poll thread ignores any messages from a previous connection and starts polling for messages from this connection
+                                                            write_last_read.store(0, std::memory_order_release);
+                                                            write_last_write.store(0, std::memory_order_release);
                                                             
                                                             client_state.store(OPEN, std::memory_order_release);
 
@@ -5756,6 +5764,10 @@ bool lock_client_pm::connect(std::string_view url){ // this is used to connect t
                                                     read_last_read.store(0, std::memory_order_release);
                                                     read_last_write.store(0, std::memory_order_release);
 
+                                                    // we set our write last read index and write last write index to 0 so the poll thread ignores any messages from a previous connection and starts polling for messages from this connection
+                                                    write_last_read.store(0, std::memory_order_release);
+                                                    write_last_write.store(0, std::memory_order_release);
+
                                                     client_state.store(OPEN, std::memory_order_release);
 
                                                     break; // break if the server sec websocket key matches what we calculated. Connection authorised
@@ -6422,6 +6434,10 @@ bool lock_client_pm::interface_connect(std::string_view url, in_addr* interface_
                                                             // we set our last read index and last write index to 0 so the poll thread ignores any messages from a previous connection and starts polling for messages from this connection
                                                             read_last_read.store(0, std::memory_order_release);
                                                             read_last_write.store(0, std::memory_order_release);
+
+                                                            // we set our write last read index and write last write index to 0 so the poll thread ignores any messages from a previous connection and starts polling for messages from this connection
+                                                            write_last_read.store(0, std::memory_order_release);
+                                                            write_last_write.store(0, std::memory_order_release);
                                                             
                                                             client_state.store(OPEN, std::memory_order_release);
 
