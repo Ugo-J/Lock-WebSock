@@ -2720,7 +2720,7 @@ bool lock_client_pm::poll_read(int core){
                 // we fetch our write start index
                 int start_index = loc_last_write & (READ_BUFFER_SIZE - 1);
 
-                // now we compute how much contiguous memory we have because wolfssl read ca only be called to populate contiguous memory
+                // now we compute how much contiguous memory we have because BIO read can only be called to populate contiguous memory
                 int contiguous_space = READ_BUFFER_SIZE - start_index;
 
                 // now we compute our data size to read. our data size to read is the minimum of 3 values - our free space, our contiguous space and our read chunk size
@@ -2815,6 +2815,53 @@ int lock_client_pm::fetch_data(unsigned char* dest, int sz){
 
     // we update our last read atomic variable
     read_last_read.store(loc_last_read + data_sz_to_copy, std::memory_order_release);
+
+    return data_sz_to_copy;
+
+}
+
+int lock_client_pm::write_data(unsigned char* src, int sz){
+
+    // first we check if the supplied sz is <=0 in which case we simply return 0
+    if(sz <= 0) return 0;
+
+    // we fetch our local last read and last write - we use memory order relaxed to acquire our write last write variable because it is updated by only the main thread that calls this send data function
+    int loc_last_read = write_last_read.load(std::memory_order_acquire);
+    int loc_last_write = write_last_write.load(std::memory_order_relaxed);
+
+    // we fetch how much free space we have in our write buffer - free space here means how much empty spaces or spaces with write data already consumed by the poll thread do we have
+    int free_space = WRITE_BUFFER_SIZE - (loc_last_write - loc_last_read);
+
+    // we simply continue if we have no free space in our read buffer
+    if(free_space == 0) return RETRY;
+
+    // we fetch our write start index
+    int start_index = loc_last_write & (WRITE_BUFFER_SIZE - 1);
+
+    // now we compute how much contiguous memory we have because memcpy can only be called to populate contiguous memory
+    int contiguous_space = WRITE_BUFFER_SIZE - start_index;
+
+    // now we compute our data size to copy. our data size to read is the minimum of 3 values - our free space, our contiguous space and our sz parameter
+    int data_sz_to_copy = std::min({free_space, contiguous_space, sz});
+
+    // we check if our contiguous space is < our data sz to copy in which case we can copy our write data in one memcpy call else we have to copy our write data in two memcpy call
+    if(data_sz_to_copy <= contiguous_space){
+
+        memcpy(write_buffer + start_index, src, data_sz_to_copy);
+
+    }
+    else{
+
+        // getting here the available space is not contiguous so we copy our write data in two memcpy calls
+        memcpy(write_buffer + start_index, src, contiguous_space);
+
+        // this second memcpy wraps around and copies to the start of the write buffer
+        memcpy(write_buffer, src + contiguous_space, data_sz_to_copy - contiguous_space);
+
+    }
+
+    // we update our write last write atomic variable
+    write_last_write.store(loc_last_write + data_sz_to_copy, std::memory_order_release);
 
     return data_sz_to_copy;
 
