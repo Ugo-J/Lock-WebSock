@@ -6,9 +6,9 @@ class lock_client_pm {
 public:
     
     // constructors
-    lock_client_pm(std::string_view url, int core, int read_chunk = 0, int read_buffer_size = 0);
-    lock_client_pm(std::string_view url, in_addr* interface_address, char* interface_name, int core, int read_chunk = 0, int read_buffer_size = 0); // constructor that binds to a particular interface before connection
-    lock_client_pm(int core, int read_chunk = 0, int read_buffer_size = 0); // basic constructor
+    lock_client_pm(std::string_view url, int core, int read_chunk = 0, int read_buffer_size = 0, int write_buffer_size = 0);
+    lock_client_pm(std::string_view url, in_addr* interface_address, char* interface_name, int core, int read_chunk = 0, int read_buffer_size = 0, int write_buffer_size = 0); // constructor that binds to a particular interface before connection
+    lock_client_pm(int core, int read_chunk = 0, int read_buffer_size = 0, int write_buffer_size = 0); // basic constructor
     
     // destructor
     ~lock_client_pm();
@@ -111,7 +111,10 @@ private:
 
     // for a poll mode lock client the error flag and client state variable are both atomic
     std::atomic<bool> error{false};
-    std::atomic<unsigned char> client_state{CLOSED}; // this variable is used to store the lock client state, OPEN meaning there is an active websocket connection and CLOSED meaning that there isn't 
+    std::atomic<unsigned char> client_state{CLOSED}; // this variable is used to store the lock client state, OPEN meaning there is an active websocket connection and CLOSED meaning that there isn't
+
+    // this variable is used to indicate to the poll thread that it should close the websocket connection
+    std::atomic<bool> close_connection = false;
 
 // poll read variables
 private:
@@ -122,9 +125,9 @@ private:
     // cache line size for aligning our last read and last write variables
     static inline constexpr std::size_t CACHE_LINE_SIZE = 64;
 
-    // last read and last write variables are declared with size alignment to prevent false sharing
-    alignas(CACHE_LINE_SIZE) std::atomic<uint64_t> last_read{0};
-    alignas(CACHE_LINE_SIZE) std::atomic<uint64_t> last_write{0};
+    // read last read and read last write variables are declared with size alignment to prevent false sharing
+    alignas(CACHE_LINE_SIZE) std::atomic<uint64_t> read_last_read{0};
+    alignas(CACHE_LINE_SIZE) std::atomic<uint64_t> read_last_write{0};
 
     // pointer to our internal read buffer
     unsigned char* read_buffer = nullptr;
@@ -134,6 +137,16 @@ private:
 
     // read chunk size, this variable defines how much data the poll thread polls for with every read call
     int READ_CHUNK_SIZE = 64 * 1024;
+
+    // write last read and write last write variables are declared with size alignment to prevent false sharing
+    alignas(CACHE_LINE_SIZE) std::atomic<uint64_t> write_last_read{0};
+    alignas(CACHE_LINE_SIZE) std::atomic<uint64_t> write_last_write{0};
+
+    // pointer to our internal write buffer
+    unsigned char* write_buffer = nullptr;
+
+    // write buffer size, this can be increased but the lockclient falls back to this size if the caller supplies a size smaller than this size - 2MB
+    int WRITE_BUFFER_SIZE = 2 * 1024 * 1024;
 
     // poll init flag used to indicate to the main thread that the poll thread has finished initialisations so the main thread can check if there was any error in the poll thread initialisation
     std::atomic<bool> poll_init{false};
@@ -151,10 +164,13 @@ private:
     bool data_available();
 
     // function that continuously polls for network data on the poll thread - it takes as parameter the cpu core it should pin to
-    bool poll_read(int core);
+    bool poll_io(int core);
 
     // function to fetch data from the read buffer
     int fetch_data(unsigned char* dest, int sz);
+
+    // function to write data to the write buffer
+    int write_data(unsigned char* src, int sz);
 
     // function to set the cpu affinity of the poll thread
     bool set_cpu_affinity(int core);
