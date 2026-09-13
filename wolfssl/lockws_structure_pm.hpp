@@ -116,7 +116,7 @@ private:
     // this variable is used to indicate to the poll thread that it should close the websocket connection
     std::atomic<bool> close_connection = false;
 
-// poll read variables
+// poll io variables
 private:
 
     // the poll thread instance
