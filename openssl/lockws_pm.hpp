@@ -6858,7 +6858,7 @@ bool lock_client_pm::increase_thread_priority(int p_policy, int priority){
 }
      
 bool lock_client_pm::close(unsigned short status_code){ // this closes an established websocket connection although the object itself still exists till it goes out of scope, the object can be connected to a different or the same websocket server using the connect function
-    
+
     // acquiring the client state here already syncs the main thread to the poll thread because it is only the poll thread that can set the client state to CLOSED and if the state is still OPEN we set it to close here, syncing with the poll thread in the process
     if(client_state.load(std::memory_order_acquire) == OPEN){ // only continue if client is in open state
     

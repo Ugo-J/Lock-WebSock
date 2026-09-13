@@ -8,7 +8,7 @@
 #pragma GCC diagnostic ignored "-Wshift-count-overflow"
 
 // constructor with url string
-lock_client_pm::lock_client_pm(std::string_view url, int core, int read_chunk, int read_buffer_size){
+lock_client_pm::lock_client_pm(std::string_view url, int core, int read_chunk, int read_buffer_size, int write_buffer_size){
 
     // initialisation of class wide variables
     if(!wolfssl_init){
@@ -77,6 +77,9 @@ lock_client_pm::lock_client_pm(std::string_view url, int core, int read_chunk, i
             // we only update our read buffer size if the supplied size is > our default buffer size and is a power of 2 else we leave the default read buffer size
             if(read_buffer_size > READ_BUFFER_SIZE && ((read_buffer_size & (read_buffer_size - 1)) == 0)) READ_BUFFER_SIZE = read_buffer_size;
 
+            // we only update our write buffer size if the supplied size is > our default buffer size and is a power of 2 else we leave the default write buffer size
+            if(write_buffer_size > WRITE_BUFFER_SIZE && ((write_buffer_size & (write_buffer_size - 1)) == 0)) WRITE_BUFFER_SIZE = write_buffer_size;
+
             // we only update our read chunk if it is > our default read chunk
             if(read_chunk > READ_CHUNK_SIZE) READ_CHUNK_SIZE = read_chunk;
 
@@ -86,11 +89,27 @@ lock_client_pm::lock_client_pm(std::string_view url, int core, int read_chunk, i
             // we check that our read buffer was successfully allocated if it wasn't we set our error flag
             if(read_buffer != nullptr){
 
-                // getting here our read buffer was successfully allocated so we start our poll_thread
-                poll_thread = std::thread(&lock_client_pm::poll_read, this, core);
+                // getting here our read buffer was allocated successfully now we allocate our write buffer
+                write_buffer = new(std::nothrow) unsigned char[WRITE_BUFFER_SIZE];
 
-                // we wait till the poll thread sets its init flag before we continue because then we can check the error flag to know if the poll thread encountered any error while setting up
-                while(!poll_init.load(std::memory_order_acquire));
+                // we check that our write buffer was successfully allocated if it wasn't we set our error flag
+                if(write_buffer != nullptr){
+
+                    // getting here our write buffer was successfully allocated so we start our poll_thread
+                    poll_thread = std::thread(&lock_client_pm::poll_io, this, core);
+
+                    // we wait till the poll thread sets its init flag before we continue because then we can check the error flag to know if the poll thread encountered any error while setting up
+                    while(!poll_init.load(std::memory_order_acquire));
+
+                }
+                else{
+
+                    // getting here our allocation of our write buffer was unsuccessful so we set our error flag to true
+                    strcpy(error_buffer, "Error Allocating Poll Write Buffer.");
+
+                    error.store(true, std::memory_order_release);
+
+                }
 
             }
             else{
@@ -713,9 +732,13 @@ lock_client_pm::lock_client_pm(std::string_view url, int core, int read_chunk, i
                                                     // compare server's response with our calculation
                                                     if(strncmp(local_sec_ws_accept_key, cursor, strlen(local_sec_ws_accept_key)) == 0){
                                                         
-                                                        // we set our last read index and last write index to 0 so the poll thread ignores any messages from a previous connection and starts polling for messages from this connection
-                                                        last_read.store(0, std::memory_order_release);
-                                                        last_write.store(0, std::memory_order_release);
+                                                        // we set our read last read index and read last write index to 0 so the poll thread ignores any messages from a previous connection and starts polling for messages from this connection
+                                                        read_last_read.store(0, std::memory_order_release);
+                                                        read_last_write.store(0, std::memory_order_release);
+
+                                                        // we set our write last read index and write last write index to 0 so the poll thread ignores any messages from a previous connection and starts polling for messages from this connection
+                                                        write_last_read.store(0, std::memory_order_release);
+                                                        write_last_write.store(0, std::memory_order_release);
 
                                                         client_state.store(OPEN, std::memory_order_release);
 
@@ -787,7 +810,7 @@ lock_client_pm::lock_client_pm(std::string_view url, int core, int read_chunk, i
 }
 
 // constructor that binds to a network interface
-lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address, char* interface_name, int core, int read_chunk, int read_buffer_size){
+lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address, char* interface_name, int core, int read_chunk, int read_buffer_size, int write_buffer_size){
 
     // initialisation of class wide variables
     if(!wolfssl_init){
@@ -856,6 +879,9 @@ lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address,
             // we only update our read buffer size if the supplied size is > our default buffer size and is a power of 2 else we leave the default read buffer size
             if(read_buffer_size > READ_BUFFER_SIZE && ((read_buffer_size & (read_buffer_size - 1)) == 0)) READ_BUFFER_SIZE = read_buffer_size;
 
+            // we only update our write buffer size if the supplied size is > our default buffer size and is a power of 2 else we leave the default write buffer size
+            if(write_buffer_size > WRITE_BUFFER_SIZE && ((write_buffer_size & (write_buffer_size - 1)) == 0)) WRITE_BUFFER_SIZE = write_buffer_size;
+
             // we only update our read chunk if it is > our default read chunk
             if(read_chunk > READ_CHUNK_SIZE) READ_CHUNK_SIZE = read_chunk;
 
@@ -865,11 +891,27 @@ lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address,
             // we check that our read buffer was successfully allocated if it wasn't we set our error flag
             if(read_buffer != nullptr){
 
-                // getting here our read buffer was successfully allocated so we start our poll_thread
-                poll_thread = std::thread(&lock_client_pm::poll_read, this, core);
+                // getting here our read buffer was allocated successfully now we allocate our write buffer
+                write_buffer = new(std::nothrow) unsigned char[WRITE_BUFFER_SIZE];
 
-                // we wait till the poll thread sets its init flag before we continue because then we can check the error flag to know if the poll thread encountered any error while setting up
-                while(!poll_init.load(std::memory_order_acquire));
+                // we check that our write buffer was successfully allocated if it wasn't we set our error flag
+                if(write_buffer != nullptr){
+
+                    // getting here our write buffer was successfully allocated so we start our poll_thread
+                    poll_thread = std::thread(&lock_client_pm::poll_io, this, core);
+
+                    // we wait till the poll thread sets its init flag before we continue because then we can check the error flag to know if the poll thread encountered any error while setting up
+                    while(!poll_init.load(std::memory_order_acquire));
+
+                }
+                else{
+
+                    // getting here our allocation of our write buffer was unsuccessful so we set our error flag to true
+                    strcpy(error_buffer, "Error Allocating Poll Write Buffer.");
+
+                    error.store(true, std::memory_order_release);
+
+                }
 
             }
             else{
@@ -1367,9 +1409,13 @@ lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address,
                                             // compare server's response with our calculation
                                             if(strncmp(local_sec_ws_accept_key, cursor, strlen(local_sec_ws_accept_key)) == 0){
                                                 
-                                                // we set our last read index and last write index to 0 so the poll thread ignores any messages from a previous connection and starts polling for messages from this connection
-                                                last_read.store(0, std::memory_order_release);
-                                                last_write.store(0, std::memory_order_release);
+                                                // we set our read last read index and read last write index to 0 so the poll thread ignores any messages from a previous connection and starts polling for messages from this connection
+                                                read_last_read.store(0, std::memory_order_release);
+                                                read_last_write.store(0, std::memory_order_release);
+
+                                                // we set our write last read index and write last write index to 0 so the poll thread ignores any messages from a previous connection and starts polling for messages from this connection
+                                                write_last_read.store(0, std::memory_order_release);
+                                                write_last_write.store(0, std::memory_order_release);
 
                                                 client_state.store(OPEN, std::memory_order_release);
 
@@ -1442,7 +1488,7 @@ lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address,
 }
 
 // basic constructor
-lock_client_pm::lock_client_pm(int core, int read_chunk, int read_buffer_size){
+lock_client_pm::lock_client_pm(int core, int read_chunk, int read_buffer_size, int write_buffer_size){
     
     // initialisation of class wide variables
     if(!wolfssl_init){
@@ -1511,6 +1557,9 @@ lock_client_pm::lock_client_pm(int core, int read_chunk, int read_buffer_size){
             // we only update our read buffer size if the supplied size is > our default buffer size and is a power of 2 else we leave the default read buffer size
             if(read_buffer_size > READ_BUFFER_SIZE && ((read_buffer_size & (read_buffer_size - 1)) == 0)) READ_BUFFER_SIZE = read_buffer_size;
 
+            // we only update our write buffer size if the supplied size is > our default buffer size and is a power of 2 else we leave the default write buffer size
+            if(write_buffer_size > WRITE_BUFFER_SIZE && ((write_buffer_size & (write_buffer_size - 1)) == 0)) WRITE_BUFFER_SIZE = write_buffer_size;
+
             // we only update our read chunk if it is > our default read chunk
             if(read_chunk > READ_CHUNK_SIZE) READ_CHUNK_SIZE = read_chunk;
 
@@ -1520,19 +1569,33 @@ lock_client_pm::lock_client_pm(int core, int read_chunk, int read_buffer_size){
             // we check that our read buffer was successfully allocated if it wasn't we set our error flag
             if(read_buffer != nullptr){
 
-                // getting here our read buffer was successfully allocated so we start our poll_thread
-                poll_thread = std::thread(&lock_client_pm::poll_read, this, core);
+                // getting here our read buffer was allocated successfully now we allocate our write buffer
+                write_buffer = new(std::nothrow) unsigned char[WRITE_BUFFER_SIZE];
 
-                // we wait till the poll thread sets its init flag before we continue because then we can check the error flag to know if the poll thread encountered any error while setting up
-                while(!poll_init.load(std::memory_order_acquire));
+                // we check that our write buffer was successfully allocated if it wasn't we set our error flag
+                if(write_buffer != nullptr){
+
+                    // getting here our write buffer was successfully allocated so we start our poll_thread
+                    poll_thread = std::thread(&lock_client_pm::poll_io, this, core);
+
+                    // we wait till the poll thread sets its init flag before we continue because then we can check the error flag to know if the poll thread encountered any error while setting up
+                    while(!poll_init.load(std::memory_order_acquire));
+
+                }
+                else{
+
+                    // getting here our allocation of our write buffer was unsuccessful so we set our error flag to true
+                    strcpy(error_buffer, "Error Allocating Poll Write Buffer.");
+
+                    error.store(true, std::memory_order_release);
+
+                }
 
             }
             else{
 
                 // getting here our allocation of our read buffer was unsuccessful so we set our error flag to true
                 strcpy(error_buffer, "Error Allocating Poll Read Buffer.");
-
-                std::cout<<error_buffer<<std::endl;
 
                 error.store(true, std::memory_order_release);
 
@@ -1624,6 +1687,12 @@ lock_client_pm::~lock_client_pm(){
         delete [] read_buffer;
 
     }
+
+    if(write_buffer != NULL){
+
+        delete [] write_buffer;
+
+    }
     
 }
 
@@ -1649,8 +1718,7 @@ bool lock_client_pm::ping(){ // sends a ping on an established websocket connect
     
     if(!error.load(std::memory_order_acquire)){ // only continue if no error
         
-        // we use memory order relaxed to check the client state because only the main thread can set the client state
-        if(client_state.load(std::memory_order_relaxed) == OPEN){ // continue if client is in open state
+        if(client_state.load(std::memory_order_acquire) == OPEN){ // continue if client is in open state
             
             int i = 0; // variable for traversing the send data array
             
@@ -1669,65 +1737,42 @@ bool lock_client_pm::ping(){ // sends a ping on an established websocket connect
                 i++;
                     
             }
-            // mask storing end 
-            
-            // block SIGPIPE signal before attempting to send data, just incase the connection is closed
-            block_sigpipe_signal();
+
+            // mask storing end
             
             int64_t len = 0;
 
-            // keep polling till we have sent the entire frame
+            // keep polling till we have written the entire frame to the write buffer
             while(len < i){
 
-                int64_t local_len = wolfSSL_write(c_ssl, send_data, i - len);
+                int64_t local_len = write_data(reinterpret_cast<unsigned char*>(send_data), i - len);
 
-                if(local_len > 0){
+                if(local_len <= 0){
 
-                    len += local_len;
-                            
-                    send_data += local_len;
+                    // getting here local len <= 0 we check if we got a retry error. we don't check for a 0 error because the write data function only returns 0 when there is a problem with the write data parameters
+                    if(local_len == RETRY){
 
-                }
-                else{
-
-                    // we get the error message
-                    int err = wolfSSL_get_error(c_ssl, local_len);
-
-                    if(err == WOLFSSL_ERROR_WANT_WRITE || err == WOLFSSL_ERROR_WANT_READ){
-
+                        // we check if a error has occured if it has we simply return - we can return the error using memory order relaxed because the if condition check already loaded it
+                        if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
+                    
                         continue;
 
                     }
-                    else{
-
-                        // here wolfssl_read couldn't fetch any extra data
-                        strncpy(error_buffer, "Websocket Connection Lost", error_buffer_array_length);
-
-                        error.store(true, std::memory_order_release);
-                        
-                        unblock_sigpipe_signal();
-
-                        fail_ws_connection(GOING_AWAY);
-                        
-                        // the connection getting lost isn't in itself an error it just puts the lock client in a closed state
-
-                        // we return from this function
-                        return error.load(std::memory_order_acquire);
-                        
-                    }
 
                 }
 
+                len += local_len;
+                        
+                send_data += local_len;
+
             }
 
-            // getting here all ping data has been sent
-
-            unblock_sigpipe_signal();
+            // getting here all ping data has been written to the write buffer
             
         }
         else{ // set the error flag if lock client is not in open state
             
-            strncpy(error_buffer, "Lock Client not connected", error_buffer_array_length);
+            strcpy(error_buffer, "Lock Client not connected");
                 
             error.store(true, std::memory_order_release);
             
@@ -1743,8 +1788,7 @@ bool lock_client_pm::pong(int ping_data_len){ // sends out a pong frame unsolici
     
     if(!error.load(std::memory_order_acquire)){ // only continue if no error
         
-        // we use memory order relaxed to check the client state because only the main thread can set the client state
-        if(client_state.load(std::memory_order_relaxed) == OPEN){ // continue if client is in open state
+        if(client_state.load(std::memory_order_acquire) == OPEN){ // continue if client is in open state
             
             int i = 0; // variable for traversing the send data array
             
@@ -1757,7 +1801,7 @@ bool lock_client_pm::pong(int ping_data_len){ // sends out a pong frame unsolici
             i++;
                 
             for(int j = 0; j<mask_array_len; j++){
-            
+                    
                 send_data[i] = mask[j]; // store the mask in the send data array
                     
                 i++;
@@ -1769,7 +1813,7 @@ bool lock_client_pm::pong(int ping_data_len){ // sends out a pong frame unsolici
             int k = 0; // variable used to store the mask index of the exact byte in the mask array to mask with
                 
             for(int j = 0; j<ping_data_len; j++){
-            
+                    
                 k = j % 4;
                     
                 send_data[i] = upgrade_request_static[j] ^ mask[k]; // received ping data if any, is stored in the upgrade request static array
@@ -1778,59 +1822,34 @@ bool lock_client_pm::pong(int ping_data_len){ // sends out a pong frame unsolici
                     
             }
             
-            // block SIGPIPE signal before attempting to send data, just incase the connection is closed
-            block_sigpipe_signal();
-            
             int64_t len = 0;
 
-            // keep polling till we have sent the entire frame
+            // keep polling till we have written the entire frame to the write buffer
             while(len < i){
 
-                int64_t local_len = wolfSSL_write(c_ssl, send_data, i - len);
+                int64_t local_len = write_data(reinterpret_cast<unsigned char*>(send_data), i - len);
 
-                if(local_len > 0){
+                if(local_len <= 0){
 
-                    len += local_len;
-                            
-                    send_data += local_len;
+                    // getting here local len <= 0 we check if we got a retry error. we don't check for a 0 error because the write data function only returns 0 when there is a problem with the write data parameters
+                    if(local_len == RETRY){
 
-                }
-                else{
-
-                    // we get the error message
-                    int err = wolfSSL_get_error(c_ssl, local_len);
-
-                    if(err == WOLFSSL_ERROR_WANT_WRITE || err == WOLFSSL_ERROR_WANT_READ){
-
+                        // we check if a error has occured if it has we simply return - we can return the error using memory order relaxed because the if condition check already loaded it
+                        if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
+                    
                         continue;
 
                     }
-                    else{
-
-                        // here wolfssl_read couldn't fetch any extra data
-                        strncpy(error_buffer, "Websocket Connection Lost", error_buffer_array_length);
-
-                        error.store(true, std::memory_order_release);
-                        
-                        unblock_sigpipe_signal();
-
-                        fail_ws_connection(GOING_AWAY);
-                        
-                        // the connection getting lost isn't in itself an error it just puts the lock client in a closed state
-
-                        // we return from this function
-                        return error.load(std::memory_order_acquire);
-                        
-                    }
 
                 }
 
+                len += local_len;
+                        
+                send_data += local_len;
+
             }
 
-            // getting here the pong request send succeeds
-
-            // we unblock the sigpipe signal
-            unblock_sigpipe_signal();
+            // getting here all pong data has been written to the write buffer
 
             // we set the num_of_pings_received back to 0
             num_of_pings_received = 0;
@@ -1868,15 +1887,14 @@ inline bool lock_client_pm::set_ping_backlog(int backlog_num){
 
 inline bool lock_client_pm::clear(){ // clear the error flag of a lock client in open state
 
-    // we use memory order relaxed to check the client state because only the main thread can set the client state
-    if(client_state.load(std::memory_order_relaxed) == OPEN){
+    if(client_state.load(std::memory_order_acquire) == OPEN){
     
         memset(error_buffer, '\0', strlen(error_buffer));
             
         error.store(false, std::memory_order_release);
             
     }
-        
+
     return error.load(std::memory_order_acquire);
     
 }
@@ -1885,8 +1903,7 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
 
     if(!error.load(std::memory_order_acquire)){ // only continue if no error
         
-        // we use memory order relaxed to check the client state because only the main thread can set the client state
-        if(client_state.load(std::memory_order_relaxed) == OPEN){ // only continue if client is in open state
+        if(client_state.load(std::memory_order_acquire) == OPEN){ // only continue if client is in open state
         
             int64_t payload_data_len = payload_data.size();
             int i = 0; // variable for traversing the send data array
@@ -1901,13 +1918,13 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
                 
                 // set the second byte
                 if(payload_data_len < 126){ // if payload data length is less than 126 the next 7 bits represent the payload length
-                
+                    
                     send_data[i] = MASK_BIT_SET | (unsigned char)payload_data_len;
                     i++;
                     
                 }
                 else if( (payload_data_len > 125) && (payload_data_len < MAX_2BYTE_INT) ){ // next byte stores the value 126 and the next two bytes store the payload length
-                
+                    
                     send_data[i] = (unsigned char)(MASK_BIT_SET | (unsigned char)126);
                     i++;
                     
@@ -1919,8 +1936,8 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
                     
                 }
                 else if( (payload_data_len > (MAX_2BYTE_INT - 1)) && (payload_data_len < (MAX_8BYTE_INT - 1)) ){
-                // next byte stores the value 127 and he next 8 bytes store the payload length
-                
+                    // next byte stores the value 127 and he next 8 bytes store the payload length
+                    
                     send_data[i] = (unsigned char)(MASK_BIT_SET | (unsigned char)127);
                     i++;
                     
@@ -1951,7 +1968,7 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
                     
                 }
                 else{ // ERROR!! Data length too large - execution never gets here normally because the static send data array is only a few kilobytes long and the payload data would have to be > 2^64 bytes in length to get here which would already fail the outer if statement for being > static send data array, the code is just added for completeness
-                
+                    
                     strncpy(error_buffer, "Send data length too large", error_buffer_array_length);
                     
                     error.store(true, std::memory_order_release);
@@ -1961,7 +1978,7 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
                 if(!error.load(std::memory_order_acquire)){ // only continue if no error
                     
                     for(int j = 0; j<mask_array_len; j++){
-                    
+                        
                         send_data[i] = mask[j]; // store the mask in the send data array
                         
                         i++;
@@ -1973,7 +1990,7 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
                     int k = 0; // variable used to store the mask index of the exact byte in the mask array to mask with
                     
                     for(int j = 0; j<payload_data_len; j++){
-                    
+                        
                         k = j % 4;
                         
                         send_data[i] = payload_data[j] ^ mask[k];
@@ -1982,59 +1999,34 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
                         
                     }
                     
-                    // block SIGPIPE signal before attempting to send data, just incase the connection is closed
-                    block_sigpipe_signal();
-                    
                     int64_t len = 0;
 
-                    // keep polling till we have sent the entire frame
+                    // keep polling till we have written the entire frame to the write buffer
                     while(len < i){
 
-                        int64_t local_len = wolfSSL_write(c_ssl, send_data, i - len);
+                        int64_t local_len = write_data(reinterpret_cast<unsigned char*>(send_data), i - len);
 
-                        if(local_len > 0){
+                        if(local_len <= 0){
 
-                            len += local_len;
-                                    
-                            send_data += local_len;
+                            // getting here local len <= 0 we check if we got a retry error. we don't check for a 0 error because the write data function only returns 0 when there is a problem with the write data parameters
+                            if(local_len == RETRY){
 
-                        }
-                        else{
-
-                            // we get the error message
-                            int err = wolfSSL_get_error(c_ssl, local_len);
-
-                            if(err == WOLFSSL_ERROR_WANT_WRITE || err == WOLFSSL_ERROR_WANT_READ){
-
+                                // we check if a error has occured if it has we simply return - we can return the error using memory order relaxed because the if condition check already loaded it
+                                if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
+                            
                                 continue;
 
                             }
-                            else{
-
-                                // here wolfssl_read couldn't fetch any extra data
-                                strncpy(error_buffer, "Websocket Connection Lost", error_buffer_array_length);
-
-                                error.store(true, std::memory_order_release);
-                                
-                                unblock_sigpipe_signal();
-
-                                fail_ws_connection(GOING_AWAY);
-                                
-                                // the connection getting lost isn't in itself an error it just puts the lock client in a closed state
-
-                                // we return from this function
-                                return error.load(std::memory_order_acquire);
-                                
-                            }
 
                         }
 
+                        len += local_len;
+                                
+                        send_data += local_len;
+
                     }
 
-                    // getting here the send request succeeds
-
-                    // we unblock the sigpipe signal
-                    unblock_sigpipe_signal();
+                    // getting here all data has been written to the write buffer
                 
                 }
                   
@@ -2056,13 +2048,13 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
                 
                 // set the second byte
                 if(frame_data_len < 126){ // if frame data length is less than 126 the next 7 bits represent the frame length
-                
+                    
                     send_data[i] = MASK_BIT_SET | (unsigned char)frame_data_len;
                     i++;
                     
                 }
                 else if( (frame_data_len > 125) && (frame_data_len < MAX_2BYTE_INT) ){ // next byte stores the value 126 and the next two bytes store the payload length
-                
+                    
                     send_data[i] = (unsigned char)(MASK_BIT_SET | (unsigned char)126);
                     i++;
                     
@@ -2075,7 +2067,7 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
                 }
                 else if( (frame_data_len > (MAX_2BYTE_INT - 1)) && (frame_data_len < (MAX_8BYTE_INT - 1)) ){
                 // next byte stores the value 127 and he next 8 bytes store the payload length
-                
+                    
                     send_data[i] = (unsigned char)(MASK_BIT_SET | (unsigned char)127);
                     i++;
                     
@@ -2107,7 +2099,7 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
                 }
                 
                 for(int j = 0; j<mask_array_len; j++){
-                
+                    
                     send_data[i] = mask[j]; // store the mask in the send data array
                     
                     i++;
@@ -2131,59 +2123,34 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
                 // increment the continuation index by frame data len
                 continuation_index += frame_data_len;
 
-                // block SIGPIPE signal before attempting to send data, just incase the connection is closed
-                block_sigpipe_signal();
-                
                 int64_t len = 0;
 
-                // keep polling till we have sent the entire frame
+                // keep polling till we have written the entire frame to the write buffer
                 while(len < i){
 
-                    int64_t local_len = wolfSSL_write(c_ssl, send_data, i - len);
+                    int64_t local_len = write_data(reinterpret_cast<unsigned char*>(send_data), i - len);
 
-                    if(local_len > 0){
+                    if(local_len <= 0){
 
-                        len += local_len;
-                                
-                        send_data += local_len;
+                        // getting here local len <= 0 we check if we got a retry error. we don't check for a 0 error because the write data function only returns 0 when there is a problem with the write data parameters
+                        if(local_len == RETRY){
 
-                    }
-                    else{
-
-                        // we get the error message
-                        int err = wolfSSL_get_error(c_ssl, local_len);
-
-                        if(err == WOLFSSL_ERROR_WANT_WRITE || err == WOLFSSL_ERROR_WANT_READ){
-
+                            // we check if a error has occured if it has we simply return - we can return the error using memory order relaxed because the if condition check already loaded it
+                            if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
+                        
                             continue;
 
                         }
-                        else{
-
-                            // here wolfssl_read couldn't fetch any extra data
-                            strncpy(error_buffer, "Websocket Connection Lost", error_buffer_array_length);
-
-                            error.store(true, std::memory_order_release);
-                            
-                            unblock_sigpipe_signal();
-
-                            fail_ws_connection(GOING_AWAY);
-                            
-                            // the connection getting lost isn't in itself an error it just puts the lock client in a closed state
-
-                            // we return from this function
-                            return error.load(std::memory_order_acquire);
-                            
-                        }
 
                     }
 
+                    len += local_len;
+                            
+                    send_data += local_len;
+
                 }
 
-                // getting here the send request for this frame succeeds
-
-                // we unblock the sigpipe signal
-                unblock_sigpipe_signal();
+                // getting here all data has been written to the write buffer
 
                 // we now build up the continuation frames
 
@@ -2206,13 +2173,13 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
 
                         // set the second byte
                         if(frame_data_len < 126){ // if payload data length is less than 126 the next 7 bits represent the payload length
-                        
+                            
                             send_data[i] = MASK_BIT_SET | (unsigned char)frame_data_len;
                             i++;
                             
                         }
                         else if( (frame_data_len > 125) && (frame_data_len < MAX_2BYTE_INT) ){ // next byte stores the value 126 and the next two bytes store the payload length
-                        
+                            
                             send_data[i] = (unsigned char)(MASK_BIT_SET | (unsigned char)126);
                             i++;
                             
@@ -2225,7 +2192,7 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
                         }
                         else if( (frame_data_len > (MAX_2BYTE_INT - 1)) && (frame_data_len < (MAX_8BYTE_INT - 1)) ){
                         // next byte stores the value 127 and he next 8 bytes store the payload length
-                        
+                            
                             send_data[i] = (unsigned char)(MASK_BIT_SET | (unsigned char)127);
                             i++;
                             
@@ -2258,7 +2225,7 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
             
                         // we reuse the already generated mask to save computation
                         for(int j = 0; j<mask_array_len; j++){
-                        
+                            
                             send_data[i] = mask[j]; // store the mask in the send data array
                             
                             i++;
@@ -2279,59 +2246,34 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
                             
                         }
 
-                        // block SIGPIPE signal before attempting to send data, just incase the connection is closed
-                        block_sigpipe_signal();
-                        
                         int64_t len = 0;
 
-                        // keep polling till we have sent the entire frame
+                        // keep polling till we have written the entire frame to the write buffer
                         while(len < i){
 
-                            int64_t local_len = wolfSSL_write(c_ssl, send_data, i - len);
+                            int64_t local_len = write_data(reinterpret_cast<unsigned char*>(send_data), i - len);
 
-                            if(local_len > 0){
+                            if(local_len <= 0){
 
-                                len += local_len;
-                                        
-                                send_data += local_len;
+                                // getting here local len <= 0 we check if we got a retry error. we don't check for a 0 error because the write data function only returns 0 when there is a problem with the write data parameters
+                                if(local_len == RETRY){
 
-                            }
-                            else{
-
-                                // we get the error message
-                                int err = wolfSSL_get_error(c_ssl, local_len);
-
-                                if(err == WOLFSSL_ERROR_WANT_WRITE || err == WOLFSSL_ERROR_WANT_READ){
-
+                                    // we check if a error has occured if it has we simply return - we can return the error using memory order relaxed because the if condition check already loaded it
+                                    if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
+                                
                                     continue;
 
                                 }
-                                else{
-
-                                    // here wolfssl_read couldn't fetch any extra data
-                                    strncpy(error_buffer, "Websocket Connection Lost", error_buffer_array_length);
-
-                                    error.store(true, std::memory_order_release);
-                                    
-                                    unblock_sigpipe_signal();
-
-                                    fail_ws_connection(GOING_AWAY);
-                                    
-                                    // the connection getting lost isn't in itself an error it just puts the lock client in a closed state
-
-                                    // we return from this function
-                                    return error.load(std::memory_order_acquire);
-                                    
-                                }
 
                             }
 
+                            len += local_len;
+                                    
+                            send_data += local_len;
+
                         }
 
-                        // getting here the pong request send succeeds
-
-                        // we unblock the sigpipe signal
-                        unblock_sigpipe_signal();
+                        // getting here all data has been written to the write buffer
 
                     }
                     else{
@@ -2349,13 +2291,13 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
 
                         // set the second byte
                         if(frame_data_len < 126){ // if payload data length is less than 126 the next 7 bits represent the payload length
-                        
+                            
                             send_data[i] = MASK_BIT_SET | (unsigned char)frame_data_len;
                             i++;
                             
                         }
                         else if( (frame_data_len > 125) && (frame_data_len < MAX_2BYTE_INT) ){ // next byte stores the value 126 and the next two bytes store the payload length
-                        
+                            
                             send_data[i] = (unsigned char)(MASK_BIT_SET | (unsigned char)126);
                             i++;
                             
@@ -2368,7 +2310,7 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
                         }
                         else if( (frame_data_len > (MAX_2BYTE_INT - 1)) && (frame_data_len < (MAX_8BYTE_INT - 1)) ){
                         // next byte stores the value 127 and he next 8 bytes store the payload length
-                        
+                            
                             send_data[i] = (unsigned char)(MASK_BIT_SET | (unsigned char)127);
                             i++;
                             
@@ -2401,7 +2343,7 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
             
                         // we reuse the already generated mask to save computation
                         for(int j = 0; j<mask_array_len; j++){
-                        
+                            
                             send_data[i] = mask[j]; // store the mask in the send data array
                             
                             i++;
@@ -2421,59 +2363,34 @@ bool lock_client_pm::send(std::string_view payload_data){ // sends data passed a
                             
                         }
 
-                        // block SIGPIPE signal before attempting to send data, just incase the connection is closed
-                        block_sigpipe_signal();
-                        
                         int64_t len = 0;
 
-                        // keep polling till we have sent the entire frame
+                        // keep polling till we have written the entire frame to the write buffer
                         while(len < i){
 
-                            int64_t local_len = wolfSSL_write(c_ssl, send_data, i - len);
+                            int64_t local_len = write_data(reinterpret_cast<unsigned char*>(send_data), i - len);
 
-                            if(local_len > 0){
+                            if(local_len <= 0){
 
-                                len += local_len;
-                                        
-                                send_data += local_len;
+                                // getting here local len <= 0 we check if we got a retry error. we don't check for a 0 error because the write data function only returns 0 when there is a problem with the write data parameters
+                                if(local_len == RETRY){
 
-                            }
-                            else{
-
-                                // we get the error message
-                                int err = wolfSSL_get_error(c_ssl, local_len);
-
-                                if(err == WOLFSSL_ERROR_WANT_WRITE || err == WOLFSSL_ERROR_WANT_READ){
-
+                                    // we check if a error has occured if it has we simply return - we can return the error using memory order relaxed because the if condition check already loaded it
+                                    if(error.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
+                                
                                     continue;
 
                                 }
-                                else{
-
-                                    // here wolfssl_read couldn't fetch any extra data
-                                    strncpy(error_buffer, "Websocket Connection Lost", error_buffer_array_length);
-
-                                    error.store(true, std::memory_order_release);
-                                    
-                                    unblock_sigpipe_signal();
-
-                                    fail_ws_connection(GOING_AWAY);
-                                    
-                                    // the connection getting lost isn't in itself an error it just puts the lock client in a closed state
-
-                                    // we return from this function
-                                    return error.load(std::memory_order_acquire);
-                                    
-                                }
 
                             }
 
+                            len += local_len;
+                                    
+                            send_data += local_len;
+
                         }
 
-                        // getting here the send request succeeds
-
-                        // we unblock the sigpipe signal
-                        unblock_sigpipe_signal();
+                        // getting here all data has been written to the write buffer
 
                     }
 
@@ -2529,12 +2446,12 @@ void lock_client_pm::set_pong_function(lock_function fn){
 
 bool lock_client_pm::data_available(){
 
-    // we use memory order relaxed for loading last read because data available is called by the main thread that updates last read
-    return last_write.load(std::memory_order_acquire) - last_read.load(std::memory_order_relaxed) > 0 ? true : false;
+    // we use memory order relaxed for loading read last read because data available is called by the main thread that updates read last read
+    return read_last_write.load(std::memory_order_acquire) - read_last_read.load(std::memory_order_relaxed) > 0 ? true : false;
 
 }
 
-bool lock_client_pm::poll_read(int core){
+bool lock_client_pm::poll_io(int core){
 
     // we increase this thread priority
     bool thread_priori_error = increase_thread_priority();
@@ -2570,59 +2487,164 @@ bool lock_client_pm::poll_read(int core){
             // we check that the client has an open websocket connection
             if(client_state.load(std::memory_order_acquire) == OPEN){
 
-                // we fetch our last read and last write index - we use memory order relaxed for fetching the last write variable because it is only the poll thread that updates it
-                int64_t loc_last_read = last_read.load(std::memory_order_acquire);
-                int64_t loc_last_write = last_write.load(std::memory_order_relaxed);
+                // we fetch our read last read and read last write index - we use memory order relaxed for fetching the last write variable because it is only the poll thread that updates it
+                int64_t loc_last_read = read_last_read.load(std::memory_order_acquire);
+                int64_t loc_last_write = read_last_write.load(std::memory_order_relaxed);
 
                 // we fetch how much free space we have in our read buffer - free space here means how much empty spaces or spaces with data already consumed do we have
                 int free_space = READ_BUFFER_SIZE - (loc_last_write - loc_last_read);
 
-                // we simply continue if we have no free space in our read buffer
-                if(free_space == 0) continue;
+                // we only continue if we have free space in our read buffer
+                if(free_space > 0){
 
-                // we fetch our write start index
-                int start_index = loc_last_write & (READ_BUFFER_SIZE - 1);
+                    // we fetch our write start index
+                    int start_index = loc_last_write & (READ_BUFFER_SIZE - 1);
 
-                // now we compute how much contiguous memory we have because wolfssl read ca only be called to populate contiguous memory
-                int contiguous_space = READ_BUFFER_SIZE - start_index;
+                    // now we compute how much contiguous memory we have because wolfssl read ca only be called to populate contiguous memory
+                    int contiguous_space = READ_BUFFER_SIZE - start_index;
 
-                // now we compute our data size to read. our data size to read is the minimum of 3 values - our free space, our contiguous space and our read chunk size
-                int data_sz_to_read = std::min({free_space, contiguous_space, READ_CHUNK_SIZE});
+                    // now we compute our data size to read. our data size to read is the minimum of 3 values - our free space, our contiguous space and our read chunk size
+                    int data_sz_to_read = std::min({free_space, contiguous_space, READ_CHUNK_SIZE});
 
-                // block SIGPIPE signal before attempting to read data, just incase the connection is closed
-                block_sigpipe_signal_pm();
+                    // block SIGPIPE signal before attempting to read data, just incase the connection is closed
+                    block_sigpipe_signal_pm();
 
-                // we read our data using our wolfssl read
-                int data_size_read = wolfSSL_read(c_ssl, read_buffer + start_index, data_sz_to_read);
+                    // we read our data using our wolfssl read
+                    int data_size_read = wolfSSL_read(c_ssl, read_buffer + start_index, data_sz_to_read);
 
-                // we unblock the sigpipe signal
-                unblock_sigpipe_signal_pm();
+                    // we unblock the sigpipe signal
+                    unblock_sigpipe_signal_pm();
 
-                // we increment our write index if we successfully fetched more data
-                if(data_size_read > 0){
+                    // we increment our write index if we successfully fetched more data
+                    if(data_size_read > 0){
 
-                    last_write.store(loc_last_write + data_size_read, std::memory_order_release);
+                        read_last_write.store(loc_last_write + data_size_read, std::memory_order_release);
+
+                    }
+                    else{
+
+                        // we fetch the wolfssl error
+                        int err = wolfSSL_get_error(c_ssl, data_size_read);
+
+                        if(err != WOLFSSL_ERROR_WANT_READ){
+
+                            // we copy our error message to our error buffer
+                            strcpy(error_buffer, "Poll Error: Can't Fetch data from remote host: Check network connection");
+
+                            error.store(true, std::memory_order_release);
+                            
+                            // we don't break out from this loop we let it continue, the error flag set would prevent the poll thread from reading any more data till the main thread reconnects and clears the error flag
+
+                        }
+
+                    }
 
                 }
-                else{
 
-                    // we fetch the wolfssl error
-                    int err = wolfSSL_get_error(c_ssl, data_size_read);
+                // now we check our write buffer if there is any data to write
 
-                    if(err != WOLFSSL_ERROR_WANT_READ){
+                // we fetch our write last read and write last write index - we use memory order relaxed for fetching the write last read variable because it is only the poll thread that updates it
+                loc_last_read = write_last_read.load(std::memory_order_relaxed);
+                loc_last_write = write_last_write.load(std::memory_order_acquire);
 
-                        // we copy our error message to our error buffer
-                        strcpy(error_buffer, "Poll Error: Can't Fetch data from remote host: Check network connection");
+                // we fetch how much data we have to write
+                int data_to_write = loc_last_write - loc_last_read;
 
-                        error.store(true, std::memory_order_release);
-                        
-                        // we don't break out from this loop we let it continue, the error flag set would prevent the poll thread from reading any more data till the main thread reconnects and clears the error flag
+                // we only continue if we have data to write
+                if(data_to_write > 0){
+
+                    // we fetch our read start index
+                    int start_index = loc_last_read & (WRITE_BUFFER_SIZE - 1);
+
+                    // now we compute how much contiguous data we have because BIO write can only be called to sed contiguous data
+                    int contiguous_data = WRITE_BUFFER_SIZE - start_index;
+
+                    // now we compute our data size to write. our data size to write is the minimum of 2 values - our data to write & our contiguous data
+                    int data_sz_to_write = std::min(contiguous_data, data_to_write);
+
+                    // block SIGPIPE signal before attempting to write data, just incase the connection is closed
+                    block_sigpipe_signal_pm();
+
+                    // we call wolfssl_write to attempt to send the bytes in our write buffer
+                    int data_size_written = wolfSSL_write(c_ssl, write_buffer + start_index, data_sz_to_write);
+
+                    // we unblock the sigpipe signal
+                    unblock_sigpipe_signal_pm();
+
+                    // we increment our write last read index if we successfully sent data
+                    if(data_size_written > 0){
+
+                        write_last_read.store(loc_last_read + data_size_written, std::memory_order_release);
+
+                    }
+                    else{
+
+                        // we get the error message
+                        int err = wolfSSL_get_error(c_ssl, data_size_written);
+
+                        // we check if bio should write is false to indicate that the operation would block or if bio write failed due to an error
+                        if(err != WOLFSSL_ERROR_WANT_WRITE){
+
+                            // we copy our error message to our error buffer
+                            strcpy(error_buffer, "Poll Error: Can't Send data to remote host: Check network connection");
+
+                            error.store(true, std::memory_order_release);
+                            
+                            // we don't break out from this loop we let it continue, the error flag set would prevent the poll thread from reading or writing any more data till the main thread reconnects and clears the error flag
+
+                        }
 
                     }
 
                 }
 
             }
+
+        }
+
+        // we check if the main thread set the close connection flag to indicate to the poll thread to close the websocket connection - we check this flag outside the error check flag so the main thread can signal to the order thread to close the ws connection even when the client is in an error state
+        if(close_connection.load(std::memory_order_acquire)){
+
+            // getting here the order thread would have writted the entire close frame data to the write buffer, we make a one pass attempt to send this data to the server before closing the connection. we don't check the return value from the send function
+
+            // we fetch our write last read and write last write index - we use memory order relaxed for fetching the write last read variable because it is only the poll thread that updates it
+            int64_t loc_last_read = write_last_read.load(std::memory_order_relaxed);
+            int64_t loc_last_write = write_last_write.load(std::memory_order_acquire);
+
+            // we fetch how much data we have to write
+            int data_to_write = loc_last_write - loc_last_read;
+
+            // we only continue if we have data to write
+            if(data_to_write > 0){
+
+                // we fetch our read start index
+                int start_index = loc_last_read & (WRITE_BUFFER_SIZE - 1);
+
+                // now we compute how much contiguous data we have because BIO write can only be called to sed contiguous data
+                int contiguous_data = WRITE_BUFFER_SIZE - start_index;
+
+                // now we compute our data size to write. our data size to write is the minimum of 2 values - our data to write & our contiguous data
+                int data_sz_to_write = std::min(contiguous_data, data_to_write);
+
+                // block SIGPIPE signal before attempting to write data, just incase the connection is closed
+                block_sigpipe_signal_pm();
+
+                // we call wolfssl_write to attempt to send the bytes in our write buffer which should include the close frame
+                (void)wolfSSL_write(c_ssl, write_buffer + start_index, data_sz_to_write);
+
+                // we unblock the sigpipe signal
+                unblock_sigpipe_signal_pm();
+
+            }
+            
+            // we reset our connection object
+            reset();
+
+            // we set the client state to CLOSED
+            client_state.store(CLOSED, std::memory_order_release);
+
+            // finally we set the close connection flag back to false
+            close_connection.store(false, std::memory_order_release);
 
         }
 
@@ -2638,8 +2660,8 @@ int lock_client_pm::fetch_data(unsigned char* dest, int sz){
     if(sz <= 0) return 0;
 
     // we fetch our local last read and last write - we use memory order relaxed to acquire our last read variable because it is updated by only the main thread that calls this fetch data function
-    int loc_last_read = last_read.load(std::memory_order_relaxed);
-    int loc_last_write = last_write.load(std::memory_order_acquire);
+    int loc_last_read = read_last_read.load(std::memory_order_relaxed);
+    int loc_last_write = read_last_write.load(std::memory_order_acquire);
 
     // we compute our available data
     int available_data = loc_last_write - loc_last_read;
@@ -2672,8 +2694,55 @@ int lock_client_pm::fetch_data(unsigned char* dest, int sz){
 
     }
 
-    // we update our last read atomic variable
-    last_read.store(loc_last_read + data_sz_to_copy, std::memory_order_release);
+    // we update our read last read atomic variable
+    read_last_read.store(loc_last_read + data_sz_to_copy, std::memory_order_release);
+
+    return data_sz_to_copy;
+
+}
+
+int lock_client_pm::write_data(unsigned char* src, int sz){
+
+    // first we check if the supplied sz is <=0 in which case we simply return 0
+    if(sz <= 0) return 0;
+
+    // we fetch our local last read and last write - we use memory order relaxed to acquire our write last write variable because it is updated by only the main thread that calls this send data function
+    int loc_last_read = write_last_read.load(std::memory_order_acquire);
+    int loc_last_write = write_last_write.load(std::memory_order_relaxed);
+
+    // we fetch how much free space we have in our write buffer - free space here means how much empty spaces or spaces with write data already consumed by the poll thread do we have
+    int free_space = WRITE_BUFFER_SIZE - (loc_last_write - loc_last_read);
+
+    // we simply continue if we have no free space in our read buffer
+    if(free_space == 0) return RETRY;
+
+    // we fetch our write start index
+    int start_index = loc_last_write & (WRITE_BUFFER_SIZE - 1);
+
+    // now we compute how much contiguous memory we have because memcpy can only be called to populate contiguous memory
+    int contiguous_space = WRITE_BUFFER_SIZE - start_index;
+
+    // now we compute our data size to copy. our data size to read is the minimum of 3 values - our free space, our contiguous space and our sz parameter
+    int data_sz_to_copy = std::min({free_space, contiguous_space, sz});
+
+    // we check if our contiguous space is < our data sz to copy in which case we can copy our write data in one memcpy call else we have to copy our write data in two memcpy call
+    if(data_sz_to_copy <= contiguous_space){
+
+        memcpy(write_buffer + start_index, src, data_sz_to_copy);
+
+    }
+    else{
+
+        // getting here the available space is not contiguous so we copy our write data in two memcpy calls
+        memcpy(write_buffer + start_index, src, contiguous_space);
+
+        // this second memcpy wraps around and copies to the start of the write buffer
+        memcpy(write_buffer, src + contiguous_space, data_sz_to_copy - contiguous_space);
+
+    }
+
+    // we update our write last write atomic variable
+    write_last_write.store(loc_last_write + data_sz_to_copy, std::memory_order_release);
 
     return data_sz_to_copy;
 
@@ -2683,8 +2752,7 @@ bool lock_client_pm::basic_read(){
 
     if(!error.load(std::memory_order_acquire) || data_available()){ // only continue if no error or data available
         
-        // we use memory order relaxed to check the client state because only the main thread can set the client state
-        if(client_state.load(std::memory_order_relaxed) == OPEN){ // only continue if client is in open state
+        if(client_state.load(std::memory_order_acquire) == OPEN){ // only continue if lock client is in open state
         
             int64_t frame_data_len = 0; // stores the length of the data frame received
 
@@ -2740,7 +2808,6 @@ bool lock_client_pm::basic_read(){
                 total_read_bytes += read_bytes;
 
             }
-
             
             if( (rand_bytes[0] == (FIN_BIT_SET | RSV_BIT_UNSET_ALL | TEXT_FRAME)) || (rand_bytes[0] == (FIN_BIT_SET | RSV_BIT_UNSET_ALL | BINARY_FRAME)) ){ // this is the only frame of a text or binary frame data stream. We do not differentiate between text and binary frames since data copy happens the same way
                 
@@ -4575,18 +4642,41 @@ bool lock_client_pm::basic_read(){
                     i++;
                 
                 }
-                
-                // we block our SIGPIPE signal
-                block_sigpipe_signal();
 
-                // send the close frame response - we do not test the return code of wolfssl_read in this case neither do we poll to ensure it sends
-                (void)wolfSSL_write(c_ssl, send_data, i);
-                
-                // unblock SIGPIPE signal
-                unblock_sigpipe_signal();
-                
-                reset(); // close the existing connection and reset the wolfssl object
+                // we reset our len variable to 0
+                len = 0;
 
+                // keep polling till we have written the entire frame to the write buffer
+                while(len < i){
+
+                    int64_t local_len = write_data(reinterpret_cast<unsigned char*>(send_data), i - len);
+
+                    if(local_len <= 0){
+
+                        // getting here local len <= 0 we check if we got a retry error. we don't check for a 0 error because the write data function only returns 0 when there is a problem with the write data parameters
+                        if(local_len == RETRY){
+
+                            // we check if a error has occured if it has because this is the close frame we don't return we simply break out from this loop and wait for the poll thread to set the client state back to CLOSED
+                            if(error.load(std::memory_order_acquire)) break;
+                        
+                            continue;
+
+                        }
+
+                    }
+
+                    len += local_len;
+                            
+                    send_data += local_len;
+
+                }
+
+                // now we set our close connection flag to true
+                close_connection.store(true, std::memory_order_release);
+                
+                // now we wait till the client state is back to CLOSED by the poll thread
+                while(client_state.load(std::memory_order_acquire) != CLOSED);
+                
                 // before we set the error flag for the unsolicited close frame we first check if the poll thread already set the error flag
                 if(!error.load(std::memory_order_acquire)){
                 
@@ -4636,8 +4726,6 @@ bool lock_client_pm::basic_read(){
                 memset(data_array, '\0', frame_data_len); // zero out the data array
                 
                 cursor = data_array; // set cursor to point back to data array
-                
-                client_state.store(CLOSED, std::memory_order_release);
                 
             }
             else if( rand_bytes[0] == (FIN_BIT_SET | RSV_BIT_UNSET_ALL | PONG) ){
@@ -4720,7 +4808,7 @@ bool lock_client_pm::basic_read(){
             
         }
         else{
-
+            
             strcpy(error_buffer, "Lock Client not connected yet");
                 
             error.store(true, std::memory_order_release);
@@ -4728,7 +4816,7 @@ bool lock_client_pm::basic_read(){
         }
         
     }
-
+        
     // in order to accomodate the scenario where the poll thread sets the error flag to true but there is still data to read we check if data is still available and if so we return false masking the error till there is no more data available. this way calling basic read in a loop that checks if any error was encountered can run till all available data is exhausted
     return data_available() ? false : error.load(std::memory_order_relaxed);
         
@@ -5351,9 +5439,13 @@ bool lock_client_pm::connect(std::string_view url){ // this is used to connect t
                                                 // compare server's response with our calculation
                                                 if(strncmp(local_sec_ws_accept_key, cursor, strlen(local_sec_ws_accept_key)) == 0){
                                                     
-                                                    // we set our last read index and last write index to 0 so the poll thread ignores any messages from a previous connection and starts polling for messages from this connection
-                                                    last_read.store(0, std::memory_order_release);
-                                                    last_write.store(0, std::memory_order_release);
+                                                    // we set our read last read index and read last write index to 0 so the poll thread ignores any messages from a previous connection and starts polling for messages from this connection
+                                                    read_last_read.store(0, std::memory_order_release);
+                                                    read_last_write.store(0, std::memory_order_release);
+
+                                                    // we set our write last read index and write last write index to 0 so the poll thread ignores any messages from a previous connection and starts polling for messages from this connection
+                                                    write_last_read.store(0, std::memory_order_release);
+                                                    write_last_write.store(0, std::memory_order_release);
 
                                                     client_state.store(OPEN, std::memory_order_release);
 
@@ -6006,9 +6098,13 @@ bool lock_client_pm::interface_connect(std::string_view url, in_addr* interface_
                                             // compare server's response with our calculation
                                             if(strncmp(local_sec_ws_accept_key, cursor, strlen(local_sec_ws_accept_key)) == 0){
                                                 
-                                                // we set our last read index and last write index to 0 so the poll thread ignores any messages from a previous connection and starts polling for messages from this connection
-                                                last_read.store(0, std::memory_order_release);
-                                                last_write.store(0, std::memory_order_release);
+                                                // we set our read last read index and read last write index to 0 so the poll thread ignores any messages from a previous connection and starts polling for messages from this connection
+                                                read_last_read.store(0, std::memory_order_release);
+                                                read_last_write.store(0, std::memory_order_release);
+
+                                                // we set our write last read index and write last write index to 0 so the poll thread ignores any messages from a previous connection and starts polling for messages from this connection
+                                                write_last_read.store(0, std::memory_order_release);
+                                                write_last_write.store(0, std::memory_order_release);
 
                                                 client_state.store(OPEN, std::memory_order_release);
 
@@ -6239,7 +6335,7 @@ void lock_client_pm::unblock_sigpipe_signal_pm(){
 void lock_client_pm::fail_ws_connection(unsigned short status_code){
 
     if(cursor != NULL && data_array != NULL){
-        
+
         memset(data_array, '\0', (cursor - data_array) ); // zero out the data possibly already written to the data array if the fail_ws_connection is called when a fragmented message was being transmitted.
             
         cursor = data_array; // set cursor to point back to data array
@@ -6261,19 +6357,20 @@ void lock_client_pm::fail_ws_connection(unsigned short status_code){
     i++;
             
     for(int j = 0; j<mask_array_len; j++){
-                
+
         send_data[i] = mask[j]; // store the mask in the send data array
                 
         i++;
 
     }
+
     // mask storing end 
             
     // mask the data and store the masked data in the send data array 
     int k = 0; // variable used to store the mask index of the exact byte in the mask array to mask with
             
     for(int j = 0; j<frame_len; j++){
-                
+   
         k = j % 4;
                 
         send_data[i] = close_payload[j] ^ mask[k];  
@@ -6282,24 +6379,44 @@ void lock_client_pm::fail_ws_connection(unsigned short status_code){
                 
     }
             
-    // block SIGPIPE signal before attempting to send data, just incase the connection is closed
-    block_sigpipe_signal();
+    int64_t len = 0;
+
+    // keep polling till we have written the entire frame to the write buffer
+    while(len < i){
+
+        int64_t local_len = write_data(reinterpret_cast<unsigned char*>(send_data), i - len);
+
+        if(local_len <= 0){
+
+            // getting here local len <= 0 we check if we got a retry error. we don't check for a 0 error because the write data function only returns 0 when there is a problem with the write data parameters
+            if(local_len == RETRY){
+
+                // we check if a error has occured if it has because this is the close frame we don't return we simply break out from this loop and wait for the poll thread to set the client state back to CLOSED
+                if(error.load(std::memory_order_acquire)) break;
             
-    // send the close frame
-    (void)wolfSSL_write(c_ssl, send_data, i); // no need checking whether it was successfully sent through we close the connection nonetheless
-            
-    unblock_sigpipe_signal();
-            
-    // close the underlying connection, don't wait for server response
-    reset();
-            
-    client_state.store(CLOSED, std::memory_order_release); // sets the client state back to closed
+                continue;
+
+            }
+
+        }
+
+        len += local_len;
+                
+        send_data += local_len;
+
+    }
+
+    // now we set our close connection flag to true
+    close_connection.store(true, std::memory_order_release);
+    
+    // now we wait till the client state is back to CLOSED by the poll thread
+    while(client_state.load(std::memory_order_acquire) != CLOSED);
 
     if(!error.load(std::memory_order_acquire)){
     // we only set the error message and error flag if the error flag was not set already
 
         // we set the lock client error variable
-        strcpy(error_buffer, "Websocket Connection Lost");
+        strncpy(error_buffer, "Websocket Connection Lost", error_buffer_array_length);
                     
         error.store(true, std::memory_order_release);
 
@@ -6387,6 +6504,7 @@ bool lock_client_pm::increase_thread_priority(int p_policy, int priority){
 
 bool lock_client_pm::close(unsigned short status_code){ // this closes an established websocket connection although the object itself still exists till it goes out of scope, the object can be connected to a different or the same websocket server using the connect function
     
+    // acquiring the client state here already syncs the main thread to the poll thread because it is only the poll thread that can set the client state to CLOSED and if the state is still OPEN we set it to close here, syncing with the poll thread in the process
     if(client_state.load(std::memory_order_acquire) == OPEN){ // only continue if client is in open state
     
         int i = 0; // variable for traversing the send array and building up the close data frame
@@ -6425,21 +6543,45 @@ bool lock_client_pm::close(unsigned short status_code){ // this closes an establ
                 
         }
             
-        // block SIGPIPE signal before attempting to send data, just incase the connection is closed
-        block_sigpipe_signal();
+        // mask storing end
             
-        // send the close frame
-        (void)wolfSSL_write(c_ssl, send_data, i); // no need checking whether it was successfully sent through we close the connection nonetheless
+        int64_t len = 0;
+
+        // keep polling till we have written the entire frame to the write buffer
+        while(len < i){
+
+            int64_t local_len = write_data(reinterpret_cast<unsigned char*>(send_data), i - len);
+
+            if(local_len <= 0){
+
+                // getting here local len <= 0 we check if we got a retry error. we don't check for a 0 error because the write data function only returns 0 when there is a problem with the write data parameters
+                if(local_len == RETRY){
+
+                    // we check if a error has occured if it has because this is the close frame we don't return we simply break out from this loop and wait for the poll thread to set the client state back to CLOSED
+                    if(error.load(std::memory_order_acquire)) break;
+                
+                    continue;
+
+                }
+
+            }
+
+            len += local_len;
+                    
+            send_data += local_len;
+
+        }
+
+        // now we set our close connection flag to true
+        close_connection.store(true, std::memory_order_release);
         
-        // unblock SIGPIPE signal
-        unblock_sigpipe_signal();
+        // now we wait till the client state is back to CLOSED by the poll thread
+        while(client_state.load(std::memory_order_acquire) != CLOSED);
     
     }
     
     // we disconnect our underlying connection
     reset();
-
-    client_state.store(CLOSED, std::memory_order_release);
     
     return error.load(std::memory_order_relaxed);
 }
