@@ -8,7 +8,7 @@
 #pragma GCC diagnostic ignored "-Wshift-count-overflow"
 
 // constructor with url string
-lock_client_pm::lock_client_pm(std::string_view url, int core, int read_chunk, int read_buffer_size){
+lock_client_pm::lock_client_pm(std::string_view url, int core, int read_chunk, int read_buffer_size, int write_buffer_size){
 
     // initialisation of class wide variables
     if(!openssl_init){
@@ -29,6 +29,9 @@ lock_client_pm::lock_client_pm(std::string_view url, int core, int read_chunk, i
 
         // we only update our read buffer size if the supplied size is > our default buffer size and is a power of 2 else we leave the default read buffer size
         if(read_buffer_size > READ_BUFFER_SIZE && ((read_buffer_size & (read_buffer_size - 1)) == 0)) READ_BUFFER_SIZE = read_buffer_size;
+
+        // we only update our write buffer size if the supplied size is > our default buffer size and is a power of 2 else we leave the default write buffer size
+        if(write_buffer_size > WRITE_BUFFER_SIZE && ((write_buffer_size & (write_buffer_size - 1)) == 0)) WRITE_BUFFER_SIZE = write_buffer_size;
 
         // we only update our read chunk if it is > our default read chunk
         if(read_chunk > READ_CHUNK_SIZE) READ_CHUNK_SIZE = read_chunk;
@@ -851,7 +854,7 @@ lock_client_pm::lock_client_pm(std::string_view url, int core, int read_chunk, i
 }
 
 // constructor that binds to a network interface
-lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address, char* interface_name, int core, int read_chunk, int read_buffer_size){
+lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address, char* interface_name, int core, int read_chunk, int read_buffer_size, int write_buffer_size){
 
     // initialisation of class wide variables
     if(!openssl_init){
@@ -872,6 +875,9 @@ lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address,
 
         // we only update our read buffer size if the supplied size is > our default buffer size and is a power of 2 else we leave the default read buffer size
         if(read_buffer_size > READ_BUFFER_SIZE && ((read_buffer_size & (read_buffer_size - 1)) == 0)) READ_BUFFER_SIZE = read_buffer_size;
+
+        // we only update our write buffer size if the supplied size is > our default buffer size and is a power of 2 else we leave the default write buffer size
+        if(write_buffer_size > WRITE_BUFFER_SIZE && ((write_buffer_size & (write_buffer_size - 1)) == 0)) WRITE_BUFFER_SIZE = write_buffer_size;
 
         // we only update our read chunk if it is > our default read chunk
         if(read_chunk > READ_CHUNK_SIZE) READ_CHUNK_SIZE = read_chunk;
@@ -1688,7 +1694,7 @@ lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address,
 }
 
 // basic constructor
-lock_client_pm::lock_client_pm(int core, int read_chunk, int read_buffer_size){
+lock_client_pm::lock_client_pm(int core, int read_chunk, int read_buffer_size, int write_buffer_size){
     
     // initialisation of class wide variables
     if(!openssl_init){
@@ -1709,6 +1715,9 @@ lock_client_pm::lock_client_pm(int core, int read_chunk, int read_buffer_size){
 
         // we only update our read buffer size if the supplied size is > our default buffer size and is a power of 2 else we leave the default read buffer size
         if(read_buffer_size > READ_BUFFER_SIZE && ((read_buffer_size & (read_buffer_size - 1)) == 0)) READ_BUFFER_SIZE = read_buffer_size;
+
+        // we only update our write buffer size if the supplied size is > our default buffer size and is a power of 2 else we leave the default write buffer size
+        if(write_buffer_size > WRITE_BUFFER_SIZE && ((write_buffer_size & (write_buffer_size - 1)) == 0)) WRITE_BUFFER_SIZE = write_buffer_size;
 
         // we only update our read chunk if it is > our default read chunk
         if(read_chunk > READ_CHUNK_SIZE) READ_CHUNK_SIZE = read_chunk;
