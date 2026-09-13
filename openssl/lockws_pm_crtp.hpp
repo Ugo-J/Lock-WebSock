@@ -1789,15 +1789,17 @@ lock_client_pm_crtp<T>::lock_client_pm_crtp(int core, int read_chunk, int read_b
 template <typename T>
 lock_client_pm_crtp<T>::~lock_client_pm_crtp(){
 
-    // we set our stop poll flag to stop the poll thread
-    stop_poll.store(true, std::memory_order_release);
-    
+    // because the poll thread is what sets the client back to close state we call the close function before we set the stop poll flag to stop the poll thread
+
     // close the websocket connection if any
     if(client_state.load(std::memory_order_acquire) == OPEN){
         
         close();
-        
+
     }
+
+    // we set our stop poll flag to stop the poll thread
+    stop_poll.store(true, std::memory_order_release);
 
     // we join our poll thread if it is joinable
     if(poll_thread.joinable()) { poll_thread.join(); }
@@ -1830,11 +1832,11 @@ lock_client_pm_crtp<T>::~lock_client_pm_crtp(){
         
     }
     
-    if(c_ssl == NULL && c_url != NULL){// this would mean that this object is not an ssl BIO hence a regular free is sufficient
+    if(c_ssl == NULL && c_url != NULL){ // this would mean that this object is not an ssl BIO hence a regular free is sufficient
         
         BIO_free(c_bio);
     }
-    else if(c_ssl != NULL && c_url != NULL){// this would mean that the object is an ssl bio
+    else if(c_ssl != NULL && c_url != NULL){ // this would mean that the object is an ssl bio
         
         BIO_free_all(c_bio); // frees the ssl bio chain
     }

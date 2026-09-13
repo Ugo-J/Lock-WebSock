@@ -1615,16 +1615,18 @@ lock_client_pm_crtp<T>::lock_client_pm_crtp(int core, int read_chunk, int read_b
 // destructor
 template <typename T>
 lock_client_pm_crtp<T>::~lock_client_pm_crtp(){
-
-    // we set our stop poll flag to stop the poll thread
-    stop_poll.store(true, std::memory_order_release);
     
+    // because the poll thread is what sets the client back to close state we call the close function before we set the stop poll flag to stop the poll thread
+
     // close the websocket connection if any
     if(client_state.load(std::memory_order_acquire) == OPEN){
         
         close();
 
     }
+
+    // we set our stop poll flag to stop the poll thread
+    stop_poll.store(true, std::memory_order_release);
 
     // we join our poll thread if it is joinable
     if(poll_thread.joinable()) { poll_thread.join(); }
