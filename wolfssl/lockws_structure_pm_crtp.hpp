@@ -112,7 +112,7 @@ protected:
     std::atomic<bool> close_connection = false;
 
 // poll io variables
-private:
+protected:
 
     // the poll thread instance
     std::thread poll_thread;
@@ -153,7 +153,7 @@ private:
     std::atomic<bool> stop_poll{false};
 
 // poll read functions
-private:
+protected:
 
     // function to check if there is available data in the read buffer
     bool data_available();
@@ -174,7 +174,7 @@ private:
     bool increase_thread_priority(int p_policy = SCHED_FIFO, int priority = 99);
 
 // constants to indicate data availabilty in the read buffer
-private:
+protected:
 
     static constexpr int RETRY = -1;
 
