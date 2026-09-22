@@ -55,8 +55,8 @@ protected:
 // class wide variables    
 protected:
     
-    inline static bool openssl_init = false; // bool variable to test if openssl initialisations have been done
-    inline static SSL_CTX* ssl_ctx = NULL;
+    bool openssl_init = false; // bool variable to test if openssl initialisations have been done
+    SSL_CTX* ssl_ctx = NULL;
     inline static const char string_to_append[] = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"; // this string is appended to the base64 encoded nonce to calculate the Sec-WebSocket-Accept header value and compare with the server's
     inline static const int size_of_SHA1_digest = 20;
     
@@ -174,7 +174,7 @@ protected:
 protected:
 
     static const int mask_array_len = 4; // used to create an array for storing the data mask
-    inline static unsigned char mask[mask_array_len] = {'\0'}; // array to store the send data mask - it is defined to be inline and static because to increase performance the library generates a mask just once when the class is first instantiated and every subsequent lock_client_crtp object reuses that same mask to send out every masked frame
+    unsigned char mask[mask_array_len] = {'\0'}; // array to store the send data mask - it is defined to be inline and static because to increase performance the library generates a mask just once when the class is first instantiated and every subsequent lock_client_crtp object reuses that same mask to send out every masked frame
    
 // instance variables for sending data
 protected:
@@ -265,8 +265,8 @@ protected:
 // class wide variables    
 protected:    
     
-    inline static bool openssl_init = false; // bool variable to test if openssl initialisations have been done
-    inline static SSL_CTX* ssl_ctx = NULL;
+    bool openssl_init = false; // bool variable to test if openssl initialisations have been done
+    SSL_CTX* ssl_ctx = NULL;
     inline static const char string_to_append[] = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"; // this string is appended to the base64 encoded nonce to calculate the Sec-WebSocket-Accept header value and compare with the server's
     inline static const int size_of_SHA1_digest = 20;
     
@@ -384,7 +384,7 @@ protected:
 protected:
 
     static const int mask_array_len = 4; // used to create an array for storing the data mask
-    inline static unsigned char mask[mask_array_len] = {'\0'}; // array to store the send data mask - it is defined to be inline and static because to increase performance the library generates a mask just once when the class is first instantiated and every subsequent lock_client_crtp object reuses that same mask to send out every masked frame
+    unsigned char mask[mask_array_len] = {'\0'}; // array to store the send data mask - it is defined to be inline and static because to increase performance the library generates a mask just once when the class is first instantiated and every subsequent lock_client_crtp object reuses that same mask to send out every masked frame
    
 // instance variables for sending data
 protected:

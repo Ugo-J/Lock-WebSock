@@ -265,7 +265,7 @@ private:
 private:
 
     static const int mask_array_len = 4; // used to create an array for storing the data mask
-    inline static unsigned char mask[mask_array_len] = {'\0'}; // array to store the send data mask - it is defined to be inline and static because to increase performance the library generates a mask just once when the class is first instantiated and every subsequent lock_client object reuses that same mask to send out every masked frame
+    unsigned char mask[mask_array_len] = {'\0'}; // array to store the send data mask - it is defined to be inline and static because to increase performance the library generates a mask just once when the class is first instantiated and every subsequent lock_client object reuses that same mask to send out every masked frame
    
 // instance variables for sending data
 private:
