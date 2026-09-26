@@ -2586,6 +2586,11 @@ bool lock_client_pm_crtp<T>::poll_io(int core){
                     }
 
                 }
+                else{
+
+                    std::cout<<"Poll thread: No free space in read buffer"<<std::endl;
+
+                }
 
                 // now we check our write buffer if there is any data to write
 
