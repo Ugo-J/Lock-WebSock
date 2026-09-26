@@ -2524,6 +2524,8 @@ bool lock_client_pm_crtp<T>::poll_io(int core){
     // getting here the poll thread encountered no issue setting up so we set our poll thread running flag to true
     poll_thread_running.store(true, std::memory_order_release);
 
+    bool read_buffer_full = false;
+
     // we keep polling till our stop poll flag is set
     while(!stop_poll.load(std::memory_order_acquire)){
 
@@ -2585,10 +2587,20 @@ bool lock_client_pm_crtp<T>::poll_io(int core){
 
                     }
 
+                    if(read_buffer_full){
+
+                        std::cout<<"Data Read After Buffer Previously Full"<<std::endl;
+
+                        read_buffer_full = false;
+
+                    }
+
                 }
                 else{
 
                     std::cout<<"Poll thread: No free space in read buffer"<<std::endl;
+
+                    if(!read_buffer_full) read_buffer_full = true;
 
                 }
 
