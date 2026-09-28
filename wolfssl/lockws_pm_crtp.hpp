@@ -2739,7 +2739,7 @@ int lock_client_pm_crtp<T>::fetch_data(unsigned char* dest, int sz){
     // now we fetch the start index our read would start from
     int start_index = loc_last_read & (READ_BUFFER_SIZE - 1);
 
-    // now because we use bit masks to get our effective index and we need to know explicitly when to wrap around we check how much contiguous data there is to the end of the read buffer because we can only fetch ontiguous memory data with each memcpy call
+    // now because we use bit masks to get our effective index and we need to know explicitly when to wrap around we check how much contiguous data there is to the end of the read buffer because we can only fetch contiguous memory data with each memcpy call
     int contiguous_data_sz = READ_BUFFER_SIZE - start_index;
 
     // we check if our contiguous data sz is < our data sz to copy in which case we can fetch the available data in one memcpy call else we have to fetch our data sz to copy in two memcpy call
