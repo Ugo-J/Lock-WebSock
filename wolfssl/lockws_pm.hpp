@@ -6486,7 +6486,7 @@ inline bool lock_client_pm::set_cpu_affinity(int core){
     int set_affinity_error = pthread_setaffinity_np(thread_id, sizeof(cpuset), &cpuset);
     
     // we check if there was any error setting thr cpu affinity, we set our error flag if there was an error setting thr cpu affinity
-    if(set_affinity_error != 0){   
+    if(set_affinity_error != 0){
 
         strcpy(error_buffer, "Error Pinning Thread To CPU Core ");
 
