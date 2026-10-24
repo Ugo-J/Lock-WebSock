@@ -8,7 +8,7 @@
 #pragma GCC diagnostic ignored "-Wshift-count-overflow"
 
 // constructor with url string
-lock_client_pm::lock_client_pm(std::string_view url, int core, int read_chunk, int read_buffer_size, int write_buffer_size){
+inline lock_client_pm::lock_client_pm(std::string_view url, int core, int read_chunk, int read_buffer_size, int write_buffer_size){
 
     // we check that the supplied core number is within the range of available cores on the system, if it isn't we set our error flag to true
     if(core < 0 || core >= std::thread::hardware_concurrency()){
@@ -868,7 +868,7 @@ lock_client_pm::lock_client_pm(std::string_view url, int core, int read_chunk, i
 }
 
 // constructor that binds to a network interface
-lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address, char* interface_name, int core, int read_chunk, int read_buffer_size, int write_buffer_size){
+inline lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address, char* interface_name, int core, int read_chunk, int read_buffer_size, int write_buffer_size){
 
     // we check that the supplied core number is within the range of available cores on the system, if it isn't we set our error flag to true
     if(core < 0 || core >= std::thread::hardware_concurrency()){
@@ -1722,7 +1722,7 @@ lock_client_pm::lock_client_pm(std::string_view url, in_addr* interface_address,
 }
 
 // basic constructor
-lock_client_pm::lock_client_pm(int core, int read_chunk, int read_buffer_size, int write_buffer_size){
+inline lock_client_pm::lock_client_pm(int core, int read_chunk, int read_buffer_size, int write_buffer_size){
     
     // we check that the supplied core number is within the range of available cores on the system, if it isn't we set our error flag to true
     if(core < 0 || core >= std::thread::hardware_concurrency()){
@@ -1825,7 +1825,7 @@ lock_client_pm::lock_client_pm(int core, int read_chunk, int read_buffer_size, i
 }
 
 // destructor
-lock_client_pm::~lock_client_pm(){
+inline lock_client_pm::~lock_client_pm(){
 
     // because the poll thread is what sets the client back to close state we call the close function before we set the stop poll flag to stop the poll thread
 
@@ -1937,7 +1937,7 @@ inline bool lock_client_pm::is_open(){
     
 }
 
-bool lock_client_pm::ping(){ // sends a ping on an established websocket connection
+inline bool lock_client_pm::ping(){ // sends a ping on an established websocket connection
     
     if(!error.load(std::memory_order_acquire)){ // only continue if no error
         
@@ -2007,7 +2007,7 @@ bool lock_client_pm::ping(){ // sends a ping on an established websocket connect
     
 }
 
-bool lock_client_pm::pong(int ping_data_len){ // sends out a pong frame unsolicited or in response to a received ping frame
+inline bool lock_client_pm::pong(int ping_data_len){ // sends out a pong frame unsolicited or in response to a received ping frame
     
     if(!error.load(std::memory_order_acquire)){ // only continue if no error
         
@@ -2122,7 +2122,7 @@ inline bool lock_client_pm::clear(){ // clear the error flag of a lock client in
     
 }
 
-bool lock_client_pm::send(std::string_view payload_data){ // sends data passed as parameter along an established websocket connection
+inline bool lock_client_pm::send(std::string_view payload_data){ // sends data passed as parameter along an established websocket connection
 
     if(!error.load(std::memory_order_acquire)){ // only continue if no error
         
@@ -2655,26 +2655,26 @@ inline int lock_client_pm::default_pong_receive(char* data_array, int length_of_
     
 }
 
-void lock_client_pm::set_receive_function(lock_function fn){
+inline void lock_client_pm::set_receive_function(lock_function fn){
     
     recv_data = std::move(fn);
     
 }
 
-void lock_client_pm::set_pong_function(lock_function fn){
+inline void lock_client_pm::set_pong_function(lock_function fn){
     
     recv_pong = std::move(fn);
     
 }
 
-bool lock_client_pm::data_available(){
+inline bool lock_client_pm::data_available(){
 
     // we use memory order relaxed for loading last read because data available is called by the main thread that updates last read
     return read_last_write.load(std::memory_order_acquire) - read_last_read.load(std::memory_order_relaxed) > 0 ? true : false;
 
 }
 
-bool lock_client_pm::poll_io(int core){
+inline bool lock_client_pm::poll_io(int core){
 
     // we increase this thread priority
     bool thread_priori_error = increase_thread_priority();
@@ -2873,7 +2873,7 @@ bool lock_client_pm::poll_io(int core){
 
 }
 
-int lock_client_pm::fetch_data(unsigned char* dest, int sz){
+inline int lock_client_pm::fetch_data(unsigned char* dest, int sz){
 
     // first we check if the supplied sz is <=0 in which case we simply return 0
     if(sz <= 0) return 0;
@@ -2920,7 +2920,7 @@ int lock_client_pm::fetch_data(unsigned char* dest, int sz){
 
 }
 
-int lock_client_pm::write_data(unsigned char* src, int sz){
+inline int lock_client_pm::write_data(unsigned char* src, int sz){
 
     // first we check if the supplied sz is <=0 in which case we simply return 0
     if(sz <= 0) return 0;
@@ -2967,7 +2967,7 @@ int lock_client_pm::write_data(unsigned char* src, int sz){
 
 }
 
-bool lock_client_pm::basic_read(){
+inline bool lock_client_pm::basic_read(){
 
     if(!error.load(std::memory_order_acquire) || data_available()){ // only continue if no error or data available
         
@@ -5041,7 +5041,7 @@ bool lock_client_pm::basic_read(){
         
 }
        
-bool lock_client_pm::connect(std::string_view url){ // this is used to connect to connect to the url passed as a parameter, it can be used when a lock client object was created without establishing a websocket connection by using the parameterless constructor, or to connect an already established websocket connection and lock client instance to a different websocket server, it can also be used to retry connecting an instance that encountered an error during connection
+inline bool lock_client_pm::connect(std::string_view url){ // this is used to connect to connect to the url passed as a parameter, it can be used when a lock client object was created without establishing a websocket connection by using the parameterless constructor, or to connect an already established websocket connection and lock client instance to a different websocket server, it can also be used to retry connecting an instance that encountered an error during connection
 
     // we check that the poll thread is running if it isn't we return our error flag which would be set already if the poll thread isn't running - we return the error with memory order relaxed because we have already loaded the poll thread running flag which was written to after the error flag so we should already have an updated error flag
     if(!poll_thread_running.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
@@ -5829,7 +5829,7 @@ bool lock_client_pm::connect(std::string_view url){ // this is used to connect t
         
 }
 
-bool lock_client_pm::interface_connect(std::string_view url, in_addr* interface_address, char* interface_name){
+inline bool lock_client_pm::interface_connect(std::string_view url, in_addr* interface_address, char* interface_name){
     
     // we check that the poll thread is running if it isn't we return our error flag which would be set already if the poll thread isn't running - we return the error with memory order relaxed because we have already loaded the poll thread running flag which was written to after the error flag so we should already have an updated error flag
     if(!poll_thread_running.load(std::memory_order_acquire)) return error.load(std::memory_order_relaxed);
@@ -6597,7 +6597,7 @@ bool lock_client_pm::interface_connect(std::string_view url, in_addr* interface_
     return error.load(std::memory_order_acquire);
 }
 
-int lock_client_pm::connect_to_server(const char *hostname, const char *port, in_addr* interface_address, const char *interface_name){
+inline int lock_client_pm::connect_to_server(const char *hostname, const char *port, in_addr* interface_address, const char *interface_name){
 
     struct addrinfo hints, *res = NULL, *p = NULL;
 
@@ -6691,7 +6691,7 @@ int lock_client_pm::connect_to_server(const char *hostname, const char *port, in
     return sock;
 }
 
-void lock_client_pm::block_sigpipe_signal(){
+inline void lock_client_pm::block_sigpipe_signal(){
 
     sigemptyset(&newset);
     sigemptyset(&oldset);
@@ -6700,7 +6700,7 @@ void lock_client_pm::block_sigpipe_signal(){
     
 }
 
-void lock_client_pm::unblock_sigpipe_signal(){
+inline void lock_client_pm::unblock_sigpipe_signal(){
 
     // clear out any SIGPIPE signal that came in while we blocked it
     while(sigtimedwait(&newset, &si, &ts) >= 0 || errno != EAGAIN);
@@ -6711,7 +6711,7 @@ void lock_client_pm::unblock_sigpipe_signal(){
     
 }
 
-void lock_client_pm::block_sigpipe_signal_pm(){
+inline void lock_client_pm::block_sigpipe_signal_pm(){
 
     sigemptyset(&newset_pm);
     sigemptyset(&oldset_pm);
@@ -6720,7 +6720,7 @@ void lock_client_pm::block_sigpipe_signal_pm(){
     
 }
 
-void lock_client_pm::unblock_sigpipe_signal_pm(){
+inline void lock_client_pm::unblock_sigpipe_signal_pm(){
 
     // clear out any SIGPIPE signal that came in while we blocked it
     while(sigtimedwait(&newset_pm, &si_pm, &ts_pm) >= 0 || errno != EAGAIN);
@@ -6731,7 +6731,7 @@ void lock_client_pm::unblock_sigpipe_signal_pm(){
     
 }
 
-void lock_client_pm::fail_ws_connection(unsigned short status_code){
+inline void lock_client_pm::fail_ws_connection(unsigned short status_code){
 
     if(cursor != NULL && data_array != NULL){
 
@@ -6823,7 +6823,7 @@ void lock_client_pm::fail_ws_connection(unsigned short status_code){
     
 }
 
-bool lock_client_pm::set_cpu_affinity(int core){
+inline bool lock_client_pm::set_cpu_affinity(int core){
     
     // thread id structure used to identify the calling thread
     pthread_t thread_id = pthread_self();
@@ -6856,7 +6856,7 @@ bool lock_client_pm::set_cpu_affinity(int core){
     return error;
 }
 
-bool lock_client_pm::increase_thread_priority(int p_policy, int priority){
+inline bool lock_client_pm::increase_thread_priority(int p_policy, int priority){
     
     // local variables used by the increase priority function
     pthread_t thread_id = pthread_self();
@@ -6901,7 +6901,7 @@ bool lock_client_pm::increase_thread_priority(int p_policy, int priority){
 
 }
      
-bool lock_client_pm::close(unsigned short status_code){ // this closes an established websocket connection although the object itself still exists till it goes out of scope, the object can be connected to a different or the same websocket server using the connect function
+inline bool lock_client_pm::close(unsigned short status_code){ // this closes an established websocket connection although the object itself still exists till it goes out of scope, the object can be connected to a different or the same websocket server using the connect function
 
     // acquiring the client state here already syncs the main thread to the poll thread because it is only the poll thread that can set the client state to CLOSED and if the state is still OPEN we set it to close here, syncing with the poll thread in the process
     if(client_state.load(std::memory_order_acquire) == OPEN){ // only continue if client is in open state
